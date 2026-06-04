@@ -53,6 +53,7 @@ function initializeDatabase() {
   `);
 
   ensureColumn("users", "address", "TEXT DEFAULT ''");
+  renameSeedAdmin();
   seedDatabase();
 }
 
@@ -76,15 +77,15 @@ function seedDatabase() {
   `);
 
   insertUser.run({
-    name: "Aurora van Cassiopeia",
+    name: "cassioadmin",
     email: "admin@cassiopeia.local",
     password_hash: hash,
     year_layer: "2020",
-    role_title: "Praeses",
+    role_title: "Admin",
     phone: "+31 6 00000000",
     address: "",
     bio: "Beheert het ledenbestand en bewaakt de Cassiopeia-tradities.",
-    avatar: "A",
+    avatar: "C",
     is_admin: 1
   });
 
@@ -127,6 +128,15 @@ function seedDatabase() {
     "2026-07-04T19:00",
     28
   );
+}
+
+function renameSeedAdmin() {
+  db.prepare(`
+    UPDATE users
+    SET name = 'cassioadmin', role_title = 'Admin', avatar = 'C', updated_at = CURRENT_TIMESTAMP
+    WHERE email = 'admin@cassiopeia.local'
+      AND name = 'Aurora van Cassiopeia'
+  `).run();
 }
 
 module.exports = { db, initializeDatabase };

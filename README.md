@@ -27,6 +27,7 @@ Moderne website voor damesdispuut Cassiopeia met een besloten ledenomgeving.
 
 ## Beheerdersaccount
 
+**Naam:** cassioadmin
 **E-mail:** [admin@cassiopeia.local](mailto:admin@cassiopeia.local)
 **Wachtwoord:** Cassio2026!
 
