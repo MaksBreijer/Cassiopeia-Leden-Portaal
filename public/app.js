@@ -360,6 +360,8 @@ function openMemberDialog(member = null) {
   els.memberForm.reset();
   els.memberDialogTitle.textContent = member ? "Lid wijzigen" : "Nieuw lid";
   const fields = els.memberForm.elements;
+  const memberAvatar = member?.avatar || "";
+  const editableInitials = memberAvatar && !/^(data:image\/|https?:\/\/)/i.test(memberAvatar) ? memberAvatar : "";
   fields.id.value = member?.id || "";
   fields.name.value = member?.name || "";
   fields.email.value = member?.email || "";
@@ -369,7 +371,7 @@ function openMemberDialog(member = null) {
   fields.committee.value = member?.committee || "";
   fields.phone.value = member?.phone || "";
   fields.address.value = member?.address || "";
-  fields.avatar.value = member?.avatar || "";
+  fields.avatar.value = editableInitials;
   fields.bio.value = member?.bio || "";
   fields.isAdmin.checked = Boolean(member?.isAdmin);
   fields.password.required = !member;

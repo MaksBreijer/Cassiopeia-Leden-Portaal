@@ -91,19 +91,24 @@ function getCurrentUser(req) {
   return db.prepare("SELECT * FROM users WHERE id = ?").get(req.session.userId);
 }
 
+function valueFromBody(body, key, existingValue = "") {
+  return Object.prototype.hasOwnProperty.call(body, key) ? String(body[key] || "").trim() : existingValue || "";
+}
+
 function memberFromBody(body, existing = {}) {
   const avatarInput = String(body.avatar || "").trim();
+  const memberStatus = String(body.memberStatus || existing.member_status || "actief");
   return {
-    name: String(body.name || existing.name || "").trim(),
-    email: String(body.email || existing.email || "").trim().toLowerCase(),
-    year_layer: String(body.yearLayer || existing.year_layer || "").trim(),
-    role_title: String(body.roleTitle || existing.role_title || "").trim(),
-    phone: String(body.phone || existing.phone || "").trim(),
-    address: body.address === undefined ? existing.address || "" : String(body.address || "").trim(),
-    bio: String(body.bio || existing.bio || "").trim(),
-    avatar: avatarInput ? avatarInput.slice(0, 2).toUpperCase() : existing.avatar || "",
-    member_status: ["actief", "oud"].includes(String(body.memberStatus || existing.member_status || "actief")) ? String(body.memberStatus || existing.member_status || "actief") : "actief",
-    committee: String(body.committee || existing.committee || "").trim(),
+    name: valueFromBody(body, "name", existing.name),
+    email: valueFromBody(body, "email", existing.email).toLowerCase(),
+    year_layer: valueFromBody(body, "yearLayer", existing.year_layer),
+    role_title: valueFromBody(body, "roleTitle", existing.role_title),
+    phone: valueFromBody(body, "phone", existing.phone),
+    address: valueFromBody(body, "address", existing.address),
+    bio: valueFromBody(body, "bio", existing.bio),
+    avatar: avatarInput && avatarInput.length <= 2 ? avatarInput.toUpperCase() : existing.avatar || "",
+    member_status: ["actief", "oud"].includes(memberStatus) ? memberStatus : "actief",
+    committee: valueFromBody(body, "committee", existing.committee),
     is_admin: body.isAdmin ? 1 : 0
   };
 }
