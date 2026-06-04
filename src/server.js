@@ -103,11 +103,11 @@ function profileAvatarFromBody(value, existingAvatar) {
   const imageMatch = avatar.match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/i);
   if (imageMatch) {
     const imageSize = Buffer.byteLength(imageMatch[2], "base64");
-    if (imageSize <= 2 * 1024 * 1024) return avatar;
+    if (imageSize <= 5 * 1024 * 1024) return avatar;
   }
   if (/^https?:\/\/.+/i.test(avatar) && avatar.length <= 500) return avatar;
   if (avatar.length <= 2) return avatar.toUpperCase();
-  throw new Error("Gebruik een afbeelding van maximaal 2 MB.");
+  throw new Error("Gebruik een afbeelding van maximaal 5 MB.");
 }
 
 app.get("/api/session", (req, res) => {
