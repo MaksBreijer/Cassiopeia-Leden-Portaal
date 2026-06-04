@@ -332,7 +332,8 @@ main {
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   border: 0;
   border-radius: 8px;
@@ -343,7 +344,8 @@ textarea {
 }
 
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(185, 155, 216, 0.22);
 }
@@ -415,6 +417,13 @@ label {
   background: transparent;
 }
 
+.member-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: -6px 0 18px;
+}
+
 .locked-panel {
   max-width: 760px;
   padding: 28px;
@@ -434,26 +443,48 @@ label {
 
 .member-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 18px;
 }
 
 .member-card {
   display: grid;
-  gap: 14px;
-  padding: 22px;
+  gap: 16px;
+  padding: 24px;
   text-align: left;
 }
 
 .member-card-main {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
   border: 0;
   padding: 0;
   color: inherit;
   background: transparent;
   text-align: left;
+}
+
+.member-card-main .avatar {
+  width: 128px;
+  height: 128px;
+  font-size: 40px;
+}
+
+.member-card-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.member-card-copy h3 {
+  margin-bottom: 2px;
+}
+
+.member-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .member-admin-actions {
@@ -816,6 +847,12 @@ dialog::backdrop {
     margin-bottom: 16px;
   }
 
+  .member-filters {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
   .activity-list,
   .table-list {
     gap: 10px;
@@ -901,6 +938,12 @@ dialog::backdrop {
     align-items: center;
   }
 
+  .member-card-main .avatar {
+    width: 96px;
+    height: 96px;
+    font-size: 32px;
+  }
+
   .member-admin-actions {
     grid-column: 1 / -1;
   }
@@ -910,7 +953,8 @@ dialog::backdrop {
   }
 
   input,
-  textarea {
+  textarea,
+  select {
     min-height: 44px;
   }
 
@@ -958,6 +1002,10 @@ dialog::backdrop {
   .profile-preview,
   .detail-hero {
     flex-direction: column;
+  }
+
+  .member-filters {
+    grid-template-columns: 1fr;
   }
 
   .activity-actions .secondary {

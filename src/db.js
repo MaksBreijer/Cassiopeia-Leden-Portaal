@@ -23,6 +23,8 @@ function initializeDatabase() {
       address TEXT DEFAULT '',
       bio TEXT DEFAULT '',
       avatar TEXT DEFAULT '',
+      member_status TEXT DEFAULT 'actief',
+      committee TEXT DEFAULT '',
       is_admin INTEGER DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -53,6 +55,8 @@ function initializeDatabase() {
   `);
 
   ensureColumn("users", "address", "TEXT DEFAULT ''");
+  ensureColumn("users", "member_status", "TEXT DEFAULT 'actief'");
+  ensureColumn("users", "committee", "TEXT DEFAULT ''");
   renameSeedAdmin();
   seedDatabase();
 }
@@ -72,8 +76,8 @@ function seedDatabase() {
   const memberHash = bcrypt.hashSync("Welkom2026!", 12);
 
   const insertUser = db.prepare(`
-    INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, address, bio, avatar, is_admin)
-    VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @address, @bio, @avatar, @is_admin)
+    INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, address, bio, avatar, member_status, committee, is_admin)
+    VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @address, @bio, @avatar, @member_status, @committee, @is_admin)
   `);
 
   insertUser.run({
@@ -86,6 +90,8 @@ function seedDatabase() {
     address: "",
     bio: "Beheert het ledenbestand en bewaakt de Cassiopeia-tradities.",
     avatar: "C",
+    member_status: "actief",
+    committee: "Bestuur",
     is_admin: 1
   });
 
@@ -105,6 +111,8 @@ function seedDatabase() {
       address: "",
       bio: "Cassiopeia-lid met liefde voor borrels, tradities en sterke plannen.",
       avatar,
+      member_status: "actief",
+      committee: role_title === "Lid" ? "" : role_title,
       is_admin: 0
     });
   });

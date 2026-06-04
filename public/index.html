@@ -74,6 +74,22 @@
             <button id="newMemberBtn" class="primary admin-only hidden">Nieuw lid</button>
           </div>
         </div>
+        <div class="member-filters" aria-label="Ledenfilters">
+          <select id="memberStatusFilter" aria-label="Filter op actief of oud-lid">
+            <option value="">Alle leden</option>
+            <option value="actief">Actieve leden</option>
+            <option value="oud">Oud-leden</option>
+          </select>
+          <select id="memberYearFilter" aria-label="Filter op jaarlaag">
+            <option value="">Alle jaarlagen</option>
+          </select>
+          <select id="memberRoleFilter" aria-label="Filter op functie">
+            <option value="">Alle functies</option>
+          </select>
+          <select id="memberCommitteeFilter" aria-label="Filter op commissie">
+            <option value="">Alle commissies</option>
+          </select>
+        </div>
         <div id="loggedOutMembers" class="locked-panel hidden">
           <h3>Log in om leden te bekijken</h3>
           <p>De ledenlijst is zichtbaar voor ingelogde leden.</p>
@@ -121,6 +137,13 @@
           <label>E-mail<input name="email" type="email" required /></label>
           <label>Jaarlaag<input name="yearLayer" required /></label>
           <label>Functie<input name="roleTitle" /></label>
+          <label>Status
+            <select name="memberStatus">
+              <option value="actief">Actief lid</option>
+              <option value="oud">Oud-lid</option>
+            </select>
+          </label>
+          <label>Commissie<input name="committee" /></label>
           <label>Telefoon<input name="phone" /></label>
           <label>Initialen<input name="avatar" maxlength="2" /></label>
           <label class="wide">Adres<input name="address" autocomplete="street-address" /></label>

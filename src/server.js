@@ -69,6 +69,8 @@ function publicUser(user) {
     address: user.address,
     bio: user.bio,
     avatar: user.avatar || user.name.charAt(0).toUpperCase(),
+    memberStatus: user.member_status || "actief",
+    committee: user.committee || "",
     isAdmin: Boolean(user.is_admin)
   };
 }
@@ -100,6 +102,8 @@ function memberFromBody(body, existing = {}) {
     address: body.address === undefined ? existing.address || "" : String(body.address || "").trim(),
     bio: String(body.bio || existing.bio || "").trim(),
     avatar: avatarInput ? avatarInput.slice(0, 2).toUpperCase() : existing.avatar || "",
+    member_status: ["actief", "oud"].includes(String(body.memberStatus || existing.member_status || "actief")) ? String(body.memberStatus || existing.member_status || "actief") : "actief",
+    committee: String(body.committee || existing.committee || "").trim(),
     is_admin: body.isAdmin ? 1 : 0
   };
 }
@@ -175,10 +179,10 @@ app.get("/api/members", requireAuth, (req, res) => {
   const rows = db
     .prepare(`
       SELECT * FROM users
-      WHERE name LIKE ? OR year_layer LIKE ? OR role_title LIKE ? OR address LIKE ?
+      WHERE name LIKE ? OR year_layer LIKE ? OR role_title LIKE ? OR address LIKE ? OR member_status LIKE ? OR committee LIKE ?
       ORDER BY year_layer DESC, name ASC
     `)
-    .all(q, q, q, q);
+    .all(q, q, q, q, q, q);
   res.json({ members: rows.map(publicUser) });
 });
 
@@ -199,8 +203,8 @@ app.post("/api/members", requireAuth, requireAdmin, async (req, res) => {
   try {
     const result = db
       .prepare(`
-        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, address, bio, avatar, is_admin)
-        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @address, @bio, @avatar, @is_admin)
+        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, address, bio, avatar, member_status, committee, is_admin)
+        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @address, @bio, @avatar, @member_status, @committee, @is_admin)
       `)
       .run({ ...member, password_hash });
     res.status(201).json({ member: publicUser(db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid)) });
@@ -222,7 +226,8 @@ app.put("/api/members/:id", requireAuth, requireAdmin, async (req, res) => {
     db.prepare(`
       UPDATE users
       SET name = @name, email = @email, year_layer = @year_layer, role_title = @role_title,
-          phone = @phone, address = @address, bio = @bio, avatar = @avatar, is_admin = @is_admin, updated_at = CURRENT_TIMESTAMP
+          phone = @phone, address = @address, bio = @bio, avatar = @avatar,
+          member_status = @member_status, committee = @committee, is_admin = @is_admin, updated_at = CURRENT_TIMESTAMP
       WHERE id = @id
     `).run({ ...member, id: req.params.id });
 

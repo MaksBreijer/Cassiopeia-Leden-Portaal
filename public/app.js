@@ -15,6 +15,10 @@ const els = {
   loginForm: document.querySelector("#loginForm"),
   loginError: document.querySelector("#loginError"),
   memberSearch: document.querySelector("#memberSearch"),
+  memberStatusFilter: document.querySelector("#memberStatusFilter"),
+  memberYearFilter: document.querySelector("#memberYearFilter"),
+  memberRoleFilter: document.querySelector("#memberRoleFilter"),
+  memberCommitteeFilter: document.querySelector("#memberCommitteeFilter"),
   loggedOutMembers: document.querySelector("#loggedOutMembers"),
   memberGrid: document.querySelector("#memberGrid"),
   memberDetail: document.querySelector("#memberDetail"),
@@ -168,21 +172,61 @@ async function loadMembers() {
   const query = encodeURIComponent(els.memberSearch.value || "");
   const data = await api(`/api/members?q=${query}`);
   state.members = data.members;
+  renderMemberFilters();
   renderMembers();
 }
 
+function uniqueSorted(values) {
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "nl"));
+}
+
+function setFilterOptions(select, values, emptyLabel) {
+  const current = select.value;
+  select.innerHTML = `<option value="">${emptyLabel}</option>${values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`;
+  select.value = values.includes(current) ? current : "";
+}
+
+function renderMemberFilters() {
+  setFilterOptions(els.memberYearFilter, uniqueSorted(state.members.map((member) => member.yearLayer)).reverse(), "Alle jaarlagen");
+  setFilterOptions(els.memberRoleFilter, uniqueSorted(state.members.map((member) => member.roleTitle || "Lid")), "Alle functies");
+  setFilterOptions(els.memberCommitteeFilter, uniqueSorted(state.members.map((member) => member.committee)), "Alle commissies");
+}
+
+function filteredMembers() {
+  const status = els.memberStatusFilter.value;
+  const year = els.memberYearFilter.value;
+  const role = els.memberRoleFilter.value;
+  const committee = els.memberCommitteeFilter.value;
+  return state.members.filter((member) => {
+    if (status && member.memberStatus !== status) return false;
+    if (year && member.yearLayer !== year) return false;
+    if (role && (member.roleTitle || "Lid") !== role) return false;
+    if (committee && member.committee !== committee) return false;
+    return true;
+  });
+}
+
 function renderMembers() {
-  els.memberGrid.innerHTML = state.members
+  const members = filteredMembers();
+  if (!members.length) {
+    els.memberGrid.innerHTML = `<article class="locked-panel"><h3>Geen leden gevonden</h3><p>Pas je filters aan om meer leden te zien.</p></article>`;
+    return;
+  }
+  els.memberGrid.innerHTML = members
     .map(
       (member) => `
         <article class="member-card">
           <button class="member-card-main" data-member-id="${member.id}">
             <div class="avatar">${avatarHtml(member)}</div>
-            <div>
+            <div class="member-card-copy">
               <h3>${escapeHtml(member.name)}</h3>
               <p class="meta">${escapeHtml(member.yearLayer)} · ${escapeHtml(member.roleTitle || "Lid")}</p>
+              ${member.committee ? `<p class="meta">Commissie: ${escapeHtml(member.committee)}</p>` : ""}
+              <div class="member-card-badges">
+                <span class="badge">${member.memberStatus === "oud" ? "Oud-lid" : "Actief"}</span>
+                ${member.isAdmin ? '<span class="badge">Admin</span>' : ""}
+              </div>
             </div>
-            ${member.isAdmin ? '<span class="badge">Admin</span>' : ""}
           </button>
           ${
             state.user?.isAdmin
@@ -211,6 +255,7 @@ async function showMemberDetail(id) {
         <p class="eyebrow">${member.isAdmin ? "Admin" : "Lidprofiel"}</p>
         <h2>${escapeHtml(member.name)}</h2>
         <p class="meta">${escapeHtml(member.yearLayer)} · ${escapeHtml(member.roleTitle || "Lid")}</p>
+        <p class="meta">${member.memberStatus === "oud" ? "Oud-lid" : "Actief lid"}${member.committee ? ` · Commissie: ${escapeHtml(member.committee)}` : ""}</p>
       </div>
     </div>
     <p>${escapeHtml(member.bio || "Nog geen profieltekst ingevuld.")}</p>
@@ -273,6 +318,7 @@ function renderPublicActivities() {
               state.user?.isAdmin
                 ? `<button class="secondary" data-registrations="${activity.id}">Inschrijvingen</button>
                   <button class="secondary" data-share-activity="${activity.id}">Deel link</button>
+                  <button class="secondary" data-whatsapp-activity="${activity.id}">WhatsApp</button>
                   <button class="secondary" data-edit-activity="${activity.id}">Bewerk</button>
                   <button class="danger" data-delete-activity="${activity.id}">Verwijder</button>`
                 : ""
@@ -297,6 +343,8 @@ function openMemberDialog(member = null) {
   fields.email.value = member?.email || "";
   fields.yearLayer.value = member?.yearLayer || "";
   fields.roleTitle.value = member?.roleTitle || "";
+  fields.memberStatus.value = member?.memberStatus || "actief";
+  fields.committee.value = member?.committee || "";
   fields.phone.value = member?.phone || "";
   fields.address.value = member?.address || "";
   fields.avatar.value = member?.avatar || "";
@@ -404,6 +452,12 @@ els.profileForm.elements.profilePhoto.addEventListener("change", async () => {
 });
 
 els.memberSearch.addEventListener("input", () => loadMembers().catch((error) => showToast(error.message)));
+[
+  els.memberStatusFilter,
+  els.memberYearFilter,
+  els.memberRoleFilter,
+  els.memberCommitteeFilter
+].forEach((filter) => filter.addEventListener("change", renderMembers));
 els.newMemberBtn.addEventListener("click", () => openMemberDialog());
 els.newActivityBtn.addEventListener("click", () => openActivityDialog());
 
@@ -473,7 +527,7 @@ document.body.addEventListener("click", async (event) => {
     await api(`/api/activities/${activity.id}/register`, { method: activity.isRegistered ? "DELETE" : "POST" });
     await loadActivities();
     renderAdmin();
-    return showToast(activity.isRegistered ? "Je bent uitgeschreven." : "Je bent ingeschreven.");
+    return showToast(activity.isRegistered ? `Je bent uitgeschreven voor ${activity.title}.` : `Je bent ingeschreven voor ${activity.title}.`);
   }
 
   const registrationsBtn = event.target.closest("[data-registrations]");
@@ -489,6 +543,14 @@ document.body.addEventListener("click", async (event) => {
       window.prompt("Kopieer deze link:", url);
       return;
     }
+  }
+
+  const whatsappActivityBtn = event.target.closest("[data-whatsapp-activity]");
+  if (whatsappActivityBtn) {
+    const activity = state.activities.find((item) => item.id === Number(whatsappActivityBtn.dataset.whatsappActivity));
+    const text = `Schrijf je in voor ${activity.title}: ${activityShareUrl(activity.id)}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+    return;
   }
 
   const editMemberBtn = event.target.closest("[data-edit-member]");
