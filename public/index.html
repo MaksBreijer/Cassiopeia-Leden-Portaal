@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cassiopeia | Activiteiten</title>
+    <script>
+      if (window.location.protocol === "file:") {
+        window.location.replace("http://127.0.0.1:3000");
+      }
+    </script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <section id="loginScreen" class="login-screen">
+      <form id="loginForm" class="login-card">
+        <h1>Login</h1>
+        <input name="email" type="email" autocomplete="email" value="admin@cassiopeia.local" aria-label="E-mail" required />
+        <input name="password" type="password" autocomplete="current-password" value="Cassio2026!" aria-label="Wachtwoord" required />
+        <button type="submit" class="login-submit">Inloggen</button>
+        <p id="loginError" class="login-error"></p>
+      </form>
+    </section>
+
+    <header class="site-header hidden">
+      <a class="brand" href="#activiteiten" aria-label="Cassiopeia activiteiten">
+        <span class="brand-mark">C</span>
+        <span>Cassiopeia</span>
+      </a>
+      <nav class="site-nav" aria-label="Hoofdnavigatie">
+        <a href="#activiteiten">Activiteiten</a>
+        <a href="#profiel">Profiel</a>
+        <a href="#leden">Leden</a>
+        <a class="header-profile-link" href="#profiel" aria-label="Mijn profiel">
+          <span id="headerProfileAvatar" class="header-profile-avatar avatar">C</span>
+        </a>
+        <button id="logoutBtn" class="nav-button hidden">Uitloggen</button>
+      </nav>
+    </header>
+
+    <main class="hidden">
+      <section id="activiteiten" class="section page-intro">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Agenda</p>
+            <h1>Activiteiten</h1>
+          </div>
+          <button id="newActivityBtn" class="primary admin-only hidden">Nieuwe activiteit</button>
+        </div>
+        <div id="publicActivityList" class="activity-list">
+          <article class="activity-card">
+            <div>
+              <p class="eyebrow">Agenda laden</p>
+              <h3>Even geduld</h3>
+              <p>De activiteiten worden opgehaald.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="profiel" class="section profile-section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Mijn account</p>
+            <h2>Profiel</h2>
+          </div>
+        </div>
+        <form id="profileForm" class="profile-card">
+          <div class="profile-preview">
+            <div id="profileAvatar" class="avatar">C</div>
+            <div>
+              <h3 id="profileName">Cassiopeia</h3>
+              <p id="profileEmail" class="meta"></p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <label class="wide">Adres<input name="address" autocomplete="street-address" /></label>
+            <label class="wide">Profielfoto<input id="profilePhoto" name="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+            <label>Huidig wachtwoord<input name="currentPassword" type="password" autocomplete="current-password" /></label>
+            <label>Nieuw wachtwoord<input name="newPassword" type="password" autocomplete="new-password" minlength="8" /></label>
+          </div>
+          <div class="dialog-actions">
+            <button type="submit" class="primary">Profiel opslaan</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="leden" class="section members-section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Leden</p>
+            <h2>Alle leden</h2>
+          </div>
+          <div class="section-actions">
+            <input id="memberSearch" class="search" type="search" placeholder="Zoek op naam, jaarlaag of functie" />
+            <button id="newMemberBtn" class="primary admin-only hidden">Nieuw lid</button>
+          </div>
+        </div>
+        <div id="loggedOutMembers" class="locked-panel hidden">
+          <h3>Log in om leden te bekijken</h3>
+          <p>De ledenlijst is zichtbaar voor ingelogde leden.</p>
+          <button class="primary" data-open-login>Inloggen</button>
+        </div>
+        <div id="memberGrid" class="member-grid hidden"></div>
+        <div id="memberDetail" class="detail-panel hidden"></div>
+      </section>
+    </main>
+
+    <dialog id="memberDialog">
+      <form id="memberForm" method="dialog" class="dialog-card">
+        <h3 id="memberDialogTitle">Lid</h3>
+        <input type="hidden" name="id" />
+        <div class="form-grid">
+          <label>Naam<input name="name" required /></label>
+          <label>E-mail<input name="email" type="email" required /></label>
+          <label>Jaarlaag<input name="yearLayer" required /></label>
+          <label>Functie<input name="roleTitle" /></label>
+          <label>Telefoon<input name="phone" /></label>
+          <label>Initialen<input name="avatar" maxlength="2" /></label>
+          <label class="wide">Adres<input name="address" autocomplete="street-address" /></label>
+          <label class="wide">Bio<textarea name="bio" rows="4"></textarea></label>
+          <label class="wide">Nieuw wachtwoord<input name="password" type="password" minlength="8" placeholder="Alleen invullen bij nieuw of wijzigen" /></label>
+          <label class="check wide"><input name="isAdmin" type="checkbox" /> Adminrechten</label>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" data-close>Sluiten</button>
+          <button type="submit" class="primary">Opslaan</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="activityDialog">
+      <form id="activityForm" method="dialog" class="dialog-card">
+        <h3 id="activityDialogTitle">Activiteit</h3>
+        <input type="hidden" name="id" />
+        <div class="form-grid">
+          <label class="wide">Titel<input name="title" required /></label>
+          <label>Datum en tijd<input name="startsAt" type="datetime-local" required /></label>
+          <label>Capaciteit<input name="capacity" type="number" min="1" /></label>
+          <label class="wide">Locatie<input name="location" /></label>
+          <label class="wide">Beschrijving<textarea name="description" rows="4"></textarea></label>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" data-close>Sluiten</button>
+          <button type="submit" class="primary">Opslaan</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="registrationsDialog">
+      <div class="dialog-card">
+        <h3>Inschrijvingen</h3>
+        <div id="registrationsList" class="table-list"></div>
+        <div class="dialog-actions">
+          <button type="button" class="primary" data-close>Sluiten</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
