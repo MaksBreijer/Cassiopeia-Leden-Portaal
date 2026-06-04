@@ -323,6 +323,17 @@ function readProfilePhoto(file) {
   });
 }
 
+els.profileForm.elements.profilePhoto.addEventListener("change", async () => {
+  try {
+    const avatar = await readProfilePhoto(els.profileForm.elements.profilePhoto.files[0]);
+    if (avatar) els.profileAvatar.innerHTML = avatarHtml({ avatar, name: state.user?.name || "Cassiopeia" });
+  } catch (error) {
+    els.profileForm.elements.profilePhoto.value = "";
+    renderProfile();
+    showToast(error.message);
+  }
+});
+
 els.memberSearch.addEventListener("input", () => loadMembers().catch((error) => showToast(error.message)));
 els.newMemberBtn.addEventListener("click", () => openMemberDialog());
 els.newActivityBtn.addEventListener("click", () => openActivityDialog());
