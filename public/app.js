@@ -172,6 +172,18 @@ async function showMemberDetail(id) {
     <p class="meta">E-mail: ${escapeHtml(member.email)}</p>
     <p class="meta">Telefoon: ${escapeHtml(member.phone || "Niet ingevuld")}</p>
     <p class="meta">Adres: ${escapeHtml(member.address || "Niet ingevuld")}</p>
+    ${
+      state.user?.isAdmin
+        ? `<div class="row-actions admin-controls">
+            <button class="secondary" data-edit-member="${member.id}">Bewerken</button>
+            ${
+              member.id !== state.user.id
+                ? `<button class="danger" data-delete-member="${member.id}">Verwijderen</button>`
+                : ""
+            }
+          </div>`
+        : ""
+    }
   `;
   els.memberDetail.classList.remove("hidden");
   els.memberDetail.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -212,7 +224,13 @@ function renderPublicActivities() {
             <button class="secondary" data-register="${activity.id}" ${full && !activity.isRegistered ? "disabled" : ""}>
               ${!state.user ? "Inloggen om in te schrijven" : activity.isRegistered ? "Uitschrijven" : full ? "Vol" : "Inschrijven"}
             </button>
-            ${state.user?.isAdmin ? `<button class="secondary" data-registrations="${activity.id}">Inschrijvingen</button>` : ""}
+            ${
+              state.user?.isAdmin
+                ? `<button class="secondary" data-registrations="${activity.id}">Inschrijvingen</button>
+                  <button class="secondary" data-edit-activity="${activity.id}">Bewerk</button>
+                  <button class="danger" data-delete-activity="${activity.id}">Verwijder</button>`
+                : ""
+            }
           </div>
         </article>
       `;

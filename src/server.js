@@ -220,7 +220,9 @@ app.put("/api/members/:id", requireAuth, requireAdmin, async (req, res) => {
     `).run({ ...member, id: req.params.id });
 
     if (req.body.password) {
-      const password_hash = await bcrypt.hash(String(req.body.password), 12);
+      const password = String(req.body.password);
+      if (password.length < 8) return res.status(400).json({ error: "Het nieuwe wachtwoord moet minimaal 8 tekens zijn." });
+      const password_hash = await bcrypt.hash(password, 12);
       db.prepare("UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(password_hash, req.params.id);
     }
 
@@ -234,7 +236,8 @@ app.delete("/api/members/:id", requireAuth, requireAdmin, (req, res) => {
   if (Number(req.params.id) === Number(req.session.userId)) {
     return res.status(400).json({ error: "Je kunt je eigen account niet verwijderen." });
   }
-  db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
+  const result = db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
+  if (!result.changes) return res.status(404).json({ error: "Lid niet gevonden." });
   res.json({ ok: true });
 });
 
@@ -309,7 +312,8 @@ app.put("/api/activities/:id", requireAuth, requireAdmin, (req, res) => {
 });
 
 app.delete("/api/activities/:id", requireAuth, requireAdmin, (req, res) => {
-  db.prepare("DELETE FROM activities WHERE id = ?").run(req.params.id);
+  const result = db.prepare("DELETE FROM activities WHERE id = ?").run(req.params.id);
+  if (!result.changes) return res.status(404).json({ error: "Activiteit niet gevonden." });
   res.json({ ok: true });
 });
 

@@ -246,8 +246,10 @@ p {
 
 .primary,
 .secondary,
-.ghost {
+.ghost,
+.danger {
   min-height: 42px;
+  border: 0;
   border-radius: 8px;
   padding: 10px 16px;
   font-weight: 700;
@@ -378,6 +380,16 @@ label {
   white-space: nowrap;
 }
 
+.activity-actions .danger {
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 7px 13px;
+  box-shadow: 0 8px 18px rgba(169, 53, 68, 0.18);
+  font-size: 13px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
 .activity-actions .secondary:hover {
   background: #7f609f;
 }
@@ -468,6 +480,10 @@ label {
   padding: 26px;
 }
 
+.admin-controls {
+  margin-top: 18px;
+}
+
 .detail-hero {
   display: flex;
   align-items: center;
@@ -490,8 +506,15 @@ label {
 }
 
 .danger {
-  color: #801c26;
-  background: #f8e1e5;
+  color: #fff;
+  background: #a93544;
+}
+
+.profile-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .site-footer {
@@ -766,6 +789,7 @@ dialog::backdrop {
   }
 
   .activity-actions .secondary {
+    flex: 0 1 auto;
     width: auto;
     min-height: 36px;
     padding: 8px 14px;
@@ -838,6 +862,13 @@ dialog::backdrop {
   .dialog-actions button,
   .row-actions button {
     flex: 1;
+  }
+
+  .activity-actions .danger {
+    flex: 0 1 auto;
+    min-height: 36px;
+    padding: 8px 14px;
+    font-size: 13px;
   }
 
   .toast {
