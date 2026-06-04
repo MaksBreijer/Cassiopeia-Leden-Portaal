@@ -374,7 +374,7 @@ async function readProfilePhoto(file) {
   }
 
   const image = await loadImageFromFile(file);
-  const maxSide = 1200;
+  const maxSide = 800;
   const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
@@ -383,9 +383,9 @@ async function readProfilePhoto(file) {
   const context = canvas.getContext("2d");
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-  let quality = 0.86;
+  let quality = 0.82;
   let dataUrl = canvas.toDataURL("image/jpeg", quality);
-  while (dataUrlSize(dataUrl) > 1.5 * 1024 * 1024 && quality > 0.58) {
+  while (dataUrlSize(dataUrl) > 450 * 1024 && quality > 0.42) {
     quality -= 0.08;
     dataUrl = canvas.toDataURL("image/jpeg", quality);
   }
