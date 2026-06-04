@@ -83,6 +83,29 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function sharedActivityId() {
+  const id = new URLSearchParams(window.location.search).get("activity");
+  return id && /^\d+$/.test(id) ? id : "";
+}
+
+function activityShareUrl(activityId) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("activity", activityId);
+  url.hash = "activiteiten";
+  return url.toString();
+}
+
+function focusSharedActivity() {
+  const id = sharedActivityId();
+  if (!id) return false;
+  const card = document.querySelector(`[data-activity-card="${id}"]`);
+  if (!card) return false;
+  card.classList.add("activity-card-highlight");
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => card.classList.remove("activity-card-highlight"), 2600);
+  return true;
+}
+
 function avatarHtml(user) {
   const avatar = user.avatar || user.name?.charAt(0).toUpperCase() || "C";
   if (/^(data:image\/|https?:\/\/)/i.test(avatar)) {
@@ -138,6 +161,7 @@ function setLoggedOut() {
 
 async function refreshPortal() {
   await Promise.all([loadMembers(), loadActivities()]);
+  focusSharedActivity();
 }
 
 async function loadMembers() {
@@ -234,7 +258,7 @@ function renderPublicActivities() {
     .map((activity) => {
       const full = activity.capacity && activity.registrationCount >= activity.capacity;
       return `
-        <article class="activity-card">
+        <article id="activiteit-${activity.id}" class="activity-card" data-activity-card="${activity.id}">
           <div>
             <p class="eyebrow">${formatDate(activity.startsAt)}</p>
             <h3>${escapeHtml(activity.title)}</h3>
@@ -248,6 +272,7 @@ function renderPublicActivities() {
             ${
               state.user?.isAdmin
                 ? `<button class="secondary" data-registrations="${activity.id}">Inschrijvingen</button>
+                  <button class="secondary" data-share-activity="${activity.id}">Deel link</button>
                   <button class="secondary" data-edit-activity="${activity.id}">Bewerk</button>
                   <button class="danger" data-delete-activity="${activity.id}">Verwijder</button>`
                 : ""
@@ -360,7 +385,7 @@ els.loginForm.addEventListener("submit", async (event) => {
     });
     setLoggedIn(user);
     await refreshPortal();
-    document.querySelector("#activiteiten").scrollIntoView({ behavior: "smooth" });
+    if (!focusSharedActivity()) document.querySelector("#activiteiten").scrollIntoView({ behavior: "smooth" });
   } catch (error) {
     els.loginError.textContent = error.message;
   }
@@ -416,6 +441,18 @@ document.body.addEventListener("click", async (event) => {
 
   const registrationsBtn = event.target.closest("[data-registrations]");
   if (registrationsBtn) return showRegistrations(registrationsBtn.dataset.registrations);
+
+  const shareActivityBtn = event.target.closest("[data-share-activity]");
+  if (shareActivityBtn) {
+    const url = activityShareUrl(shareActivityBtn.dataset.shareActivity);
+    try {
+      await navigator.clipboard.writeText(url);
+      return showToast("Activiteitlink gekopieerd.");
+    } catch (error) {
+      window.prompt("Kopieer deze link:", url);
+      return;
+    }
+  }
 
   const editMemberBtn = event.target.closest("[data-edit-member]");
   if (editMemberBtn) return openMemberDialog(state.members.find((member) => member.id === Number(editMemberBtn.dataset.editMember)));

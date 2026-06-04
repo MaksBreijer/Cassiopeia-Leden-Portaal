@@ -366,6 +366,12 @@ label {
   gap: 18px;
   align-items: center;
   padding: 28px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.activity-card-highlight {
+  box-shadow: 0 0 0 4px rgba(143, 110, 176, 0.28), var(--shadow);
+  transform: translateY(-2px);
 }
 
 .activity-actions {
