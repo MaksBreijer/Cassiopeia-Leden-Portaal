@@ -343,16 +343,53 @@ function openLogin() {
   els.loginScreen.classList.remove("hidden");
 }
 
-function readProfilePhoto(file) {
+function loadImageFromFile(file) {
   return new Promise((resolve, reject) => {
-    if (!file) return resolve("");
-    if (!file.type.startsWith("image/")) return reject(new Error("Kies een afbeelding."));
-    if (file.size > 5 * 1024 * 1024) return reject(new Error("Kies een afbeelding van maximaal 5 MB."));
-    const reader = new FileReader();
-    reader.addEventListener("load", () => resolve(reader.result));
-    reader.addEventListener("error", () => reject(new Error("De afbeelding kon niet gelezen worden.")));
-    reader.readAsDataURL(file);
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    image.addEventListener("load", () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    });
+    image.addEventListener("error", () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("De afbeelding kon niet gelezen worden."));
+    });
+    image.src = objectUrl;
   });
+}
+
+function dataUrlSize(dataUrl) {
+  const base64 = dataUrl.split(",")[1] || "";
+  return Math.ceil((base64.length * 3) / 4);
+}
+
+async function readProfilePhoto(file) {
+  if (!file) return "";
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    throw new Error("Kies een JPG, PNG of WebP afbeelding.");
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error("Kies een afbeelding van maximaal 5 MB.");
+  }
+
+  const image = await loadImageFromFile(file);
+  const maxSide = 1200;
+  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+  const context = canvas.getContext("2d");
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  let quality = 0.86;
+  let dataUrl = canvas.toDataURL("image/jpeg", quality);
+  while (dataUrlSize(dataUrl) > 1.5 * 1024 * 1024 && quality > 0.58) {
+    quality -= 0.08;
+    dataUrl = canvas.toDataURL("image/jpeg", quality);
+  }
+  return dataUrl;
 }
 
 els.profileForm.elements.profilePhoto.addEventListener("change", async () => {
