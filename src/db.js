@@ -77,7 +77,7 @@ function seedDatabase() {
   `);
 
   insertUser.run({
-    name: "cassioadmin",
+    name: "AdminCassio",
     email: "admin@cassiopeia.local",
     password_hash: hash,
     year_layer: "2020",
@@ -133,9 +133,9 @@ function seedDatabase() {
 function renameSeedAdmin() {
   db.prepare(`
     UPDATE users
-    SET name = 'cassioadmin', role_title = 'Admin', avatar = 'C', updated_at = CURRENT_TIMESTAMP
+    SET name = 'AdminCassio', role_title = 'Admin', avatar = 'C', updated_at = CURRENT_TIMESTAMP
     WHERE email = 'admin@cassiopeia.local'
-      AND name = 'Aurora van Cassiopeia'
+      AND name IN ('Aurora van Cassiopeia', 'cassioadmin')
   `).run();
 }
 
