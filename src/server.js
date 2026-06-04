@@ -1,11 +1,12 @@
 const path = require("path");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const express = require("express");
 const session = require("express-session");
-const SQLiteStore = require("connect-sqlite3")(session);
 const { db, initializeDatabase } = require("./db");
+const { createSqliteSessionStore } = require("./session-store");
 
 initializeDatabase();
+const SQLiteSessionStore = createSqliteSessionStore(session, db);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,7 +35,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
-    store: new SQLiteStore({ db: "sessions.sqlite", dir: DATA_DIR }),
+    store: new SQLiteSessionStore(),
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -339,7 +340,7 @@ app.get("/api/activities/:id/registrations", requireAuth, requireAdmin, (req, re
   res.json({ registrations: rows.map((row) => ({ ...publicUser(row), registeredAt: row.created_at })) });
 });
 
-app.get("*", (req, res) => {
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, "..", "public", "index.html"));
 });
 
