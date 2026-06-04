@@ -74,21 +74,23 @@
             <button id="newMemberBtn" class="primary admin-only hidden">Nieuw lid</button>
           </div>
         </div>
-        <div class="member-filters" aria-label="Ledenfilters">
-          <select id="memberStatusFilter" aria-label="Filter op actief of oud-lid">
-            <option value="">Alle leden</option>
-            <option value="actief">Actieve leden</option>
-            <option value="oud">Oud-leden</option>
+        <div class="member-filterbar" aria-label="Ledenfilters">
+          <div class="filter-segments" role="group" aria-label="Filter op actief of oud-lid">
+            <button class="filter-chip active" type="button" data-status-filter="">Alles</button>
+            <button class="filter-chip" type="button" data-status-filter="actief">Actief</button>
+            <button class="filter-chip" type="button" data-status-filter="oud">Oud-leden</button>
+          </div>
+          <select id="memberYearFilter" class="filter-select" aria-label="Filter op jaarlaag">
+            <option value="">Jaarlaag</option>
           </select>
-          <select id="memberYearFilter" aria-label="Filter op jaarlaag">
-            <option value="">Alle jaarlagen</option>
+          <select id="memberRoleFilter" class="filter-select" aria-label="Filter op functie">
+            <option value="">Functie</option>
           </select>
-          <select id="memberRoleFilter" aria-label="Filter op functie">
-            <option value="">Alle functies</option>
+          <select id="memberCommitteeFilter" class="filter-select" aria-label="Filter op commissie">
+            <option value="">Commissie</option>
           </select>
-          <select id="memberCommitteeFilter" aria-label="Filter op commissie">
-            <option value="">Alle commissies</option>
-          </select>
+          <button id="clearMemberFilters" class="filter-clear" type="button">Reset</button>
+          <span id="memberResultCount" class="member-count"></span>
         </div>
         <div id="loggedOutMembers" class="locked-panel hidden">
           <h3>Log in om leden te bekijken</h3>
