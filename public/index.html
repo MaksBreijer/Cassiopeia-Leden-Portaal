@@ -27,6 +27,11 @@
         <span class="brand-mark">C</span>
         <span>Cassiopeia</span>
       </a>
+      <button id="menuToggle" class="menu-toggle" type="button" aria-label="Menu openen" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
       <nav class="site-nav" aria-label="Hoofdnavigatie">
         <a href="#activiteiten">Activiteiten</a>
         <a href="#profiel">Profiel</a>
@@ -58,6 +63,26 @@
         </div>
       </section>
 
+      <section id="leden" class="section members-section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Leden</p>
+            <h2>Alle leden</h2>
+          </div>
+          <div class="section-actions">
+            <input id="memberSearch" class="search" type="search" placeholder="Zoek op naam, jaarlaag of functie" />
+            <button id="newMemberBtn" class="primary admin-only hidden">Nieuw lid</button>
+          </div>
+        </div>
+        <div id="loggedOutMembers" class="locked-panel hidden">
+          <h3>Log in om leden te bekijken</h3>
+          <p>De ledenlijst is zichtbaar voor ingelogde leden.</p>
+          <button class="primary" data-open-login>Inloggen</button>
+        </div>
+        <div id="memberGrid" class="member-grid hidden"></div>
+        <div id="memberDetail" class="detail-panel hidden"></div>
+      </section>
+
       <section id="profiel" class="section profile-section">
         <div class="section-head">
           <div>
@@ -84,26 +109,6 @@
             <button type="submit" class="primary">Profiel opslaan</button>
           </div>
         </form>
-      </section>
-
-      <section id="leden" class="section members-section">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Leden</p>
-            <h2>Alle leden</h2>
-          </div>
-          <div class="section-actions">
-            <input id="memberSearch" class="search" type="search" placeholder="Zoek op naam, jaarlaag of functie" />
-            <button id="newMemberBtn" class="primary admin-only hidden">Nieuw lid</button>
-          </div>
-        </div>
-        <div id="loggedOutMembers" class="locked-panel hidden">
-          <h3>Log in om leden te bekijken</h3>
-          <p>De ledenlijst is zichtbaar voor ingelogde leden.</p>
-          <button class="primary" data-open-login>Inloggen</button>
-        </div>
-        <div id="memberGrid" class="member-grid hidden"></div>
-        <div id="memberDetail" class="detail-panel hidden"></div>
       </section>
     </main>
 

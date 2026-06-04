@@ -9,6 +9,7 @@ const API_BASE = location.protocol === "file:" || location.port === "5500" ? "ht
 const els = {
   siteHeader: document.querySelector(".site-header"),
   appMain: document.querySelector("main"),
+  menuToggle: document.querySelector("#menuToggle"),
   logoutBtn: document.querySelector("#logoutBtn"),
   loginScreen: document.querySelector("#loginScreen"),
   loginForm: document.querySelector("#loginForm"),
@@ -99,6 +100,11 @@ function renderProfile() {
   els.profileForm.elements.address.value = state.user.address || "";
 }
 
+function closeMobileMenu() {
+  els.siteHeader.classList.remove("menu-open");
+  els.menuToggle.setAttribute("aria-expanded", "false");
+}
+
 function setLoggedIn(user) {
   state.user = user;
   document.body.classList.add("is-authenticated");
@@ -124,6 +130,7 @@ function setLoggedOut() {
   els.loggedOutMembers.classList.add("hidden");
   els.memberGrid.classList.remove("hidden");
   els.memberDetail.classList.add("hidden");
+  closeMobileMenu();
   document.querySelectorAll(".admin-only").forEach((el) => el.classList.add("hidden"));
   renderPublicActivities();
   renderMembers();
@@ -338,6 +345,11 @@ els.memberSearch.addEventListener("input", () => loadMembers().catch((error) => 
 els.newMemberBtn.addEventListener("click", () => openMemberDialog());
 els.newActivityBtn.addEventListener("click", () => openActivityDialog());
 
+els.menuToggle.addEventListener("click", () => {
+  const isOpen = els.siteHeader.classList.toggle("menu-open");
+  els.menuToggle.setAttribute("aria-expanded", String(isOpen));
+});
+
 els.loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   els.loginError.textContent = "";
@@ -380,6 +392,9 @@ els.profileForm.addEventListener("submit", async (event) => {
 });
 
 document.body.addEventListener("click", async (event) => {
+  const navLink = event.target.closest(".site-nav a");
+  if (navLink) closeMobileMenu();
+
   const loginBtn = event.target.closest("[data-open-login]");
   if (loginBtn) return openLogin();
 
