@@ -435,6 +435,30 @@ label {
   text-align: left;
 }
 
+.member-card-main {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.member-admin-actions {
+  padding-top: 4px;
+}
+
+.member-admin-actions .secondary,
+.member-admin-actions .danger {
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 13px;
+  line-height: 1.1;
+}
+
 .avatar {
   width: 102px;
   height: 102px;
@@ -833,6 +857,16 @@ dialog::backdrop {
     grid-template-columns: auto 1fr;
     align-items: center;
     padding: 16px;
+  }
+
+  .member-card-main {
+    grid-column: 1 / -1;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+  }
+
+  .member-admin-actions {
+    grid-column: 1 / -1;
   }
 
   .member-card .badge {

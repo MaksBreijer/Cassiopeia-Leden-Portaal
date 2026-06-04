@@ -144,14 +144,28 @@ function renderMembers() {
   els.memberGrid.innerHTML = state.members
     .map(
       (member) => `
-        <button class="member-card" data-member-id="${member.id}">
-          <div class="avatar">${avatarHtml(member)}</div>
-          <div>
-            <h3>${escapeHtml(member.name)}</h3>
-            <p class="meta">${escapeHtml(member.yearLayer)} · ${escapeHtml(member.roleTitle || "Lid")}</p>
-          </div>
-          ${member.isAdmin ? '<span class="badge">Admin</span>' : ""}
-        </button>
+        <article class="member-card">
+          <button class="member-card-main" data-member-id="${member.id}">
+            <div class="avatar">${avatarHtml(member)}</div>
+            <div>
+              <h3>${escapeHtml(member.name)}</h3>
+              <p class="meta">${escapeHtml(member.yearLayer)} · ${escapeHtml(member.roleTitle || "Lid")}</p>
+            </div>
+            ${member.isAdmin ? '<span class="badge">Admin</span>' : ""}
+          </button>
+          ${
+            state.user?.isAdmin
+              ? `<div class="row-actions member-admin-actions">
+                  <button class="secondary" data-edit-member="${member.id}">Info aanpassen</button>
+                  ${
+                    member.id !== state.user.id
+                      ? `<button class="danger" data-delete-member="${member.id}">Verwijderen</button>`
+                      : ""
+                  }
+                </div>`
+              : ""
+          }
+        </article>
       `
     )
     .join("");
