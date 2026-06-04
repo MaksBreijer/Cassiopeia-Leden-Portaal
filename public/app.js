@@ -283,7 +283,7 @@ function readProfilePhoto(file) {
   return new Promise((resolve, reject) => {
     if (!file) return resolve("");
     if (!file.type.startsWith("image/")) return reject(new Error("Kies een afbeelding."));
-    if (file.size > 700 * 1024) return reject(new Error("Kies een afbeelding kleiner dan 700 KB."));
+    if (file.size > 2 * 1024 * 1024) return reject(new Error("Kies een afbeelding van maximaal 2 MB."));
     const reader = new FileReader();
     reader.addEventListener("load", () => resolve(reader.result));
     reader.addEventListener("error", () => reject(new Error("De afbeelding kon niet gelezen worden.")));

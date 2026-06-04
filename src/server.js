@@ -100,10 +100,14 @@ function memberFromBody(body, existing = {}) {
 function profileAvatarFromBody(value, existingAvatar) {
   const avatar = String(value || "").trim();
   if (!avatar) return existingAvatar || "";
-  if (/^data:image\/(png|jpe?g|webp);base64,/i.test(avatar) && avatar.length <= 900000) return avatar;
+  const imageMatch = avatar.match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/i);
+  if (imageMatch) {
+    const imageSize = Buffer.byteLength(imageMatch[2], "base64");
+    if (imageSize <= 2 * 1024 * 1024) return avatar;
+  }
   if (/^https?:\/\/.+/i.test(avatar) && avatar.length <= 500) return avatar;
   if (avatar.length <= 2) return avatar.toUpperCase();
-  throw new Error("Gebruik een afbeelding kleiner dan ongeveer 650 KB.");
+  throw new Error("Gebruik een afbeelding van maximaal 2 MB.");
 }
 
 app.get("/api/session", (req, res) => {
