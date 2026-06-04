@@ -135,7 +135,6 @@ function renameSeedAdmin() {
     UPDATE users
     SET name = 'AdminCassio', role_title = 'Admin', avatar = 'C', updated_at = CURRENT_TIMESTAMP
     WHERE email = 'admin@cassiopeia.local'
-      AND name IN ('Aurora van Cassiopeia', 'cassioadmin')
   `).run();
 }
 
