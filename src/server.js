@@ -31,8 +31,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(
   session({
     store: new SQLiteSessionStore(),
@@ -49,6 +49,13 @@ app.use(
 );
 
 app.use(express.static(path.join(__dirname, "..", "public")));
+
+app.use((error, req, res, next) => {
+  if (error.type === "entity.too.large") {
+    return res.status(413).json({ error: "De afbeelding is te groot. Kies een foto van maximaal 5 MB." });
+  }
+  next(error);
+});
 
 function publicUser(user) {
   if (!user) return null;
