@@ -91,9 +91,11 @@ function formatDate(value) {
 function formatLichting(value) {
   const year = String(value || "").trim();
   if (!year) return "Lichting onbekend";
+
   const match = year.match(/\d+/);
-  if (!match) return `Lichting ${year}`;
-  return `Lichting ${match[0].slice(-2)}`;
+  if (!match) return `Lichting '${year}`;
+
+  return `Lichting '${match[0].slice(-2)}`;
 }
 
 function sharedActivityId() {
@@ -287,7 +289,7 @@ function renderMembers() {
               <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Lid")}</p>
               ${member.committee ? `<p class="meta">Commissie: ${escapeHtml(member.committee)}</p>` : ""}
               <div class="member-card-badges">
-                <span class="badge">${member.memberStatus === "oud" ? "Reunist" : "Lid"}</span>
+                <span class="badge">${member.memberStatus === "oud" ? "Reunist" : "Actief"}</span>
                 ${member.isAdmin ? '<span class="badge">Admin</span>' : ""}
               </div>
             </div>
@@ -325,7 +327,7 @@ async function showMemberDetail(id) {
         <p class="eyebrow">${member.isAdmin ? "Admin" : "Lidprofiel"}</p>
         <h2>${escapeHtml(member.name)}</h2>
         <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Lid")}</p>
-        <p class="meta">${member.memberStatus === "oud" ? "Reunist" : "Lid"}${member.committee ? ` · Commissie: ${escapeHtml(member.committee)}` : ""}</p>
+        <p class="meta">${member.memberStatus === "oud" ? "Reunist" : "Actief"}${member.committee ? ` · Commissie: ${escapeHtml(member.committee)}` : ""}</p>
       </div>
     </div>
     <p>${escapeHtml(member.bio || "Nog geen profieltekst ingevuld.")}</p>
