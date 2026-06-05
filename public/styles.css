@@ -192,12 +192,12 @@ a {
   gap: 20px;
   width: min(1120px, calc(100% - 36px));
   margin: 18px auto 0;
-  padding: 18px clamp(20px, 4vw, 42px);
-  border: 2px solid rgba(45, 41, 50, 0.12);
-  border-radius: 28px;
+  padding: 14px clamp(18px, 4vw, 34px);
+  border: 1px solid rgba(45, 41, 50, 0.08);
+  border-radius: 18px;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.94);
-  box-shadow: var(--hard-shadow);
+  box-shadow: 0 14px 34px rgba(45, 41, 50, 0.1);
   backdrop-filter: blur(6px);
 }
 
@@ -205,36 +205,19 @@ a {
 .site-nav {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
 }
 
 .brand {
-  font-size: 20px;
+  font-size: clamp(22px, 3vw, 34px);
   font-weight: 950;
-  text-transform: uppercase;
-}
-
-.lustrum-badge {
-  width: fit-content;
-  border-radius: 999px;
-  color: #fff;
-  background: var(--lustrum);
-  box-shadow: 0 8px 18px var(--lustrum-glow);
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.lustrum-badge {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  line-height: 1;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .brand-mark {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
   border: 0;
@@ -460,9 +443,9 @@ label {
 .activity-card {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 18px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 280px);
+  gap: 0;
+  align-items: stretch;
   padding: 0;
   overflow: hidden;
   border-left: 0;
@@ -470,30 +453,19 @@ label {
 }
 
 .activity-card::after {
-  content: "";
-  position: absolute;
-  right: 22px;
-  bottom: 18px;
-  width: 92px;
-  height: 38px;
-  border: 2px solid var(--lustrum);
-  border-top-color: transparent;
-  border-left-color: transparent;
-  border-radius: 50%;
-  transform: rotate(-12deg);
-  pointer-events: none;
+  content: none;
 }
 
 .activity-card > div:first-child {
-  padding: 28px;
+  padding: clamp(24px, 4vw, 42px);
 }
 
 .activity-card > div:first-child::before {
   content: "";
   display: block;
-  width: 118px;
-  height: 3px;
-  margin-bottom: 16px;
+  width: 128px;
+  height: 5px;
+  margin-bottom: 24px;
   border-radius: 999px;
   background: var(--lustrum);
 }
@@ -505,11 +477,12 @@ label {
 
 .activity-actions {
   height: 100%;
-  min-width: 190px;
-  justify-content: flex-end;
+  min-width: 0;
+  justify-content: center;
   align-content: center;
-  padding: 24px;
-  background: linear-gradient(180deg, var(--navy), #8f6eb0);
+  padding: 26px;
+  background:
+    linear-gradient(135deg, rgba(143, 110, 176, 0.95), rgba(89, 80, 95, 0.95));
 }
 
 .activity-participants {
@@ -569,8 +542,7 @@ label {
 .activity-actions .secondary {
   min-height: 34px;
   border-radius: 999px;
-  padding: 7px 13px;
-  color: #fff;
+  padding: 9px 16px;
   background: #fff;
   color: var(--navy);
   box-shadow: 0 8px 18px rgba(244, 119, 50, 0.16);
@@ -582,7 +554,7 @@ label {
 .activity-actions .danger {
   min-height: 34px;
   border-radius: 999px;
-  padding: 7px 13px;
+  padding: 9px 16px;
   box-shadow: 0 8px 18px rgba(169, 53, 68, 0.18);
   font-size: 13px;
   line-height: 1.1;
@@ -936,7 +908,6 @@ dialog::backdrop {
   .site-header,
   .site-nav,
   .section-head,
-  .activity-card,
   .site-footer {
     align-items: stretch;
     flex-direction: column;
@@ -1028,6 +999,11 @@ dialog::backdrop {
     box-shadow: none;
   }
 
+  .brand {
+    gap: 10px;
+    font-size: 0;
+  }
+
   .menu-toggle {
     width: 38px;
     height: 38px;
@@ -1051,8 +1027,10 @@ dialog::backdrop {
     justify-content: flex-start;
   }
 
-  .brand .brand-name {
-    display: none;
+  .brand .brand-mark {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
   }
 
   .site-nav {
@@ -1188,7 +1166,7 @@ dialog::backdrop {
 
   .activity-card {
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: 0;
     padding: 0;
   }
 
