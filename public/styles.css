@@ -1,21 +1,27 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap");
+
 :root {
   --navy: #59505f;
   --navy-soft: #746a7c;
-  --cream: #f4f2f6;
+  --forest: #2f4a35;
+  --forest-soft: #667c69;
+  --forest-deep: #233126;
+  --cream: #f5f2ea;
+  --cream-soft: #fbf8ef;
   --paper: #ffffff;
-  --gold: #b99bd8;
-  --rose: #d8c5ec;
+  --gold: #d1b178;
+  --rose: #e9e1d2;
   --lustrum: #f47732;
   --lustrum-soft: #ffd4bd;
-  --lustrum-glow: rgba(244, 119, 50, 0.24);
+  --lustrum-glow: rgba(244, 119, 50, 0.22);
   --ink: #2d2932;
   --muted: #706a75;
-  --line: rgba(185, 155, 216, 0.34);
-  --shadow: 0 20px 50px rgba(45, 41, 50, 0.13);
-  --hard-shadow: 7px 7px 0 rgba(244, 119, 50, 0.16);
-  --serif: Georgia, "Times New Roman", serif;
+  --line: rgba(47, 74, 53, 0.18);
+  --shadow: 0 24px 60px rgba(35, 49, 38, 0.14);
+  --hard-shadow: 0 24px 70px rgba(35, 49, 38, 0.18);
+  --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
-
 * {
   box-sizing: border-box;
 }
@@ -27,15 +33,15 @@ html {
 body {
   margin: 0;
   color: var(--ink);
-  background: #e9e7ec;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--cream);
+  font-family: var(--sans);
 }
 
 body.is-authenticated {
   min-height: 100vh;
   padding-top: 28px;
   background:
-    linear-gradient(rgba(244, 242, 246, 0.18), rgba(216, 197, 236, 0.86)),
+    linear-gradient(rgba(35, 49, 38, 0.22), rgba(245, 242, 234, 0.90)),
     url("assets/cassio-background.jpeg") center -190px / cover fixed;
 }
 
@@ -48,7 +54,7 @@ body.is-authenticated {
   height: 28px;
   overflow: hidden;
   color: #fff;
-  background: var(--lustrum);
+  background: var(--forest);
   display: none;
 }
 
@@ -92,7 +98,7 @@ body.is-authenticated .top-marquee {
   place-items: center;
   overflow: hidden;
   padding: clamp(28px, 5vw, 56px);
-  background: #f7d8f8;
+  background: var(--cream);
 }
 
 .login-screen::before {
@@ -102,15 +108,15 @@ body.is-authenticated .top-marquee {
 .login-word {
   position: absolute;
   z-index: 2;
-  color: var(--lustrum);
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--forest);
+  font-family: var(--serif);
   font-weight: 900;
   letter-spacing: 0;
   line-height: 0.9;
   text-shadow:
-    -8px -2px 0 #c9addd,
-    8px 3px 0 #c9addd,
-    0 8px 0 #c9addd;
+    -8px -2px 0 rgba(209, 177, 120, 0.55),
+    8px 3px 0 rgba(209, 177, 120, 0.55),
+    0 8px 0 rgba(209, 177, 120, 0.55);
   pointer-events: none;
   user-select: none;
 }
@@ -142,7 +148,7 @@ body.is-authenticated .top-marquee {
   padding: 76px clamp(44px, 9vw, 160px) 54px;
   border: 0;
   border-radius: 0 54px 54px 54px;
-  background: #fff;
+  background: var(--paper);
   box-shadow: none;
 }
 
@@ -150,7 +156,7 @@ body.is-authenticated .top-marquee {
   margin: 0 0 6px;
   width: 100%;
   color: var(--ink);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--sans);
   font-size: clamp(22px, 2.1vw, 32px);
   font-weight: 400;
   line-height: 1.15;
@@ -164,7 +170,7 @@ body.is-authenticated .top-marquee {
   border: 0;
   border-radius: 10px;
   color: var(--ink);
-  background: #d9d9d9;
+  background: #eee8dc;
   box-shadow: none;
 }
 
@@ -178,7 +184,7 @@ body.is-authenticated .top-marquee {
   border-radius: 8px;
   padding: 10px 22px;
   color: #fff;
-  background: var(--lustrum);
+  background: var(--forest);
   font-weight: 700;
 }
 
@@ -221,9 +227,9 @@ a {
   margin: 18px auto 0;
   padding: 14px clamp(18px, 4vw, 34px);
   border: 1px solid rgba(45, 41, 50, 0.08);
-  border-radius: 18px;
+  border-radius: 999px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(251, 248, 239, 0.94);
   box-shadow: 0 14px 34px rgba(45, 41, 50, 0.1);
   backdrop-filter: blur(6px);
 }
@@ -240,7 +246,7 @@ a {
   font-family: var(--serif);
   font-weight: 500;
   font-style: italic;
-  letter-spacing: 0;
+  letter-spacing: 0.02em;
   text-transform: none;
 }
 
@@ -252,7 +258,7 @@ a {
   border: 0;
   border-radius: 50%;
   color: #fff;
-  background: linear-gradient(135deg, var(--lustrum), #8f6eb0);
+  background: linear-gradient(135deg, var(--forest), var(--forest-soft));
 }
 
 .site-nav a,
@@ -281,7 +287,7 @@ a {
   border-radius: 999px;
   padding: 9px 13px;
   color: #fff;
-  background: var(--lustrum);
+  background: var(--forest);
 }
 
 .eyebrow {
@@ -289,8 +295,8 @@ a {
   margin: 0 0 10px;
   border-radius: 999px;
   padding: 5px 8px;
-  color: var(--lustrum);
-  background: #fff;
+  color: var(--forest);
+  background: var(--paper);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0;
@@ -313,16 +319,16 @@ h3 {
 
 h1 {
   margin-bottom: 16px;
-  font-size: clamp(48px, 8vw, 92px);
-  line-height: 0.9;
+  font-size: clamp(56px, 9vw, 104px);
+  line-height: 0.86;
   font-weight: 500;
-  font-style: italic;
+  font-style: normal;
 }
 
 h2 {
   margin-bottom: 0;
-  font-size: clamp(28px, 4vw, 42px);
-  line-height: 1;
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 0.95;
   font-weight: 500;
 }
 
@@ -359,20 +365,20 @@ p {
 .primary {
   border: 0;
   color: #fff;
-  background: linear-gradient(135deg, var(--lustrum), #8f6eb0);
+  background: linear-gradient(135deg, var(--forest), var(--forest-soft));
   box-shadow: 0 10px 22px var(--lustrum-glow);
 }
 
 .secondary {
   border: 0;
   color: var(--ink);
-  background: var(--lustrum-soft);
+  background: var(--cream);
 }
 
 .ghost {
   border: 0;
-  color: var(--navy);
-  background: #eeebf1;
+  color: var(--forest);
+  background: #eee8dc;
 }
 
 main {
@@ -380,10 +386,9 @@ main {
   min-height: calc(100vh - 120px);
   margin: 18px auto 42px;
   padding: clamp(20px, 4vw, 42px);
-  border: 2px solid rgba(255, 255, 255, 0.7);
-  border-radius: 30px;
-  background:
-    linear-gradient(135deg, rgba(244, 242, 246, 0.95) 0 50%, rgba(216, 197, 236, 0.9) 50% 100%);
+  border: 1px solid rgba(47, 74, 53, 0.12);
+  border-radius: 38px;
+  background: rgba(251, 248, 239, 0.95);
   backdrop-filter: blur(4px);
   box-shadow: var(--hard-shadow);
 }
@@ -408,9 +413,9 @@ main {
 .profile-card,
 .table-row,
 .dialog-card {
-  border: 2px solid rgba(45, 41, 50, 0.12);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(47, 74, 53, 0.14);
+  border-radius: 32px;
+  background: rgba(251, 248, 239, 0.94);
   box-shadow: var(--shadow);
 }
 
@@ -446,14 +451,14 @@ select {
   border-radius: 999px;
   padding: 12px 14px;
   color: var(--ink);
-  background: #eeebf1;
+  background: #eee8dc;
   outline: none;
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: var(--lustrum);
+  border-color: var(--forest);
   box-shadow: 0 0 0 3px var(--lustrum-glow);
 }
 
@@ -496,7 +501,7 @@ label {
   height: 5px;
   margin-bottom: 24px;
   border-radius: 999px;
-  background: var(--lustrum);
+  background: var(--gold);
 }
 
 .activity-card-highlight {
@@ -510,8 +515,7 @@ label {
   justify-content: center;
   align-content: center;
   padding: 26px;
-  background:
-    linear-gradient(135deg, rgba(143, 110, 176, 0.95), rgba(89, 80, 95, 0.95));
+  background: linear-gradient(135deg, var(--forest), var(--forest-deep));
 }
 
 .activity-participants {
@@ -528,7 +532,7 @@ label {
 }
 
 .participants-label {
-  color: var(--lustrum);
+  color: var(--forest);
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
@@ -562,7 +566,7 @@ label {
   border: 2px solid #fff;
   border-radius: 999px;
   color: #fff;
-  background: var(--navy);
+  background: var(--forest-deep);
   box-shadow: 0 8px 16px rgba(45, 41, 50, 0.12);
   font-size: 12px;
   font-weight: 900;
@@ -572,8 +576,8 @@ label {
   min-height: 34px;
   border-radius: 999px;
   padding: 9px 16px;
-  background: #fff;
-  color: var(--navy);
+  background: var(--paper);
+  color: var(--forest);
   box-shadow: 0 8px 18px rgba(244, 119, 50, 0.16);
   font-size: 13px;
   line-height: 1.1;
@@ -591,13 +595,13 @@ label {
 }
 
 .activity-actions .secondary:hover {
-  background: var(--lustrum);
+  background: var(--forest);
 }
 
 .activity-actions .secondary:disabled {
   cursor: not-allowed;
   color: var(--muted);
-  background: #eeebf1;
+  background: #eee8dc;
   box-shadow: none;
 }
 
@@ -636,7 +640,7 @@ label {
 
 .filter-chip.active {
   color: #fff;
-  background: var(--lustrum);
+  background: var(--forest);
   box-shadow: 0 8px 18px var(--lustrum-glow);
 }
 
@@ -650,7 +654,7 @@ label {
 }
 
 .filter-clear {
-  background: #eeebf1;
+  background: #eee8dc;
 }
 
 .member-count {
@@ -695,7 +699,7 @@ label {
   width: 52px;
   height: 7px;
   border-radius: 999px;
-  background: var(--lustrum);
+  background: var(--gold);
 }
 
 .member-card-main {
@@ -722,7 +726,7 @@ label {
 
 .member-card-copy h3 {
   margin-bottom: 2px;
-  color: var(--navy);
+  color: var(--forest);
 }
 
 .member-card-badges {
@@ -751,9 +755,9 @@ label {
   display: grid;
   place-items: center;
   overflow: hidden;
-  border-radius: 26px;
+  border-radius: 28px;
   color: var(--paper);
-  background: linear-gradient(135deg, #8f6eb0, var(--lustrum));
+  background: linear-gradient(135deg, var(--forest), var(--gold));
   font-weight: 900;
 }
 
@@ -779,8 +783,8 @@ label {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 5px 10px;
-  color: var(--navy);
-  background: linear-gradient(135deg, #fff7f1, #f3eef8);
+  color: var(--forest);
+  background: linear-gradient(135deg, var(--cream-soft), #efe7d7);
   font-size: 12px;
   font-weight: 900;
 }
@@ -802,7 +806,7 @@ label {
   border: 0;
   border-radius: 50%;
   color: var(--ink);
-  background: #eeebf1;
+  background: #eee8dc;
   font-size: 22px;
   font-weight: 900;
 }
@@ -850,13 +854,13 @@ label {
   gap: 20px;
   padding: 30px clamp(18px, 5vw, 72px);
   color: var(--paper);
-  background: var(--navy);
+  background: var(--forest-deep);
 }
 
 dialog {
   width: min(720px, calc(100% - 24px));
   border: 0;
-  border-radius: 24px;
+  border-radius: 32px;
   padding: 0;
   background: transparent;
 }
@@ -910,7 +914,7 @@ dialog::backdrop {
   border-radius: 999px;
   padding: 14px 16px;
   color: var(--paper);
-  background: var(--navy);
+  background: var(--forest-deep);
   box-shadow: var(--shadow);
   font-weight: 800;
 }
@@ -967,12 +971,12 @@ dialog::backdrop {
 
 @media (max-width: 640px) {
   body {
-    background: #d8c5ec;
+    background: var(--cream);
   }
 
   body.is-authenticated {
     background:
-      linear-gradient(rgba(216, 197, 236, 0.26), rgba(216, 197, 236, 0.58)),
+      linear-gradient(rgba(35, 49, 38, 0.18), rgba(245, 242, 234, 0.78)),
       url("assets/cassio-background.jpeg") center -125px / cover fixed;
   }
 
@@ -994,9 +998,9 @@ dialog::backdrop {
 
   .login-word {
     text-shadow:
-      -5px -1px 0 #c9addd,
-      5px 2px 0 #c9addd,
-      0 5px 0 #c9addd;
+      -5px -1px 0 rgba(209, 177, 120, 0.55),
+      5px 2px 0 rgba(209, 177, 120, 0.55),
+      0 5px 0 rgba(209, 177, 120, 0.55);
   }
 
   .login-word-lef {
@@ -1042,14 +1046,14 @@ dialog::backdrop {
     border: 0;
     border-radius: 8px;
     padding: 0;
-    background: var(--lustrum);
+    background: var(--forest);
   }
 
   .menu-toggle span {
     width: 18px;
     height: 2px;
     border-radius: 999px;
-    background: #fff;
+    background: var(--paper);
   }
 
   .brand {
@@ -1073,7 +1077,7 @@ dialog::backdrop {
     padding: 12px;
     border: 1px solid rgba(185, 155, 216, 0.32);
     border-radius: 16px;
-    background: #fff;
+    background: var(--paper);
     box-shadow: var(--shadow);
   }
 
@@ -1116,8 +1120,7 @@ dialog::backdrop {
     margin: 12px auto 24px;
     padding: 18px;
     border-radius: 22px;
-    background:
-      linear-gradient(180deg, rgba(244, 242, 246, 0.96) 0 190px, rgba(216, 197, 236, 0.9) 190px 100%);
+    background: rgba(251, 248, 239, 0.96);
   }
 
   h1 {
