@@ -11,7 +11,8 @@
   --ink: #2d2932;
   --muted: #706a75;
   --line: rgba(185, 155, 216, 0.34);
-  --shadow: 0 22px 60px rgba(60, 53, 68, 0.14);
+  --shadow: 0 18px 0 rgba(45, 41, 50, 0.08);
+  --hard-shadow: 8px 8px 0 rgba(244, 119, 50, 0.18);
 }
 
 * {
@@ -32,7 +33,7 @@ body {
 body.is-authenticated {
   min-height: 100vh;
   background:
-    linear-gradient(rgba(216, 197, 236, 0.34), rgba(216, 197, 236, 0.5)),
+    linear-gradient(rgba(45, 41, 50, 0.28), rgba(216, 197, 236, 0.72)),
     url("assets/cassio-background.jpeg") center -190px / cover fixed;
 }
 
@@ -107,6 +108,7 @@ body.is-authenticated {
   font-weight: 400;
   line-height: 1.15;
   text-align: center;
+  text-transform: none;
 }
 
 .login-card input {
@@ -171,11 +173,12 @@ a {
   width: min(1120px, calc(100% - 36px));
   margin: 18px auto 0;
   padding: 18px clamp(20px, 4vw, 42px);
-  border: 1px solid rgba(244, 119, 50, 0.18);
-  border-radius: 28px;
+  border: 2px solid rgba(45, 41, 50, 0.12);
+  border-radius: 8px;
   color: var(--ink);
-  background: #fff;
-  box-shadow: var(--shadow);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--hard-shadow);
+  backdrop-filter: blur(6px);
 }
 
 .brand,
@@ -187,7 +190,8 @@ a {
 
 .brand {
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 950;
+  text-transform: uppercase;
 }
 
 .lustrum-badge {
@@ -201,9 +205,11 @@ a {
 }
 
 .lustrum-badge {
-  padding: 5px 9px;
+  padding: 6px 10px;
+  border-radius: 4px;
   font-size: 11px;
   line-height: 1;
+  text-transform: uppercase;
 }
 
 .brand-mark {
@@ -212,7 +218,7 @@ a {
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 50%;
+  border-radius: 4px;
   color: #fff;
   background: linear-gradient(135deg, var(--lustrum), #8f6eb0);
 }
@@ -220,8 +226,9 @@ a {
 .site-nav a,
 .nav-button {
   color: var(--ink);
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 950;
+  text-transform: uppercase;
 }
 
 .menu-toggle {
@@ -239,15 +246,19 @@ a {
 
 .nav-button {
   border: 0;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 9px 13px;
   color: #fff;
   background: var(--lustrum);
 }
 
 .eyebrow {
-  margin: 0 0 8px;
+  width: fit-content;
+  margin: 0 0 10px;
+  border-radius: 4px;
+  padding: 5px 8px;
   color: var(--lustrum);
+  background: #fff;
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0;
@@ -265,24 +276,27 @@ h1,
 h2,
 h3 {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-transform: uppercase;
 }
 
 h1 {
   margin-bottom: 16px;
-  font-size: clamp(34px, 6vw, 54px);
-  line-height: 1;
-  font-weight: 400;
+  font-size: clamp(44px, 8vw, 84px);
+  line-height: 0.86;
+  font-weight: 950;
 }
 
 h2 {
   margin-bottom: 0;
   font-size: clamp(28px, 4vw, 42px);
-  line-height: 1.05;
-  font-weight: 400;
+  line-height: 0.95;
+  font-weight: 950;
 }
 
 h3 {
   font-size: 20px;
+  line-height: 1;
+  font-weight: 950;
 }
 
 p {
@@ -303,9 +317,10 @@ p {
 .danger {
   min-height: 42px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 10px 16px;
-  font-weight: 700;
+  font-weight: 950;
+  text-transform: uppercase;
 }
 
 .primary {
@@ -331,10 +346,13 @@ main {
   width: min(1120px, calc(100% - 36px));
   min-height: calc(100vh - 120px);
   margin: 18px auto 42px;
-  padding: clamp(24px, 5vw, 48px);
-  border-radius: 28px;
-  background: rgba(216, 197, 236, 0.82);
-  backdrop-filter: blur(2px);
+  padding: clamp(20px, 4vw, 42px);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(89, 80, 95, 0.96) 0 34%, rgba(216, 197, 236, 0.88) 34% 100%);
+  backdrop-filter: blur(4px);
+  box-shadow: var(--hard-shadow);
 }
 
 .section {
@@ -357,8 +375,8 @@ main {
 .profile-card,
 .table-row,
 .dialog-card {
-  border: 1px solid var(--line);
-  border-radius: 28px;
+  border: 2px solid rgba(45, 41, 50, 0.12);
+  border-radius: 8px;
   background: var(--paper);
   box-shadow: var(--shadow);
 }
@@ -368,7 +386,13 @@ main {
   align-items: end;
   justify-content: space-between;
   gap: 18px;
-  margin-bottom: 24px;
+  margin-bottom: 26px;
+  color: #fff;
+}
+
+.section-head h1,
+.section-head h2 {
+  color: #fff;
 }
 
 .search {
@@ -386,7 +410,7 @@ textarea,
 select {
   width: 100%;
   border: 0;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 12px 14px;
   color: var(--ink);
   background: #eeebf1;
@@ -409,7 +433,7 @@ label {
 .activity-list,
 .table-list {
   display: grid;
-  gap: 12px;
+  gap: 18px;
 }
 
 .activity-card {
@@ -417,9 +441,24 @@ label {
   grid-template-columns: 1fr auto;
   gap: 18px;
   align-items: center;
-  padding: 28px;
-  border-left: 6px solid var(--lustrum);
+  padding: 0;
+  overflow: hidden;
+  border-left: 0;
   transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.activity-card > div:first-child {
+  padding: 28px;
+}
+
+.activity-card > div:first-child::before {
+  content: "";
+  display: block;
+  width: 72px;
+  height: 8px;
+  margin-bottom: 16px;
+  border-radius: 999px;
+  background: var(--lustrum);
 }
 
 .activity-card-highlight {
@@ -428,7 +467,12 @@ label {
 }
 
 .activity-actions {
+  height: 100%;
+  min-width: 190px;
   justify-content: flex-end;
+  align-content: center;
+  padding: 24px;
+  background: var(--navy);
 }
 
 .activity-participants {
@@ -445,7 +489,7 @@ label {
 }
 
 .participants-label {
-  color: var(--muted);
+  color: var(--lustrum);
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
@@ -487,10 +531,11 @@ label {
 
 .activity-actions .secondary {
   min-height: 34px;
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 7px 13px;
   color: #fff;
-  background: #8f6eb0;
+  background: #fff;
+  color: var(--navy);
   box-shadow: 0 8px 18px rgba(244, 119, 50, 0.16);
   font-size: 13px;
   line-height: 1.1;
@@ -499,7 +544,7 @@ label {
 
 .activity-actions .danger {
   min-height: 34px;
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 7px 13px;
   box-shadow: 0 8px 18px rgba(169, 53, 68, 0.18);
   font-size: 13px;
@@ -533,7 +578,7 @@ label {
 .filter-segments {
   display: inline-flex;
   gap: 4px;
-  border-radius: 999px;
+  border-radius: 6px;
   padding: 4px;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: inset 0 0 0 1px rgba(143, 110, 176, 0.16);
@@ -543,7 +588,7 @@ label {
 .filter-clear {
   min-height: 34px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 7px 13px;
   color: var(--ink);
   background: transparent;
@@ -561,7 +606,7 @@ label {
   width: auto;
   min-width: 132px;
   min-height: 38px;
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 8px 34px 8px 13px;
   background-color: rgba(255, 255, 255, 0.78);
 }
@@ -596,13 +641,14 @@ label {
 .member-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap: 18px;
+  gap: 16px;
 }
 
 .member-card {
   display: grid;
   gap: 16px;
-  padding: 24px;
+  padding: 18px;
+  border-top: 8px solid var(--navy);
   text-align: left;
 }
 
@@ -618,8 +664,8 @@ label {
 }
 
 .member-card-main .avatar {
-  width: 128px;
-  height: 128px;
+  width: 132px;
+  height: 132px;
   font-size: 40px;
 }
 
@@ -630,6 +676,7 @@ label {
 
 .member-card-copy h3 {
   margin-bottom: 2px;
+  color: var(--navy);
 }
 
 .member-card-badges {
@@ -646,7 +693,7 @@ label {
 .member-admin-actions .secondary,
 .member-admin-actions .danger {
   min-height: 34px;
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 7px 12px;
   font-size: 13px;
   line-height: 1.1;
@@ -658,7 +705,7 @@ label {
   display: grid;
   place-items: center;
   overflow: hidden;
-  border-radius: 50%;
+  border-radius: 8px;
   color: var(--paper);
   background: linear-gradient(135deg, #8f6eb0, var(--lustrum));
   font-weight: 900;
@@ -684,7 +731,7 @@ label {
 .badge {
   width: fit-content;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 5px 10px;
   color: var(--navy);
   background: linear-gradient(135deg, #fff7f1, #f3eef8);
@@ -707,7 +754,7 @@ label {
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 50%;
+  border-radius: 4px;
   color: var(--ink);
   background: #eeebf1;
   font-size: 22px;
@@ -763,7 +810,7 @@ label {
 dialog {
   width: min(720px, calc(100% - 24px));
   border: 0;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0;
   background: transparent;
 }
@@ -814,7 +861,7 @@ dialog::backdrop {
   right: 18px;
   bottom: 18px;
   max-width: min(360px, calc(100% - 36px));
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 14px 16px;
   color: var(--paper);
   background: var(--navy);
@@ -1016,11 +1063,13 @@ dialog::backdrop {
     width: calc(100% - 24px);
     margin: 12px auto 24px;
     padding: 18px;
-    border-radius: 22px;
+    border-radius: 8px;
+    background:
+      linear-gradient(180deg, rgba(89, 80, 95, 0.96) 0 190px, rgba(216, 197, 236, 0.9) 190px 100%);
   }
 
   h1 {
-    font-size: 34px;
+    font-size: 42px;
   }
 
   h2 {
@@ -1082,12 +1131,16 @@ dialog::backdrop {
   .detail-panel,
   .dialog-card,
   .table-row {
-    border-radius: 20px;
+    border-radius: 8px;
   }
 
   .activity-card {
     grid-template-columns: 1fr;
     gap: 14px;
+    padding: 0;
+  }
+
+  .activity-card > div:first-child {
     padding: 20px;
   }
 
@@ -1101,6 +1154,8 @@ dialog::backdrop {
 
   .activity-actions {
     justify-content: flex-start;
+    min-width: 0;
+    padding: 16px;
   }
 
   .activity-participants {
@@ -1165,6 +1220,7 @@ dialog::backdrop {
   .member-card-main .avatar {
     width: 96px;
     height: 96px;
+    border-radius: 8px;
     font-size: 32px;
   }
 
