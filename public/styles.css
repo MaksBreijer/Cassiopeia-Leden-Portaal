@@ -5,6 +5,9 @@
   --paper: #ffffff;
   --gold: #b99bd8;
   --rose: #d8c5ec;
+  --lustrum: #f47732;
+  --lustrum-soft: #ffd4bd;
+  --lustrum-glow: rgba(244, 119, 50, 0.24);
   --ink: #2d2932;
   --muted: #706a75;
   --line: rgba(185, 155, 216, 0.34);
@@ -51,7 +54,7 @@ body.is-authenticated {
 .login-word {
   position: absolute;
   z-index: 2;
-  color: #f47732;
+  color: var(--lustrum);
   font-family: Georgia, "Times New Roman", serif;
   font-weight: 900;
   letter-spacing: 0;
@@ -126,7 +129,7 @@ body.is-authenticated {
   border-radius: 8px;
   padding: 10px 22px;
   color: #fff;
-  background: #f47732;
+  background: var(--lustrum);
   font-weight: 700;
 }
 
@@ -168,7 +171,7 @@ a {
   width: min(1120px, calc(100% - 36px));
   margin: 18px auto 0;
   padding: 18px clamp(20px, 4vw, 42px);
-  border: 1px solid rgba(185, 155, 216, 0.32);
+  border: 1px solid rgba(244, 119, 50, 0.18);
   border-radius: 28px;
   color: var(--ink);
   background: #fff;
@@ -195,7 +198,7 @@ a {
   border: 0;
   border-radius: 50%;
   color: #fff;
-  background: #8f6eb0;
+  background: linear-gradient(135deg, var(--lustrum), #8f6eb0);
 }
 
 .site-nav a,
@@ -223,12 +226,12 @@ a {
   border-radius: 8px;
   padding: 9px 13px;
   color: #fff;
-  background: #8f6eb0;
+  background: var(--lustrum);
 }
 
 .eyebrow {
   margin: 0 0 8px;
-  color: var(--gold);
+  color: var(--lustrum);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0;
@@ -292,13 +295,14 @@ p {
 .primary {
   border: 0;
   color: #fff;
-  background: linear-gradient(135deg, #8f6eb0, var(--gold));
+  background: linear-gradient(135deg, var(--lustrum), #8f6eb0);
+  box-shadow: 0 10px 22px var(--lustrum-glow);
 }
 
 .secondary {
   border: 0;
   color: var(--ink);
-  background: #d8c5ec;
+  background: var(--lustrum-soft);
 }
 
 .ghost {
@@ -376,8 +380,8 @@ select {
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(185, 155, 216, 0.22);
+  border-color: var(--lustrum);
+  box-shadow: 0 0 0 3px var(--lustrum-glow);
 }
 
 label {
@@ -398,11 +402,12 @@ label {
   gap: 18px;
   align-items: center;
   padding: 28px;
+  border-left: 6px solid var(--lustrum);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .activity-card-highlight {
-  box-shadow: 0 0 0 4px rgba(143, 110, 176, 0.28), var(--shadow);
+  box-shadow: 0 0 0 4px var(--lustrum-glow), var(--shadow);
   transform: translateY(-2px);
 }
 
@@ -416,7 +421,7 @@ label {
   padding: 7px 13px;
   color: #fff;
   background: #8f6eb0;
-  box-shadow: 0 8px 18px rgba(143, 110, 176, 0.2);
+  box-shadow: 0 8px 18px rgba(244, 119, 50, 0.16);
   font-size: 13px;
   line-height: 1.1;
   white-space: nowrap;
@@ -433,7 +438,7 @@ label {
 }
 
 .activity-actions .secondary:hover {
-  background: #7f609f;
+  background: var(--lustrum);
 }
 
 .activity-actions .secondary:disabled {
@@ -478,8 +483,8 @@ label {
 
 .filter-chip.active {
   color: #fff;
-  background: #8f6eb0;
-  box-shadow: 0 8px 18px rgba(143, 110, 176, 0.2);
+  background: var(--lustrum);
+  box-shadow: 0 8px 18px var(--lustrum-glow);
 }
 
 .filter-select {
@@ -585,7 +590,7 @@ label {
   overflow: hidden;
   border-radius: 50%;
   color: var(--paper);
-  background: linear-gradient(135deg, #746a7c, #b99bd8);
+  background: linear-gradient(135deg, #8f6eb0, var(--lustrum));
   font-weight: 900;
 }
 
@@ -612,7 +617,7 @@ label {
   border-radius: 999px;
   padding: 5px 10px;
   color: var(--navy);
-  background: #f3eef8;
+  background: linear-gradient(135deg, #fff7f1, #f3eef8);
   font-size: 12px;
   font-weight: 900;
 }
@@ -870,7 +875,7 @@ dialog::backdrop {
     border: 0;
     border-radius: 8px;
     padding: 0;
-    background: #8f6eb0;
+    background: var(--lustrum);
   }
 
   .menu-toggle span {
