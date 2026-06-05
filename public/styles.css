@@ -1,22 +1,32 @@
 :root {
-  --navy: #59505f;
-  --navy-soft: #746a7c;
-  --cream: #f4f2f6;
+  --navy: #5f4d72;
+  /* rijk donker lila */
+  --navy-soft: #7b6691;
+
+  --cream: #faf8fc;
   --paper: #ffffff;
-  --gold: #b99bd8;
-  --rose: #d8c5ec;
+
+  --gold: #c7a4e8;
+  /* luxer lila accent */
+  --rose: #eadcf7;
+  /* zachte achtergrond */
+
   --lustrum: #f47732;
   --lustrum-soft: #ffd4bd;
   --lustrum-glow: rgba(244, 119, 50, 0.24);
-  --ink: #2d2932;
-  --muted: #706a75;
-  --line: rgba(185, 155, 216, 0.34);
-  --shadow: 0 14px 34px rgba(45, 41, 50, 0.08);
-  --soft-shadow: 0 6px 22px rgba(45, 41, 50, 0.06);
-  --hard-shadow: none;
+
+  --ink: #2f2636;
+  --muted: #7a6e84;
+
+  --line: rgba(199, 164, 232, 0.30);
+
+  --shadow: 0 14px 34px rgba(60, 35, 80, 0.08);
+  --soft-shadow: 0 6px 22px rgba(60, 35, 80, 0.05);
+
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 26px;
+
   --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
 }
 
@@ -486,11 +496,11 @@ label {
   content: none;
 }
 
-.activity-card > div:first-child {
+.activity-card>div:first-child {
   padding: clamp(24px, 4vw, 42px);
 }
 
-.activity-card > div:first-child::before {
+.activity-card>div:first-child::before {
   content: "";
   display: block;
   width: 72px;
@@ -1078,7 +1088,7 @@ dialog::backdrop {
     display: grid;
   }
 
-  .site-nav > a:not(.header-profile-link) {
+  .site-nav>a:not(.header-profile-link) {
     display: grid;
   }
 
@@ -1195,7 +1205,7 @@ dialog::backdrop {
     padding: 0;
   }
 
-  .activity-card > div:first-child {
+  .activity-card>div:first-child {
     padding: 20px;
   }
 
