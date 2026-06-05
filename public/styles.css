@@ -11,8 +11,9 @@
   --ink: #2d2932;
   --muted: #706a75;
   --line: rgba(185, 155, 216, 0.34);
-  --shadow: 0 18px 0 rgba(45, 41, 50, 0.08);
-  --hard-shadow: 8px 8px 0 rgba(244, 119, 50, 0.18);
+  --shadow: 0 20px 50px rgba(45, 41, 50, 0.13);
+  --hard-shadow: 7px 7px 0 rgba(244, 119, 50, 0.16);
+  --serif: Georgia, "Times New Roman", serif;
 }
 
 * {
@@ -32,9 +33,28 @@ body {
 
 body.is-authenticated {
   min-height: 100vh;
+  padding-top: 28px;
   background:
-    linear-gradient(rgba(45, 41, 50, 0.28), rgba(216, 197, 236, 0.72)),
+    linear-gradient(rgba(244, 242, 246, 0.18), rgba(216, 197, 236, 0.86)),
     url("assets/cassio-background.jpeg") center -190px / cover fixed;
+}
+
+body.is-authenticated::before {
+  content: "Lustrum III · Dameschdispuut Cassiopeia · Lustrum III · Dameschdispuut Cassiopeia";
+  position: fixed;
+  z-index: 20;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #fff;
+  background: var(--lustrum);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
 }
 
 .login-screen {
@@ -165,7 +185,7 @@ a {
 .site-header {
   position: sticky;
   z-index: 10;
-  top: 18px;
+  top: 42px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -174,7 +194,7 @@ a {
   margin: 18px auto 0;
   padding: 18px clamp(20px, 4vw, 42px);
   border: 2px solid rgba(45, 41, 50, 0.12);
-  border-radius: 8px;
+  border-radius: 28px;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--hard-shadow);
@@ -206,7 +226,7 @@ a {
 
 .lustrum-badge {
   padding: 6px 10px;
-  border-radius: 4px;
+  border-radius: 999px;
   font-size: 11px;
   line-height: 1;
   text-transform: uppercase;
@@ -218,7 +238,7 @@ a {
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 4px;
+  border-radius: 50%;
   color: #fff;
   background: linear-gradient(135deg, var(--lustrum), #8f6eb0);
 }
@@ -246,7 +266,7 @@ a {
 
 .nav-button {
   border: 0;
-  border-radius: 4px;
+  border-radius: 999px;
   padding: 9px 13px;
   color: #fff;
   background: var(--lustrum);
@@ -255,7 +275,7 @@ a {
 .eyebrow {
   width: fit-content;
   margin: 0 0 10px;
-  border-radius: 4px;
+  border-radius: 999px;
   padding: 5px 8px;
   color: var(--lustrum);
   background: #fff;
@@ -275,28 +295,29 @@ p {
 h1,
 h2,
 h3 {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  text-transform: uppercase;
+  font-family: var(--serif);
+  text-transform: none;
 }
 
 h1 {
   margin-bottom: 16px;
-  font-size: clamp(44px, 8vw, 84px);
-  line-height: 0.86;
-  font-weight: 950;
+  font-size: clamp(48px, 8vw, 92px);
+  line-height: 0.9;
+  font-weight: 500;
+  font-style: italic;
 }
 
 h2 {
   margin-bottom: 0;
   font-size: clamp(28px, 4vw, 42px);
-  line-height: 0.95;
-  font-weight: 950;
+  line-height: 1;
+  font-weight: 500;
 }
 
 h3 {
-  font-size: 20px;
-  line-height: 1;
-  font-weight: 950;
+  font-size: 24px;
+  line-height: 1.04;
+  font-weight: 700;
 }
 
 p {
@@ -317,7 +338,7 @@ p {
 .danger {
   min-height: 42px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 999px;
   padding: 10px 16px;
   font-weight: 950;
   text-transform: uppercase;
@@ -348,9 +369,9 @@ main {
   margin: 18px auto 42px;
   padding: clamp(20px, 4vw, 42px);
   border: 2px solid rgba(255, 255, 255, 0.7);
-  border-radius: 8px;
+  border-radius: 30px;
   background:
-    linear-gradient(90deg, rgba(89, 80, 95, 0.96) 0 34%, rgba(216, 197, 236, 0.88) 34% 100%);
+    linear-gradient(135deg, rgba(244, 242, 246, 0.95) 0 50%, rgba(216, 197, 236, 0.9) 50% 100%);
   backdrop-filter: blur(4px);
   box-shadow: var(--hard-shadow);
 }
@@ -376,8 +397,8 @@ main {
 .table-row,
 .dialog-card {
   border: 2px solid rgba(45, 41, 50, 0.12);
-  border-radius: 8px;
-  background: var(--paper);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--shadow);
 }
 
@@ -387,12 +408,12 @@ main {
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 26px;
-  color: #fff;
+  color: var(--ink);
 }
 
 .section-head h1,
 .section-head h2 {
-  color: #fff;
+  color: var(--ink);
 }
 
 .search {
@@ -410,7 +431,7 @@ textarea,
 select {
   width: 100%;
   border: 0;
-  border-radius: 4px;
+  border-radius: 999px;
   padding: 12px 14px;
   color: var(--ink);
   background: #eeebf1;
@@ -437,6 +458,7 @@ label {
 }
 
 .activity-card {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 18px;
@@ -447,6 +469,21 @@ label {
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
+.activity-card::after {
+  content: "";
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  width: 92px;
+  height: 38px;
+  border: 2px solid var(--lustrum);
+  border-top-color: transparent;
+  border-left-color: transparent;
+  border-radius: 50%;
+  transform: rotate(-12deg);
+  pointer-events: none;
+}
+
 .activity-card > div:first-child {
   padding: 28px;
 }
@@ -454,8 +491,8 @@ label {
 .activity-card > div:first-child::before {
   content: "";
   display: block;
-  width: 72px;
-  height: 8px;
+  width: 118px;
+  height: 3px;
   margin-bottom: 16px;
   border-radius: 999px;
   background: var(--lustrum);
@@ -472,7 +509,7 @@ label {
   justify-content: flex-end;
   align-content: center;
   padding: 24px;
-  background: var(--navy);
+  background: linear-gradient(180deg, var(--navy), #8f6eb0);
 }
 
 .activity-participants {
@@ -531,7 +568,7 @@ label {
 
 .activity-actions .secondary {
   min-height: 34px;
-  border-radius: 4px;
+  border-radius: 999px;
   padding: 7px 13px;
   color: #fff;
   background: #fff;
@@ -544,7 +581,7 @@ label {
 
 .activity-actions .danger {
   min-height: 34px;
-  border-radius: 4px;
+  border-radius: 999px;
   padding: 7px 13px;
   box-shadow: 0 8px 18px rgba(169, 53, 68, 0.18);
   font-size: 13px;
@@ -578,7 +615,7 @@ label {
 .filter-segments {
   display: inline-flex;
   gap: 4px;
-  border-radius: 6px;
+  border-radius: 999px;
   padding: 4px;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: inset 0 0 0 1px rgba(143, 110, 176, 0.16);
@@ -588,7 +625,7 @@ label {
 .filter-clear {
   min-height: 34px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 999px;
   padding: 7px 13px;
   color: var(--ink);
   background: transparent;
@@ -606,7 +643,7 @@ label {
   width: auto;
   min-width: 132px;
   min-height: 38px;
-  border-radius: 4px;
+  border-radius: 999px;
   padding: 8px 34px 8px 13px;
   background-color: rgba(255, 255, 255, 0.78);
 }
@@ -648,8 +685,16 @@ label {
   display: grid;
   gap: 16px;
   padding: 18px;
-  border-top: 8px solid var(--navy);
+  border-top: 0;
   text-align: left;
+}
+
+.member-card::before {
+  content: "";
+  width: 52px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--lustrum);
 }
 
 .member-card-main {
@@ -705,7 +750,7 @@ label {
   display: grid;
   place-items: center;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 26px;
   color: var(--paper);
   background: linear-gradient(135deg, #8f6eb0, var(--lustrum));
   font-weight: 900;
@@ -731,7 +776,7 @@ label {
 .badge {
   width: fit-content;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 999px;
   padding: 5px 10px;
   color: var(--navy);
   background: linear-gradient(135deg, #fff7f1, #f3eef8);
@@ -754,7 +799,7 @@ label {
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 4px;
+  border-radius: 50%;
   color: var(--ink);
   background: #eeebf1;
   font-size: 22px;
@@ -810,7 +855,7 @@ label {
 dialog {
   width: min(720px, calc(100% - 24px));
   border: 0;
-  border-radius: 4px;
+  border-radius: 24px;
   padding: 0;
   background: transparent;
 }
@@ -861,7 +906,7 @@ dialog::backdrop {
   right: 18px;
   bottom: 18px;
   max-width: min(360px, calc(100% - 36px));
-  border-radius: 4px;
+  border-radius: 999px;
   padding: 14px 16px;
   color: var(--paper);
   background: var(--navy);
@@ -968,7 +1013,7 @@ dialog::backdrop {
 
   .site-header {
     position: sticky;
-    top: 8px;
+    top: 36px;
     width: calc(100% - 24px);
     margin-top: 12px;
     display: grid;
@@ -1063,13 +1108,13 @@ dialog::backdrop {
     width: calc(100% - 24px);
     margin: 12px auto 24px;
     padding: 18px;
-    border-radius: 8px;
+    border-radius: 22px;
     background:
-      linear-gradient(180deg, rgba(89, 80, 95, 0.96) 0 190px, rgba(216, 197, 236, 0.9) 190px 100%);
+      linear-gradient(180deg, rgba(244, 242, 246, 0.96) 0 190px, rgba(216, 197, 236, 0.9) 190px 100%);
   }
 
   h1 {
-    font-size: 42px;
+    font-size: 44px;
   }
 
   h2 {
@@ -1131,7 +1176,14 @@ dialog::backdrop {
   .detail-panel,
   .dialog-card,
   .table-row {
-    border-radius: 8px;
+    border-radius: 20px;
+  }
+
+  .activity-card::after {
+    right: 14px;
+    bottom: 82px;
+    width: 64px;
+    height: 28px;
   }
 
   .activity-card {
