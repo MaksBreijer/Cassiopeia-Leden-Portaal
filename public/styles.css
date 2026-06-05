@@ -1,32 +1,38 @@
 :root {
-  --navy: #5f4d72;
-  /* rijk donker lila */
-  --navy-soft: #7b6691;
+  /* Hoofdkleuren */
+  --navy: #71539A;
+  --navy-soft: #8F73B2;
 
-  --cream: #faf8fc;
-  --paper: #ffffff;
+  /* Achtergronden */
+  --cream: #FAF8FC;
+  --paper: #FFFFFF;
 
-  --gold: #c7a4e8;
-  /* luxer lila accent */
-  --rose: #eadcf7;
-  /* zachte achtergrond */
+  /* Cassio accenten */
+  --gold: #CFAEF0;
+  --rose: #F0E6FA;
 
-  --lustrum: #f47732;
-  --lustrum-soft: #ffd4bd;
+  /* Lustrum oranje */
+  --lustrum: #F47732;
+  --lustrum-soft: #FFD4BD;
   --lustrum-glow: rgba(244, 119, 50, 0.24);
 
-  --ink: #2f2636;
-  --muted: #7a6e84;
+  /* Tekst */
+  --ink: #2F2636;
+  --muted: #8A7B97;
 
-  --line: rgba(199, 164, 232, 0.30);
+  /* Borders */
+  --line: rgba(207, 174, 240, 0.28);
 
-  --shadow: 0 14px 34px rgba(60, 35, 80, 0.08);
-  --soft-shadow: 0 6px 22px rgba(60, 35, 80, 0.05);
+  /* Shadows */
+  --shadow: 0 14px 34px rgba(83, 58, 118, 0.08);
+  --soft-shadow: 0 6px 22px rgba(83, 58, 118, 0.05);
 
+  /* Radius */
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 26px;
 
+  /* Typography */
   --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
 }
 
