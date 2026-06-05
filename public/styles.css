@@ -72,10 +72,10 @@ body.is-authenticated {
 }
 
 .login-word-lustrum {
-  right: calc(50% - 770px);
-  bottom: calc(50% - 315px);
-  transform: rotate(-6deg);
-  font-size: clamp(72px, 8vw, 132px);
+  left: 50%;
+  bottom: calc(50% - 285px);
+  transform: translateX(-50%) rotate(-6deg);
+  font-size: clamp(52px, 6vw, 96px);
   white-space: nowrap;
 }
 
@@ -761,8 +761,9 @@ dialog::backdrop {
   }
 
   .login-word-lustrum {
-    right: calc(50% - 495px);
-    bottom: calc(50% - 300px);
+    left: 50%;
+    bottom: calc(50% - 275px);
+    font-size: clamp(48px, 7vw, 72px);
   }
 
   .site-header,
@@ -838,9 +839,9 @@ dialog::backdrop {
   }
 
   .login-word-lustrum {
-    right: -120px;
-    bottom: calc(50% - 250px);
-    font-size: 58px;
+    left: 50%;
+    bottom: calc(50% - 232px);
+    font-size: clamp(34px, 10vw, 44px);
   }
 
   .site-header {
