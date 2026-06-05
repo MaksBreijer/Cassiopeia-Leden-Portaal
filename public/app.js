@@ -270,7 +270,7 @@ function filteredMembers() {
 
 function renderMembers() {
   const members = filteredMembers();
-  els.memberResultCount.textContent = `${members.length} ${members.length === 1 ? "lid" : "leden"}`;
+  els.memberResultCount.textContent = `${members.length} ${members.length === 1 ? "Actief" : "leden"}`;
   if (state.openMemberId && !members.some((member) => String(member.id) === state.openMemberId)) {
     closeMemberDetail();
   }
@@ -286,7 +286,7 @@ function renderMembers() {
             <div class="avatar">${avatarHtml(member)}</div>
             <div class="member-card-copy">
               <h3>${escapeHtml(member.name)}</h3>
-              <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Lid")}</p>
+              <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Actief")}</p>
               ${member.committee ? `<p class="meta">Commissie: ${escapeHtml(member.committee)}</p>` : ""}
               <div class="member-card-badges">
                 <span class="badge">${member.memberStatus === "oud" ? "Reunist" : "Actief"}</span>
@@ -326,7 +326,7 @@ async function showMemberDetail(id) {
       <div>
         <p class="eyebrow">${member.isAdmin ? "Admin" : "Lidprofiel"}</p>
         <h2>${escapeHtml(member.name)}</h2>
-        <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Lid")}</p>
+        <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Actief")}</p>
         <p class="meta">${member.memberStatus === "oud" ? "Reunist" : "Actief"}${member.committee ? ` · Commissie: ${escapeHtml(member.committee)}` : ""}</p>
       </div>
     </div>
@@ -457,7 +457,7 @@ async function showRegistrations(activityId) {
             <div class="table-row">
               <div>
                 <strong>${escapeHtml(member.name)}</strong>
-                <p class="meta">${escapeHtml(member.email)} · ${escapeHtml(member.yearLayer)} · ${escapeHtml(member.roleTitle || "Lid")}</p>
+                <p class="meta">${escapeHtml(member.email)} · ${escapeHtml(member.yearLayer)} · ${escapeHtml(member.roleTitle || "Actief")}</p>
               </div>
             </div>
           `
@@ -476,7 +476,7 @@ async function exportRegistrations(activityId) {
       member.name,
       member.email,
       formatLichting(member.yearLayer),
-      member.roleTitle || "Lid",
+      member.roleTitle || "Actief",
       member.registeredAt ? formatDate(member.registeredAt) : ""
     ])
   ];
