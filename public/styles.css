@@ -52,8 +52,10 @@ body.is-authenticated::before {
   overflow: hidden;
   color: #fff;
   background: var(--lustrum);
-  font-size: 12px;
-  font-weight: 900;
+  font-family: var(--serif);
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 500;
   white-space: nowrap;
 }
 
