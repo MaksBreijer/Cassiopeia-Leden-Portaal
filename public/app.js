@@ -127,6 +127,47 @@ function avatarHtml(user) {
   return escapeHtml(avatar);
 }
 
+function renderActivityParticipants(activity) {
+  const participants = activity.participants || [];
+  if (!participants.length) {
+    return '<div class="activity-participants empty">Nog niemand ingeschreven</div>';
+  }
+  const preview = participants.slice(0, 8);
+  const extra = participants.length - preview.length;
+  return `
+    <div class="activity-participants" aria-label="Wie gaan er mee">
+      <span class="participants-label">Gaan mee</span>
+      <div class="participant-avatars">
+        ${preview
+          .map(
+            (member) => `
+              <span class="participant-avatar avatar" title="${escapeHtml(member.name)}">
+                ${avatarHtml(member)}
+              </span>
+            `
+          )
+          .join("")}
+        ${extra > 0 ? `<span class="participant-more">+${extra}</span>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function csvValue(value) {
+  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map((row) => row.map(csvValue).join(",")).join("\n");
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function renderProfile() {
   if (!state.user) return;
   els.profileAvatar.innerHTML = avatarHtml(state.user);
@@ -344,6 +385,7 @@ function renderPublicActivities() {
             <h3>${escapeHtml(activity.title)}</h3>
             <p>${escapeHtml(activity.description || "Geen beschrijving ingevuld.")}</p>
             <p class="meta">${escapeHtml(activity.location || "Locatie volgt")} · ${activity.registrationCount}${activity.capacity ? `/${activity.capacity}` : ""} ingeschreven</p>
+            ${renderActivityParticipants(activity)}
           </div>
           <div class="activity-actions">
             <button class="secondary" data-register="${activity.id}" ${full && !activity.isRegistered ? "disabled" : ""}>
@@ -352,6 +394,7 @@ function renderPublicActivities() {
             ${
               state.user?.isAdmin
                 ? `<button class="secondary" data-registrations="${activity.id}">Inschrijvingen</button>
+                  <button class="secondary" data-export-activity="${activity.id}">Export</button>
                   <button class="secondary" data-whatsapp-activity="${activity.id}">WhatsApp</button>
                   <button class="secondary" data-edit-activity="${activity.id}">Bewerk</button>
                   <button class="danger" data-delete-activity="${activity.id}">Verwijder</button>`
@@ -420,6 +463,27 @@ async function showRegistrations(activityId) {
         .join("")
     : '<p class="meta">Nog niemand heeft zich ingeschreven.</p>';
   els.registrationsDialog.showModal();
+}
+
+async function exportRegistrations(activityId) {
+  const activity = state.activities.find((item) => item.id === Number(activityId));
+  const { registrations } = await api(`/api/activities/${activityId}/registrations`);
+  const rows = [
+    ["Naam", "E-mail", "Lichting", "Functie", "Ingeschreven op"],
+    ...registrations.map((member) => [
+      member.name,
+      member.email,
+      formatLichting(member.yearLayer),
+      member.roleTitle || "Lid",
+      member.registeredAt ? formatDate(member.registeredAt) : ""
+    ])
+  ];
+  const safeTitle = String(activity?.title || "activiteit")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  downloadCsv(`inschrijvingen-${safeTitle || "activiteit"}.csv`, rows);
+  showToast("Inschrijvingen geexporteerd.");
 }
 
 function openLogin() {
@@ -584,6 +648,9 @@ document.body.addEventListener("click", async (event) => {
 
   const registrationsBtn = event.target.closest("[data-registrations]");
   if (registrationsBtn) return showRegistrations(registrationsBtn.dataset.registrations);
+
+  const exportActivityBtn = event.target.closest("[data-export-activity]");
+  if (exportActivityBtn) return exportRegistrations(exportActivityBtn.dataset.exportActivity).catch((error) => showToast(error.message));
 
   const whatsappActivityBtn = event.target.closest("[data-whatsapp-activity]");
   if (whatsappActivityBtn) {

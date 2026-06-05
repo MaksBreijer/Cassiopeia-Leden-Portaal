@@ -190,6 +190,32 @@ a {
   font-weight: 700;
 }
 
+.lustrum-badge,
+.title-badge {
+  width: fit-content;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--lustrum);
+  box-shadow: 0 8px 18px var(--lustrum-glow);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.lustrum-badge {
+  padding: 5px 9px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.title-badge {
+  display: inline-grid;
+  translate: 0 -6px;
+  margin-left: 8px;
+  padding: 7px 12px;
+  font-size: clamp(12px, 1.5vw, 15px);
+  vertical-align: middle;
+}
+
 .brand-mark {
   width: 42px;
   height: 42px;
@@ -413,6 +439,60 @@ label {
 
 .activity-actions {
   justify-content: flex-end;
+}
+
+.activity-participants {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.activity-participants.empty {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.participants-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.participant-avatars {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+}
+
+.participant-avatar {
+  width: 34px;
+  height: 34px;
+  margin-left: -8px;
+  border: 2px solid #fff;
+  box-shadow: 0 8px 16px rgba(45, 41, 50, 0.12);
+  font-size: 12px;
+}
+
+.participant-avatar:first-child {
+  margin-left: 0;
+}
+
+.participant-more {
+  min-width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  margin-left: -8px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--navy);
+  box-shadow: 0 8px 16px rgba(45, 41, 50, 0.12);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .activity-actions .secondary {
@@ -889,7 +969,7 @@ dialog::backdrop {
     justify-content: flex-start;
   }
 
-  .brand span:last-child {
+  .brand .brand-name {
     display: none;
   }
 
@@ -1031,6 +1111,12 @@ dialog::backdrop {
 
   .activity-actions {
     justify-content: flex-start;
+  }
+
+  .activity-participants {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .activity-actions .secondary {

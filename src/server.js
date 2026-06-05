@@ -278,7 +278,7 @@ function activityFromBody(body, existing = {}) {
 }
 
 function activityRows(userId) {
-  return db
+  const rows = db
     .prepare(`
       SELECT a.*,
         COUNT(r.id) AS registration_count,
@@ -288,8 +288,24 @@ function activityRows(userId) {
       GROUP BY a.id
       ORDER BY datetime(a.starts_at) ASC
     `)
-    .all(userId)
-    .map((row) => ({
+    .all(userId);
+  const participantsByActivity = new Map();
+  const participants = db
+    .prepare(`
+      SELECT r.activity_id, u.id, u.name, u.avatar
+      FROM registrations r
+      JOIN users u ON u.id = r.user_id
+      ORDER BY r.created_at ASC
+    `)
+    .all();
+
+  participants.forEach((participant) => {
+    const activityParticipants = participantsByActivity.get(participant.activity_id) || [];
+    activityParticipants.push(publicUser(participant));
+    participantsByActivity.set(participant.activity_id, activityParticipants);
+  });
+
+  return rows.map((row) => ({
       id: row.id,
       title: row.title,
       description: row.description,
@@ -297,7 +313,8 @@ function activityRows(userId) {
       startsAt: row.starts_at,
       capacity: row.capacity,
       registrationCount: row.registration_count,
-      isRegistered: Boolean(row.is_registered)
+      isRegistered: Boolean(row.is_registered),
+      participants: participantsByActivity.get(row.id) || []
     }));
 }
 
