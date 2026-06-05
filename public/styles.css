@@ -190,8 +190,7 @@ a {
   font-weight: 700;
 }
 
-.lustrum-badge,
-.title-badge {
+.lustrum-badge {
   width: fit-content;
   border-radius: 999px;
   color: #fff;
@@ -205,15 +204,6 @@ a {
   padding: 5px 9px;
   font-size: 11px;
   line-height: 1;
-}
-
-.title-badge {
-  display: inline-grid;
-  translate: 0 -6px;
-  margin-left: 8px;
-  padding: 7px 12px;
-  font-size: clamp(12px, 1.5vw, 15px);
-  vertical-align: middle;
 }
 
 .brand-mark {
