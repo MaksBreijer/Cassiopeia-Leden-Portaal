@@ -18,8 +18,6 @@ const els = {
   loginError: document.querySelector("#loginError"),
   memberSearch: document.querySelector("#memberSearch"),
   memberYearFilter: document.querySelector("#memberYearFilter"),
-  memberRoleFilter: document.querySelector("#memberRoleFilter"),
-  memberCommitteeFilter: document.querySelector("#memberCommitteeFilter"),
   clearMemberFilters: document.querySelector("#clearMemberFilters"),
   memberResultCount: document.querySelector("#memberResultCount"),
   loggedOutMembers: document.querySelector("#loggedOutMembers"),
@@ -90,6 +88,14 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function formatLichting(value) {
+  const year = String(value || "").trim();
+  if (!year) return "Lichting onbekend";
+  const match = year.match(/\d+/);
+  if (!match) return `Lichting ${year}`;
+  return `Lichting ${match[0].slice(-2)}`;
+}
+
 function sharedActivityId() {
   const id = new URLSearchParams(window.location.search).get("activity");
   return id && /^\d+$/.test(id) ? id : "";
@@ -98,7 +104,7 @@ function sharedActivityId() {
 function activityShareUrl(activityId) {
   const url = new URL(window.location.href);
   url.searchParams.set("activity", activityId);
-  url.hash = "activiteiten";
+  url.hash = "home";
   return url.toString();
 }
 
@@ -135,6 +141,17 @@ function closeMobileMenu() {
   els.menuToggle.setAttribute("aria-expanded", "false");
 }
 
+function showPage(page = location.hash.slice(1) || "home") {
+  const allowedPages = ["home", "leden", "profiel"];
+  const activePage = allowedPages.includes(page) ? page : "home";
+  document.querySelectorAll(".page-view").forEach((section) => {
+    section.classList.toggle("hidden", section.id !== activePage);
+  });
+  closeMobileMenu();
+  if (activePage !== "leden") closeMemberDetail();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 function setLoggedIn(user) {
   state.user = user;
   document.body.classList.add("is-authenticated");
@@ -145,6 +162,7 @@ function setLoggedIn(user) {
   els.loggedOutMembers.classList.add("hidden");
   els.memberGrid.classList.remove("hidden");
   renderProfile();
+  showPage();
   document.querySelectorAll(".admin-only").forEach((el) => el.classList.toggle("hidden", !user.isAdmin));
 }
 
@@ -186,14 +204,12 @@ function uniqueSorted(values) {
 
 function setFilterOptions(select, values, emptyLabel) {
   const current = select.value;
-  select.innerHTML = `<option value="">${emptyLabel}</option>${values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`;
+  select.innerHTML = `<option value="">${emptyLabel}</option>${values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(formatLichting(value))}</option>`).join("")}`;
   select.value = values.includes(current) ? current : "";
 }
 
 function renderMemberFilters() {
-  setFilterOptions(els.memberYearFilter, uniqueSorted(state.members.map((member) => member.yearLayer)).reverse(), "Jaarlaag");
-  setFilterOptions(els.memberRoleFilter, uniqueSorted(state.members.map((member) => member.roleTitle || "Lid")), "Functie");
-  setFilterOptions(els.memberCommitteeFilter, uniqueSorted(state.members.map((member) => member.committee)), "Commissie");
+  setFilterOptions(els.memberYearFilter, uniqueSorted(state.members.map((member) => member.yearLayer)).reverse(), "Alle lichtingen");
   document.querySelectorAll("[data-status-filter]").forEach((button) => {
     button.classList.toggle("active", button.dataset.statusFilter === state.memberStatusFilter);
   });
@@ -202,13 +218,9 @@ function renderMemberFilters() {
 function filteredMembers() {
   const status = state.memberStatusFilter;
   const year = els.memberYearFilter.value;
-  const role = els.memberRoleFilter.value;
-  const committee = els.memberCommitteeFilter.value;
   return state.members.filter((member) => {
     if (status && member.memberStatus !== status) return false;
     if (year && member.yearLayer !== year) return false;
-    if (role && (member.roleTitle || "Lid") !== role) return false;
-    if (committee && member.committee !== committee) return false;
     return true;
   });
 }
@@ -231,10 +243,10 @@ function renderMembers() {
             <div class="avatar">${avatarHtml(member)}</div>
             <div class="member-card-copy">
               <h3>${escapeHtml(member.name)}</h3>
-              <p class="meta">${escapeHtml(member.yearLayer)} · ${escapeHtml(member.roleTitle || "Lid")}</p>
+              <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Lid")}</p>
               ${member.committee ? `<p class="meta">Commissie: ${escapeHtml(member.committee)}</p>` : ""}
               <div class="member-card-badges">
-                <span class="badge">${member.memberStatus === "oud" ? "Oud-lid" : "Actief"}</span>
+                <span class="badge">${member.memberStatus === "oud" ? "Reunist" : "Lid"}</span>
                 ${member.isAdmin ? '<span class="badge">Admin</span>' : ""}
               </div>
             </div>
@@ -271,8 +283,8 @@ async function showMemberDetail(id) {
       <div>
         <p class="eyebrow">${member.isAdmin ? "Admin" : "Lidprofiel"}</p>
         <h2>${escapeHtml(member.name)}</h2>
-        <p class="meta">${escapeHtml(member.yearLayer)} · ${escapeHtml(member.roleTitle || "Lid")}</p>
-        <p class="meta">${member.memberStatus === "oud" ? "Oud-lid" : "Actief lid"}${member.committee ? ` · Commissie: ${escapeHtml(member.committee)}` : ""}</p>
+        <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Lid")}</p>
+        <p class="meta">${member.memberStatus === "oud" ? "Reunist" : "Lid"}${member.committee ? ` · Commissie: ${escapeHtml(member.committee)}` : ""}</p>
       </div>
     </div>
     <p>${escapeHtml(member.bio || "Nog geen profieltekst ingevuld.")}</p>
@@ -476,16 +488,10 @@ els.profileForm.elements.profilePhoto.addEventListener("change", async () => {
 });
 
 els.memberSearch.addEventListener("input", () => loadMembers().catch((error) => showToast(error.message)));
-[
-  els.memberYearFilter,
-  els.memberRoleFilter,
-  els.memberCommitteeFilter
-].forEach((filter) => filter.addEventListener("change", renderMembers));
+els.memberYearFilter.addEventListener("change", renderMembers);
 els.clearMemberFilters.addEventListener("click", () => {
   state.memberStatusFilter = "";
   els.memberYearFilter.value = "";
-  els.memberRoleFilter.value = "";
-  els.memberCommitteeFilter.value = "";
   renderMemberFilters();
   renderMembers();
 });
@@ -507,7 +513,10 @@ els.loginForm.addEventListener("submit", async (event) => {
     });
     setLoggedIn(user);
     await refreshPortal();
-    if (!focusSharedActivity()) document.querySelector("#activiteiten").scrollIntoView({ behavior: "smooth" });
+    if (!focusSharedActivity()) {
+      location.hash = "#home";
+      showPage("home");
+    }
   } catch (error) {
     els.loginError.textContent = error.message;
   }
@@ -540,7 +549,9 @@ els.profileForm.addEventListener("submit", async (event) => {
 
 document.body.addEventListener("click", async (event) => {
   const navLink = event.target.closest(".site-nav a");
-  if (navLink) closeMobileMenu();
+  if (navLink) {
+    showPage(navLink.getAttribute("href").replace("#", ""));
+  }
 
   const loginBtn = event.target.closest("[data-open-login]");
   if (loginBtn) return openLogin();
@@ -639,3 +650,7 @@ api("/api/session")
   .catch(async () => {
     setLoggedOut();
   });
+
+window.addEventListener("hashchange", () => {
+  if (state.user) showPage();
+});

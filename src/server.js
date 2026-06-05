@@ -184,10 +184,10 @@ app.get("/api/members", requireAuth, (req, res) => {
   const rows = db
     .prepare(`
       SELECT * FROM users
-      WHERE name LIKE ? OR year_layer LIKE ? OR role_title LIKE ? OR address LIKE ? OR member_status LIKE ? OR committee LIKE ?
+      WHERE name LIKE ? OR year_layer LIKE ?
       ORDER BY year_layer DESC, name ASC
     `)
-    .all(q, q, q, q, q, q);
+    .all(q, q);
   res.json({ members: rows.map(publicUser) });
 });
 

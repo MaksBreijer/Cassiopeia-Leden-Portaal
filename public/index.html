@@ -23,7 +23,7 @@
     </section>
 
     <header class="site-header hidden">
-      <a class="brand" href="#activiteiten" aria-label="Cassiopeia activiteiten">
+      <a class="brand" href="#home" aria-label="Cassiopeia home">
         <span class="brand-mark">C</span>
         <span>Cassiopeia</span>
       </a>
@@ -33,9 +33,9 @@
         <span></span>
       </button>
       <nav class="site-nav" aria-label="Hoofdnavigatie">
-        <a href="#activiteiten">Activiteiten</a>
-        <a href="#profiel">Profiel</a>
+        <a href="#home">Home</a>
         <a href="#leden">Leden</a>
+        <a href="#profiel">Profiel</a>
         <a class="header-profile-link" href="#profiel" aria-label="Mijn profiel">
           <span id="headerProfileAvatar" class="header-profile-avatar avatar">C</span>
         </a>
@@ -44,10 +44,10 @@
     </header>
 
     <main class="hidden">
-      <section id="activiteiten" class="section page-intro">
+      <section id="home" class="section page-view page-intro">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Agenda</p>
+            <p class="eyebrow">Jaaragenda</p>
             <h1>Activiteiten</h1>
           </div>
           <button id="newActivityBtn" class="primary admin-only hidden">Nieuwe activiteit</button>
@@ -63,31 +63,25 @@
         </div>
       </section>
 
-      <section id="leden" class="section members-section">
+      <section id="leden" class="section page-view members-section hidden">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Leden</p>
-            <h2>Alle leden</h2>
+            <p class="eyebrow">Smoelenboek</p>
+            <h1>Leden</h1>
           </div>
           <div class="section-actions">
-            <input id="memberSearch" class="search" type="search" placeholder="Zoek op naam, jaarlaag of functie" />
+            <input id="memberSearch" class="search" type="search" placeholder="Zoek op naam of lichting" />
             <button id="newMemberBtn" class="primary admin-only hidden">Nieuw lid</button>
           </div>
         </div>
         <div class="member-filterbar" aria-label="Ledenfilters">
-          <div class="filter-segments" role="group" aria-label="Filter op actief of oud-lid">
+          <div class="filter-segments" role="group" aria-label="Filter op leden of reunisten">
             <button class="filter-chip active" type="button" data-status-filter="">Alles</button>
-            <button class="filter-chip" type="button" data-status-filter="actief">Actief</button>
-            <button class="filter-chip" type="button" data-status-filter="oud">Oud-leden</button>
+            <button class="filter-chip" type="button" data-status-filter="actief">Leden</button>
+            <button class="filter-chip" type="button" data-status-filter="oud">Reunisten</button>
           </div>
-          <select id="memberYearFilter" class="filter-select" aria-label="Filter op jaarlaag">
-            <option value="">Jaarlaag</option>
-          </select>
-          <select id="memberRoleFilter" class="filter-select" aria-label="Filter op functie">
-            <option value="">Functie</option>
-          </select>
-          <select id="memberCommitteeFilter" class="filter-select" aria-label="Filter op commissie">
-            <option value="">Commissie</option>
+          <select id="memberYearFilter" class="filter-select" aria-label="Filter op lichting">
+            <option value="">Alle lichtingen</option>
           </select>
           <button id="clearMemberFilters" class="filter-clear" type="button">Reset</button>
           <span id="memberResultCount" class="member-count"></span>
@@ -101,11 +95,11 @@
         <div id="memberDetail" class="detail-panel hidden"></div>
       </section>
 
-      <section id="profiel" class="section profile-section">
+      <section id="profiel" class="section page-view profile-section hidden">
         <div class="section-head">
           <div>
             <p class="eyebrow">Mijn account</p>
-            <h2>Profiel</h2>
+            <h1>Profiel</h1>
           </div>
         </div>
         <form id="profileForm" class="profile-card">
@@ -137,12 +131,12 @@
         <div class="form-grid">
           <label>Naam<input name="name" required /></label>
           <label>E-mail<input name="email" type="email" required /></label>
-          <label>Jaarlaag<input name="yearLayer" required /></label>
+          <label>Lichting<input name="yearLayer" placeholder="22" required /></label>
           <label>Functie<input name="roleTitle" /></label>
           <label>Status
             <select name="memberStatus">
               <option value="actief">Actief lid</option>
-              <option value="oud">Oud-lid</option>
+              <option value="oud">Reunist</option>
             </select>
           </label>
           <label>Commissie<input name="committee" /></label>
