@@ -39,24 +39,49 @@ body.is-authenticated {
     url("assets/cassio-background.jpeg") center -190px / cover fixed;
 }
 
-body.is-authenticated::before {
-  content: "Lustrum III · Dameschdispuut Cassiopeia · Lustrum III · Dameschdispuut Cassiopeia";
+.top-marquee {
   position: fixed;
   z-index: 20;
   top: 0;
   left: 0;
   width: 100%;
   height: 28px;
-  display: grid;
-  place-items: center;
   overflow: hidden;
   color: #fff;
   background: var(--lustrum);
+  display: none;
+}
+
+body.is-authenticated .top-marquee {
+  display: block;
+}
+
+.top-marquee-track {
+  width: max-content;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 28px;
   font-family: var(--serif);
   font-size: 15px;
   font-style: italic;
   font-weight: 500;
   white-space: nowrap;
+  animation: top-marquee 18s linear infinite;
+}
+
+.top-marquee-track span {
+  display: inline-block;
+}
+
+@keyframes top-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 .login-screen {
