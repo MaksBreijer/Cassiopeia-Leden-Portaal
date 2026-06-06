@@ -3,6 +3,7 @@ const state = {
   members: [],
   activities: [],
   yearAgendaItems: [],
+  yearAgendaSummaryText: "",
   yearAgendaUsesLocalData: false,
   memberStatusFilter: "",
   openMemberId: null
@@ -85,6 +86,14 @@ function saveLocalYearAgendaItems(items) {
   localStorage.setItem("cassiopeiaYearAgendaItems", JSON.stringify(items));
 }
 
+function localYearAgendaSummary() {
+  return localStorage.getItem("cassiopeiaYearAgendaSummary") || "";
+}
+
+function saveLocalYearAgendaSummary(summary) {
+  localStorage.setItem("cassiopeiaYearAgendaSummary", summary);
+}
+
 const els = {
   siteHeader: document.querySelector(".site-header"),
   appMain: document.querySelector("main"),
@@ -117,6 +126,8 @@ const els = {
   yearAgendaDialog: document.querySelector("#yearAgendaDialog"),
   yearAgendaForm: document.querySelector("#yearAgendaForm"),
   yearAgendaDialogTitle: document.querySelector("#yearAgendaDialogTitle"),
+  yearAgendaSummaryDialog: document.querySelector("#yearAgendaSummaryDialog"),
+  yearAgendaSummaryForm: document.querySelector("#yearAgendaSummaryForm"),
   activityDialog: document.querySelector("#activityDialog"),
   activityForm: document.querySelector("#activityForm"),
   activityDialogTitle: document.querySelector("#activityDialogTitle"),
@@ -453,9 +464,11 @@ async function loadYearAgenda() {
     const data = await api("/api/year-agenda");
     state.yearAgendaUsesLocalData = !data.items?.length;
     state.yearAgendaItems = data.items?.length ? data.items : localYearAgendaItems();
+    state.yearAgendaSummaryText = data.summary || localYearAgendaSummary();
   } catch (error) {
     state.yearAgendaUsesLocalData = true;
     state.yearAgendaItems = localYearAgendaItems();
+    state.yearAgendaSummaryText = localYearAgendaSummary();
     showToast("Jaarplanning lokaal geladen.");
   }
   renderYearAgenda();
@@ -481,7 +494,7 @@ function renderYearAgenda() {
   if (!els.yearAgendaGrid) return;
   const months = groupedYearAgendaItems();
   if (!months.length) {
-    if (els.yearAgendaSummary) els.yearAgendaSummary.textContent = "Nog geen agendapunten toegevoegd.";
+    if (els.yearAgendaSummary) els.yearAgendaSummary.textContent = state.yearAgendaSummaryText || "Nog geen agendapunten toegevoegd.";
     els.yearAgendaGrid.innerHTML = `
       <article class="year-month">
         <h3>Geen jaarplanning</h3>
@@ -494,7 +507,11 @@ function renderYearAgenda() {
   if (els.yearAgendaSummary) {
     const firstMonth = months[0].monthLabel;
     const lastMonth = months[months.length - 1].monthLabel;
-    els.yearAgendaSummary.textContent = `${state.yearAgendaItems.length} agendapunten · ${months.length} maanden · ${firstMonth} t/m ${lastMonth}`;
+    const summary = state.yearAgendaSummaryText || `${state.yearAgendaItems.length} agendapunten · ${months.length} maanden · ${firstMonth} t/m ${lastMonth}`;
+    els.yearAgendaSummary.innerHTML = `
+      <span>${escapeHtml(summary)}</span>
+      ${state.user?.isAdmin ? '<button type="button" class="summary-edit-action" data-edit-year-agenda-summary>Bewerk</button>' : ""}
+    `;
   }
 
   els.yearAgendaGrid.innerHTML = months
@@ -626,6 +643,34 @@ function openYearAgendaDialog(item = null) {
   fields.sortOrder.value = item?.sortOrder ?? nextSortOrder;
   fields.title.value = item?.title || "";
   els.yearAgendaDialog.showModal();
+}
+
+function currentYearAgendaSummary() {
+  if (state.yearAgendaSummaryText) return state.yearAgendaSummaryText;
+  const months = groupedYearAgendaItems();
+  if (!months.length) return "";
+  return `${state.yearAgendaItems.length} agendapunten · ${months.length} maanden · ${months[0].monthLabel} t/m ${months[months.length - 1].monthLabel}`;
+}
+
+function openYearAgendaSummaryDialog() {
+  els.yearAgendaSummaryForm.reset();
+  els.yearAgendaSummaryForm.elements.summaryText.value = currentYearAgendaSummary();
+  els.yearAgendaSummaryDialog.showModal();
+}
+
+async function saveYearAgendaSummary(summary) {
+  if (state.yearAgendaUsesLocalData) {
+    state.yearAgendaSummaryText = summary;
+    saveLocalYearAgendaSummary(summary);
+    renderYearAgenda();
+    return;
+  }
+  const data = await api("/api/year-agenda-summary", {
+    method: "PUT",
+    body: JSON.stringify({ summary })
+  });
+  state.yearAgendaSummaryText = data.summary;
+  renderYearAgenda();
 }
 
 async function showRegistrations(activityId) {
@@ -832,6 +877,9 @@ document.body.addEventListener("click", async (event) => {
   const registrationsBtn = event.target.closest("[data-registrations]");
   if (registrationsBtn) return showRegistrations(registrationsBtn.dataset.registrations);
 
+  const editYearAgendaSummaryBtn = event.target.closest("[data-edit-year-agenda-summary]");
+  if (editYearAgendaSummaryBtn) return openYearAgendaSummaryDialog();
+
   const editYearAgendaBtn = event.target.closest("[data-edit-year-agenda]");
   if (editYearAgendaBtn) {
     return openYearAgendaDialog(state.yearAgendaItems.find((item) => String(item.id) === editYearAgendaBtn.dataset.editYearAgenda));
@@ -929,6 +977,19 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
     els.yearAgendaDialog.close();
     await loadYearAgenda();
     showToast("Agendapunt opgeslagen.");
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+els.yearAgendaSummaryForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    const summary = String(els.yearAgendaSummaryForm.elements.summaryText.value || "").trim();
+    if (!summary) throw new Error("Overzichtstekst is verplicht.");
+    await saveYearAgendaSummary(summary);
+    els.yearAgendaSummaryDialog.close();
+    showToast("Overzichtstekst opgeslagen.");
   } catch (error) {
     showToast(error.message);
   }

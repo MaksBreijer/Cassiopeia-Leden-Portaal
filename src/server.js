@@ -353,7 +353,19 @@ app.get("/api/year-agenda", requireAuth, (req, res) => {
       ORDER BY month_index ASC, sort_order ASC, id ASC
     `)
     .all();
-  res.json({ items: rows.map(yearAgendaItemFromRow) });
+  const summary = db.prepare("SELECT value FROM app_settings WHERE key = ?").get("year_agenda_summary")?.value || "";
+  res.json({ items: rows.map(yearAgendaItemFromRow), summary });
+});
+
+app.put("/api/year-agenda-summary", requireAuth, requireAdmin, (req, res) => {
+  const summary = String(req.body.summary || "").trim();
+  if (!summary) return res.status(400).json({ error: "Overzichtstekst is verplicht." });
+  db.prepare(`
+    INSERT INTO app_settings (key, value, updated_at)
+    VALUES ('year_agenda_summary', ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+  `).run(summary);
+  res.json({ summary });
 });
 
 app.post("/api/year-agenda", requireAuth, requireAdmin, (req, res) => {
