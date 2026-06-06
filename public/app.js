@@ -529,8 +529,8 @@ function renderYearAgenda() {
                     ${
                       state.user?.isAdmin
                         ? `<span class="year-agenda-actions">
-                            <button type="button" class="icon-action" data-edit-year-agenda="${item.id}" aria-label="Agendapunt bewerken">Bewerk</button>
-                            <button type="button" class="icon-action danger-action" data-delete-year-agenda="${item.id}" aria-label="Agendapunt verwijderen">Verwijder</button>
+                            <button type="button" class="icon-action" data-edit-year-agenda="${item.id}" aria-label="Agendapunt bewerken" title="Bewerk">B</button>
+                            <button type="button" class="icon-action danger-action" data-delete-year-agenda="${item.id}" aria-label="Agendapunt verwijderen" title="Verwijder">x</button>
                           </span>`
                         : ""
                     }

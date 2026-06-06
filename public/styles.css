@@ -490,6 +490,7 @@ label {
     radial-gradient(circle at 10% 98%, rgba(202, 175, 236, 0.36) 0 66px, transparent 68px),
     rgba(255, 255, 255, 0.94);
   box-shadow: var(--soft-shadow);
+  contain: layout paint;
 }
 
 .year-agenda-board>h3 {
@@ -500,7 +501,8 @@ label {
 }
 
 .year-agenda-summary {
-  width: fit-content;
+  width: max-content;
+  max-width: 100%;
   margin: 0 auto 22px;
   border-radius: var(--radius-sm);
   padding: 7px 10px;
@@ -509,6 +511,7 @@ label {
   font-size: 12px;
   font-weight: 850;
   text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .summary-edit-action {
@@ -528,16 +531,19 @@ label {
 .year-agenda-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
   gap: 16px;
   max-height: min(680px, 70vh);
   overflow-y: auto;
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
   padding-right: 8px;
   -webkit-overflow-scrolling: touch;
 }
 
 .year-month {
-  min-height: 186px;
+  min-height: 206px;
+  min-width: 0;
   border: 0;
   border-radius: 0;
   padding: 0;
@@ -546,21 +552,22 @@ label {
 }
 
 .year-month h3 {
+  min-height: 28px;
   margin-bottom: 14px;
   color: var(--navy);
 }
 
 .year-month-items {
   display: grid;
-  gap: 8px;
+  gap: 7px;
 }
 
 .year-agenda-item {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: 42px minmax(0, 1fr) auto;
   gap: 8px;
-  align-items: start;
-  min-height: 28px;
+  align-items: center;
+  min-height: 24px;
   color: var(--ink);
   font-size: 14px;
   line-height: 1.35;
@@ -579,24 +586,31 @@ label {
 }
 
 .year-agenda-actions {
-  grid-column: 2;
+  grid-column: 3;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 5px;
-  margin-top: 3px;
+  align-items: center;
+  min-width: 0;
+  margin-top: 0;
+  opacity: 0.72;
 }
 
 .icon-action {
+  width: 22px;
+  height: 20px;
   min-height: 20px;
+  overflow: hidden;
   border: 1px solid rgba(185, 155, 216, 0.18);
   border-radius: 5px;
-  padding: 2px 6px;
+  padding: 0;
   color: var(--navy);
   background: rgba(243, 238, 248, 0.42);
   font-size: 9px;
   font-weight: 800;
   line-height: 1;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .danger-action {
@@ -1323,8 +1337,18 @@ dialog::backdrop {
   .year-agenda-grid {
     grid-template-columns: 1fr;
     gap: 10px;
-    max-height: 58vh;
+    max-height: 56vh;
     margin-bottom: 34px;
+  }
+
+  .year-month {
+    min-height: auto;
+  }
+
+  .year-agenda-item {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: 7px;
+    min-height: 26px;
   }
 
   .activity-card,
