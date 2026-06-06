@@ -551,8 +551,8 @@ label {
   background: #a93544;
 }
 
-.activity-section-head {
-  margin-top: 0;
+.year-agenda-section-head {
+  margin-top: clamp(34px, 6vw, 68px);
 }
 
 .activity-card {
