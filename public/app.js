@@ -908,7 +908,8 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
         monthIndex: Number(data.monthIndex) || 1,
         dayLabel: String(data.dayLabel || "").trim(),
         title: String(data.title || "").trim(),
-        sortOrder: Number(data.sortOrder) || state.yearAgendaItems.length + 1
+        sortOrder: Number(data.sortOrder) || state.yearAgendaItems.length + 1,
+        isDefault: String(id).startsWith("default-")
       };
       if (!item.monthLabel || !item.dayLabel || !item.title) throw new Error("Maand, datum en titel zijn verplicht.");
       const nextItems = id

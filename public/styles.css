@@ -569,24 +569,26 @@ label {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .icon-action {
-  min-height: 26px;
-  border: 0;
-  border-radius: 6px;
-  padding: 5px 8px;
+  min-height: 22px;
+  border: 1px solid rgba(185, 155, 216, 0.22);
+  border-radius: 5px;
+  padding: 3px 7px;
   color: var(--navy);
-  background: #f3eef8;
-  font-size: 11px;
-  font-weight: 950;
+  background: rgba(243, 238, 248, 0.62);
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1;
   text-transform: uppercase;
 }
 
 .danger-action {
-  color: #fff;
-  background: #a93544;
+  border-color: rgba(169, 53, 68, 0.18);
+  color: #a93544;
+  background: rgba(169, 53, 68, 0.08);
 }
 
 .year-agenda-section-head {
