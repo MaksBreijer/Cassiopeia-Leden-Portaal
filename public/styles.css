@@ -477,6 +477,84 @@ label {
   gap: 18px;
 }
 
+.year-agenda-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: clamp(34px, 6vw, 68px);
+}
+
+.year-month {
+  min-height: 186px;
+  border: 1px solid rgba(185, 155, 216, 0.18);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--soft-shadow);
+}
+
+.year-month h3 {
+  margin-bottom: 14px;
+  color: var(--navy);
+}
+
+.year-month-items {
+  display: grid;
+  gap: 8px;
+}
+
+.year-agenda-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  min-height: 28px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.year-agenda-date {
+  color: var(--muted);
+  font-weight: 950;
+  text-align: right;
+}
+
+.year-agenda-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 750;
+}
+
+.year-agenda-actions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.icon-action {
+  min-height: 26px;
+  border: 0;
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: var(--navy);
+  background: #f3eef8;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.danger-action {
+  color: #fff;
+  background: #a93544;
+}
+
+.activity-section-head {
+  margin-top: 0;
+}
+
 .activity-card {
   position: relative;
   display: grid;
@@ -1180,7 +1258,14 @@ dialog::backdrop {
     gap: 10px;
   }
 
+  .year-agenda-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 34px;
+  }
+
   .activity-card,
+  .year-month,
   .profile-card,
   .member-card,
   .detail-panel,
@@ -1347,6 +1432,10 @@ dialog::backdrop {
   }
 
   .member-filterbar {
+    grid-template-columns: 1fr;
+  }
+
+  .year-agenda-grid {
     grid-template-columns: 1fr;
   }
 

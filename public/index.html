@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dameschdispuut Cassiopeia</title>
-    <link rel="stylesheet" href="styles.css?v=20260605-marquee-topbar" />
+    <link rel="stylesheet" href="styles.css?v=20260606-year-agenda" />
   </head>
   <body>
     <div class="top-marquee" aria-hidden="true">
@@ -53,9 +53,25 @@
         <div class="section-head">
           <div>
             <p class="eyebrow">Jaaragenda</p>
-            <h1>Activiteiten</h1>
+            <h1>Jaarplanning</h1>
           </div>
-          <button id="newActivityBtn" class="primary admin-only hidden">Nieuwe activiteit</button>
+          <div class="section-actions">
+            <button id="newYearAgendaItemBtn" class="primary admin-only hidden">Nieuw agendapunt</button>
+            <button id="newActivityBtn" class="primary admin-only hidden">Nieuwe activiteit</button>
+          </div>
+        </div>
+        <div id="yearAgendaGrid" class="year-agenda-grid" aria-live="polite">
+          <article class="year-month">
+            <h3>Agenda laden</h3>
+            <p class="meta">De jaarplanning wordt opgehaald.</p>
+          </article>
+        </div>
+
+        <div class="section-head activity-section-head">
+          <div>
+            <p class="eyebrow">Inschrijven</p>
+            <h2>Activiteiten</h2>
+          </div>
         </div>
         <div id="publicActivityList" class="activity-list">
           <article class="activity-card">
@@ -159,6 +175,24 @@
       </form>
     </dialog>
 
+    <dialog id="yearAgendaDialog">
+      <form id="yearAgendaForm" method="dialog" class="dialog-card">
+        <h3 id="yearAgendaDialogTitle">Agendapunt</h3>
+        <input type="hidden" name="id" />
+        <div class="form-grid">
+          <label>Maand<input name="monthLabel" required /></label>
+          <label>Maandvolgorde<input name="monthIndex" type="number" min="1" required /></label>
+          <label>Datum<input name="dayLabel" placeholder="Bijv. 3-5 of ?" required /></label>
+          <label>Volgorde binnen maand<input name="sortOrder" type="number" min="0" /></label>
+          <label class="wide">Titel<input name="title" required /></label>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" data-close>Sluiten</button>
+          <button type="submit" class="primary">Opslaan</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="activityDialog">
       <form id="activityForm" method="dialog" class="dialog-card">
         <h3 id="activityDialogTitle">Activiteit</h3>
@@ -188,6 +222,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260605-marquee-topbar"></script>
+    <script src="app.js?v=20260606-year-agenda"></script>
   </body>
 </html>

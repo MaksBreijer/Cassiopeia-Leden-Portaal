@@ -318,8 +318,83 @@ function activityRows(userId) {
     }));
 }
 
+function yearAgendaItemFromRow(row) {
+  return {
+    id: row.id,
+    monthLabel: row.month_label,
+    monthIndex: row.month_index,
+    dayLabel: row.day_label,
+    title: row.title,
+    sortOrder: row.sort_order
+  };
+}
+
+function yearAgendaItemFromBody(body, existing = {}) {
+  const monthIndex = Number(body.monthIndex ?? existing.month_index);
+  const sortOrder = Number(body.sortOrder ?? existing.sort_order ?? 0);
+  return {
+    month_label: String(body.monthLabel || existing.month_label || "").trim(),
+    month_index: Number.isFinite(monthIndex) && monthIndex > 0 ? monthIndex : existing.month_index || 1,
+    day_label: String(body.dayLabel || existing.day_label || "").trim(),
+    title: String(body.title || existing.title || "").trim(),
+    sort_order: Number.isFinite(sortOrder) ? sortOrder : existing.sort_order || 0
+  };
+}
+
 app.get("/api/activities", requireAuth, (req, res) => {
   res.json({ activities: activityRows(req.session.userId) });
+});
+
+app.get("/api/year-agenda", requireAuth, (req, res) => {
+  const rows = db
+    .prepare(`
+      SELECT * FROM year_agenda_items
+      ORDER BY month_index ASC, sort_order ASC, id ASC
+    `)
+    .all();
+  res.json({ items: rows.map(yearAgendaItemFromRow) });
+});
+
+app.post("/api/year-agenda", requireAuth, requireAdmin, (req, res) => {
+  const item = yearAgendaItemFromBody(req.body);
+  if (!item.month_label || !item.day_label || !item.title) {
+    return res.status(400).json({ error: "Maand, datum en titel zijn verplicht." });
+  }
+
+  const result = db
+    .prepare(`
+      INSERT INTO year_agenda_items (month_label, month_index, day_label, title, sort_order)
+      VALUES (@month_label, @month_index, @day_label, @title, @sort_order)
+    `)
+    .run(item);
+  const created = db.prepare("SELECT * FROM year_agenda_items WHERE id = ?").get(result.lastInsertRowid);
+  res.status(201).json({ item: yearAgendaItemFromRow(created) });
+});
+
+app.put("/api/year-agenda/:id", requireAuth, requireAdmin, (req, res) => {
+  const existing = db.prepare("SELECT * FROM year_agenda_items WHERE id = ?").get(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Agendapunt niet gevonden." });
+
+  const item = yearAgendaItemFromBody(req.body, existing);
+  if (!item.month_label || !item.day_label || !item.title) {
+    return res.status(400).json({ error: "Maand, datum en titel zijn verplicht." });
+  }
+
+  db.prepare(`
+    UPDATE year_agenda_items
+    SET month_label = @month_label, month_index = @month_index, day_label = @day_label,
+        title = @title, sort_order = @sort_order, updated_at = CURRENT_TIMESTAMP
+    WHERE id = @id
+  `).run({ ...item, id: req.params.id });
+
+  const updated = db.prepare("SELECT * FROM year_agenda_items WHERE id = ?").get(req.params.id);
+  res.json({ item: yearAgendaItemFromRow(updated) });
+});
+
+app.delete("/api/year-agenda/:id", requireAuth, requireAdmin, (req, res) => {
+  const result = db.prepare("DELETE FROM year_agenda_items WHERE id = ?").run(req.params.id);
+  if (!result.changes) return res.status(404).json({ error: "Agendapunt niet gevonden." });
+  res.json({ ok: true });
 });
 
 app.post("/api/activities", requireAuth, requireAdmin, (req, res) => {

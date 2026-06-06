@@ -2,6 +2,7 @@ const state = {
   user: null,
   members: [],
   activities: [],
+  yearAgendaItems: [],
   memberStatusFilter: "",
   openMemberId: null
 };
@@ -23,6 +24,7 @@ const els = {
   loggedOutMembers: document.querySelector("#loggedOutMembers"),
   memberGrid: document.querySelector("#memberGrid"),
   memberDetail: document.querySelector("#memberDetail"),
+  yearAgendaGrid: document.querySelector("#yearAgendaGrid"),
   publicActivityList: document.querySelector("#publicActivityList"),
   profileForm: document.querySelector("#profileForm"),
   profileAvatar: document.querySelector("#profileAvatar"),
@@ -30,10 +32,14 @@ const els = {
   profileName: document.querySelector("#profileName"),
   profileEmail: document.querySelector("#profileEmail"),
   newMemberBtn: document.querySelector("#newMemberBtn"),
+  newYearAgendaItemBtn: document.querySelector("#newYearAgendaItemBtn"),
   newActivityBtn: document.querySelector("#newActivityBtn"),
   memberDialog: document.querySelector("#memberDialog"),
   memberForm: document.querySelector("#memberForm"),
   memberDialogTitle: document.querySelector("#memberDialogTitle"),
+  yearAgendaDialog: document.querySelector("#yearAgendaDialog"),
+  yearAgendaForm: document.querySelector("#yearAgendaForm"),
+  yearAgendaDialogTitle: document.querySelector("#yearAgendaDialogTitle"),
   activityDialog: document.querySelector("#activityDialog"),
   activityForm: document.querySelector("#activityForm"),
   activityDialogTitle: document.querySelector("#activityDialogTitle"),
@@ -214,6 +220,7 @@ function setLoggedOut() {
   document.body.classList.remove("is-authenticated");
   state.members = [];
   state.activities = [];
+  state.yearAgendaItems = [];
   state.openMemberId = null;
   els.loginScreen.classList.remove("hidden");
   els.siteHeader.classList.add("hidden");
@@ -224,12 +231,13 @@ function setLoggedOut() {
   els.memberDetail.classList.add("hidden");
   closeMobileMenu();
   document.querySelectorAll(".admin-only").forEach((el) => el.classList.add("hidden"));
+  renderYearAgenda();
   renderPublicActivities();
   renderMembers();
 }
 
 async function refreshPortal() {
-  await Promise.all([loadMembers(), loadActivities()]);
+  await Promise.all([loadMembers(), loadActivities(), loadYearAgenda()]);
   focusSharedActivity();
 }
 
@@ -363,6 +371,72 @@ async function loadActivities() {
   renderPublicActivities();
 }
 
+async function loadYearAgenda() {
+  const data = await api("/api/year-agenda");
+  state.yearAgendaItems = data.items;
+  renderYearAgenda();
+}
+
+function groupedYearAgendaItems() {
+  const months = new Map();
+  state.yearAgendaItems.forEach((item) => {
+    const key = `${item.monthIndex}-${item.monthLabel}`;
+    if (!months.has(key)) {
+      months.set(key, {
+        monthLabel: item.monthLabel,
+        monthIndex: item.monthIndex,
+        items: []
+      });
+    }
+    months.get(key).items.push(item);
+  });
+  return [...months.values()].sort((a, b) => a.monthIndex - b.monthIndex);
+}
+
+function renderYearAgenda() {
+  if (!els.yearAgendaGrid) return;
+  const months = groupedYearAgendaItems();
+  if (!months.length) {
+    els.yearAgendaGrid.innerHTML = `
+      <article class="year-month">
+        <h3>Geen jaarplanning</h3>
+        <p class="meta">Er zijn nog geen agendapunten toegevoegd.</p>
+      </article>
+    `;
+    return;
+  }
+
+  els.yearAgendaGrid.innerHTML = months
+    .map(
+      (month) => `
+        <article class="year-month">
+          <h3>${escapeHtml(month.monthLabel)}</h3>
+          <div class="year-month-items">
+            ${month.items
+              .map(
+                (item) => `
+                  <div class="year-agenda-item">
+                    <span class="year-agenda-date">${escapeHtml(item.dayLabel)}</span>
+                    <span class="year-agenda-title">${escapeHtml(item.title)}</span>
+                    ${
+                      state.user?.isAdmin
+                        ? `<span class="year-agenda-actions">
+                            <button type="button" class="icon-action" data-edit-year-agenda="${item.id}" aria-label="Agendapunt bewerken">Bewerk</button>
+                            <button type="button" class="icon-action danger-action" data-delete-year-agenda="${item.id}" aria-label="Agendapunt verwijderen">Verwijder</button>
+                          </span>`
+                        : ""
+                    }
+                  </div>
+                `
+              )
+              .join("")}
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
 function renderPublicActivities() {
   if (!state.activities.length) {
     els.publicActivityList.innerHTML = `
@@ -411,6 +485,7 @@ function renderPublicActivities() {
 
 function renderAdmin() {
   document.querySelectorAll(".admin-only").forEach((el) => el.classList.toggle("hidden", !state.user?.isAdmin));
+  renderYearAgenda();
 }
 
 function openMemberDialog(member = null) {
@@ -446,6 +521,20 @@ function openActivityDialog(activity = null) {
   fields.location.value = activity?.location || "";
   fields.description.value = activity?.description || "";
   els.activityDialog.showModal();
+}
+
+function openYearAgendaDialog(item = null) {
+  els.yearAgendaForm.reset();
+  els.yearAgendaDialogTitle.textContent = item ? "Agendapunt wijzigen" : "Nieuw agendapunt";
+  const fields = els.yearAgendaForm.elements;
+  const nextSortOrder = state.yearAgendaItems.length ? Math.max(...state.yearAgendaItems.map((agendaItem) => agendaItem.sortOrder || 0)) + 1 : 1;
+  fields.id.value = item?.id || "";
+  fields.monthLabel.value = item?.monthLabel || "";
+  fields.monthIndex.value = item?.monthIndex || "";
+  fields.dayLabel.value = item?.dayLabel || "";
+  fields.sortOrder.value = item?.sortOrder ?? nextSortOrder;
+  fields.title.value = item?.title || "";
+  els.yearAgendaDialog.showModal();
 }
 
 async function showRegistrations(activityId) {
@@ -562,6 +651,7 @@ els.clearMemberFilters.addEventListener("click", () => {
   renderMembers();
 });
 els.newMemberBtn.addEventListener("click", () => openMemberDialog());
+els.newYearAgendaItemBtn.addEventListener("click", () => openYearAgendaDialog());
 els.newActivityBtn.addEventListener("click", () => openActivityDialog());
 
 els.menuToggle.addEventListener("click", () => {
@@ -651,6 +741,18 @@ document.body.addEventListener("click", async (event) => {
   const registrationsBtn = event.target.closest("[data-registrations]");
   if (registrationsBtn) return showRegistrations(registrationsBtn.dataset.registrations);
 
+  const editYearAgendaBtn = event.target.closest("[data-edit-year-agenda]");
+  if (editYearAgendaBtn) {
+    return openYearAgendaDialog(state.yearAgendaItems.find((item) => item.id === Number(editYearAgendaBtn.dataset.editYearAgenda)));
+  }
+
+  const deleteYearAgendaBtn = event.target.closest("[data-delete-year-agenda]");
+  if (deleteYearAgendaBtn && confirm("Weet je zeker dat je dit agendapunt wilt verwijderen?")) {
+    await api(`/api/year-agenda/${deleteYearAgendaBtn.dataset.deleteYearAgenda}`, { method: "DELETE" });
+    await loadYearAgenda();
+    return showToast("Agendapunt verwijderd.");
+  }
+
   const exportActivityBtn = event.target.closest("[data-export-activity]");
   if (exportActivityBtn) return exportRegistrations(exportActivityBtn.dataset.exportActivity).catch((error) => showToast(error.message));
 
@@ -695,6 +797,19 @@ els.memberForm.addEventListener("submit", async (event) => {
   els.memberDialog.close();
   await refreshPortal();
   showToast("Lid opgeslagen.");
+});
+
+els.yearAgendaForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const data = formJson(els.yearAgendaForm);
+  const id = data.id;
+  await api(id ? `/api/year-agenda/${id}` : "/api/year-agenda", {
+    method: id ? "PUT" : "POST",
+    body: JSON.stringify(data)
+  });
+  els.yearAgendaDialog.close();
+  await loadYearAgenda();
+  showToast("Agendapunt opgeslagen.");
 });
 
 els.activityForm.addEventListener("submit", async (event) => {
