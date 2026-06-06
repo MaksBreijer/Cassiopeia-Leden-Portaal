@@ -2,7 +2,7 @@ const path = require("path");
 const bcrypt = require("bcryptjs");
 const express = require("express");
 const session = require("express-session");
-const { db, initializeDatabase } = require("./db");
+const { db, initializeDatabase, ensureYearAgendaItems } = require("./db");
 const { createSqliteSessionStore } = require("./session-store");
 
 initializeDatabase();
@@ -346,6 +346,7 @@ app.get("/api/activities", requireAuth, (req, res) => {
 });
 
 app.get("/api/year-agenda", requireAuth, (req, res) => {
+  ensureYearAgendaItems();
   const rows = db
     .prepare(`
       SELECT * FROM year_agenda_items

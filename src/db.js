@@ -267,6 +267,12 @@ function syncCsvYearAgendaData() {
   `).run(versionKey, csvVersion);
 }
 
+function ensureYearAgendaItems() {
+  const count = db.prepare("SELECT COUNT(*) AS count FROM year_agenda_items").get().count;
+  if (count > 0) return;
+  insertDefaultYearAgendaItems();
+}
+
 function renameSeedAdmin() {
   db.prepare(`
     UPDATE users
@@ -275,4 +281,4 @@ function renameSeedAdmin() {
   `).run();
 }
 
-module.exports = { db, initializeDatabase };
+module.exports = { db, initializeDatabase, ensureYearAgendaItems };
