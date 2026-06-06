@@ -983,6 +983,14 @@ label {
   font-weight: 700;
 }
 
+.form-help {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .site-footer {
   display: flex;
   justify-content: space-between;

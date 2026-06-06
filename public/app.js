@@ -635,6 +635,7 @@ function openYearAgendaDialog(item = null) {
   els.yearAgendaForm.reset();
   els.yearAgendaDialogTitle.textContent = item ? "Agendapunt wijzigen" : "Nieuw agendapunt";
   const fields = els.yearAgendaForm.elements;
+  const bulkFields = els.yearAgendaForm.querySelectorAll("[data-bulk-year-agenda]");
   const nextSortOrder = state.yearAgendaItems.length ? Math.max(...state.yearAgendaItems.map((agendaItem) => agendaItem.sortOrder || 0)) + 1 : 1;
   fields.id.value = item?.id || "";
   fields.monthLabel.value = item?.monthLabel || "";
@@ -642,7 +643,38 @@ function openYearAgendaDialog(item = null) {
   fields.dayLabel.value = item?.dayLabel || "";
   fields.sortOrder.value = item?.sortOrder ?? nextSortOrder;
   fields.title.value = item?.title || "";
+  fields.bulkItems.value = "";
+  fields.dayLabel.required = Boolean(item);
+  fields.title.required = Boolean(item);
+  bulkFields.forEach((field) => field.classList.toggle("hidden", Boolean(item)));
   els.yearAgendaDialog.showModal();
+}
+
+function parseBulkYearAgendaItems(data) {
+  const bulkItems = String(data.bulkItems || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!bulkItems.length) return [];
+
+  return bulkItems.map((line, index) => {
+    const separatorIndex = line.indexOf(";");
+    if (separatorIndex === -1) {
+      throw new Error(`Gebruik per regel: datum; activiteit. Controleer regel ${index + 1}.`);
+    }
+    const dayLabel = line.slice(0, separatorIndex).trim();
+    const title = line.slice(separatorIndex + 1).trim();
+    if (!dayLabel || !title) {
+      throw new Error(`Datum en activiteit zijn verplicht op regel ${index + 1}.`);
+    }
+    return {
+      monthLabel: String(data.monthLabel || "").trim(),
+      monthIndex: Number(data.monthIndex) || 1,
+      dayLabel,
+      title,
+      sortOrder: (Number(data.sortOrder) || state.yearAgendaItems.length + 1) + index
+    };
+  });
 }
 
 function currentYearAgendaSummary() {
@@ -949,7 +981,26 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
   try {
     const data = formJson(els.yearAgendaForm);
     const id = data.id;
+    const bulkItems = id ? [] : parseBulkYearAgendaItems(data);
+    if (bulkItems.length && !String(data.monthLabel || "").trim()) throw new Error("Maand is verplicht.");
+
     if (state.yearAgendaUsesLocalData || String(id).startsWith("default-") || String(id).startsWith("local-")) {
+      if (bulkItems.length) {
+        const nextItems = [
+          ...state.yearAgendaItems,
+          ...bulkItems.map((item, index) => ({
+            ...item,
+            id: `local-${Date.now()}-${index}`
+          }))
+        ];
+        state.yearAgendaItems = nextItems;
+        state.yearAgendaUsesLocalData = true;
+        saveLocalYearAgendaItems(nextItems);
+        els.yearAgendaDialog.close();
+        renderYearAgenda();
+        return showToast(`${bulkItems.length} agendapunten opgeslagen.`);
+      }
+
       const item = {
         id: id || `local-${Date.now()}`,
         monthLabel: String(data.monthLabel || "").trim(),
@@ -970,6 +1021,21 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
       renderYearAgenda();
       return showToast("Agendapunt opgeslagen.");
     }
+
+    if (bulkItems.length) {
+      await Promise.all(
+        bulkItems.map((item) =>
+          api("/api/year-agenda", {
+            method: "POST",
+            body: JSON.stringify(item)
+          })
+        )
+      );
+      els.yearAgendaDialog.close();
+      await loadYearAgenda();
+      return showToast(`${bulkItems.length} agendapunten opgeslagen.`);
+    }
+
     await api(id ? `/api/year-agenda/${id}` : "/api/year-agenda", {
       method: id ? "PUT" : "POST",
       body: JSON.stringify(data)
