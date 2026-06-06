@@ -499,6 +499,18 @@ label {
   text-align: center;
 }
 
+.year-agenda-summary {
+  width: fit-content;
+  margin: 0 auto 22px;
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  color: var(--ink);
+  background: rgba(242, 234, 254, 0.88);
+  font-size: 13px;
+  font-weight: 950;
+  text-align: center;
+}
+
 .year-agenda-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

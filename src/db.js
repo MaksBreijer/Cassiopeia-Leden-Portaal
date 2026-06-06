@@ -213,6 +213,10 @@ function seedYearAgenda() {
   const count = db.prepare("SELECT COUNT(*) AS count FROM year_agenda_items").get().count;
   if (count > 0) return;
 
+  insertDefaultYearAgendaItems();
+}
+
+function insertDefaultYearAgendaItems() {
   const insertYearAgendaItem = db.prepare(`
     INSERT INTO year_agenda_items (month_label, month_index, day_label, title, sort_order)
     VALUES (?, ?, ?, ?, ?)
@@ -232,6 +236,16 @@ function syncCsvYearAgendaData() {
   const rows = db
     .prepare("SELECT id FROM year_agenda_items ORDER BY month_index ASC, sort_order ASC, id ASC")
     .all();
+
+  if (!rows.length) {
+    insertDefaultYearAgendaItems();
+    db.prepare(`
+      INSERT INTO app_settings (key, value, updated_at)
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+    `).run(versionKey, csvVersion);
+    return;
+  }
 
   if (rows.length !== defaultYearAgendaItems.length) return;
 

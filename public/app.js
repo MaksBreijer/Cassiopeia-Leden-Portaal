@@ -24,6 +24,7 @@ const els = {
   loggedOutMembers: document.querySelector("#loggedOutMembers"),
   memberGrid: document.querySelector("#memberGrid"),
   memberDetail: document.querySelector("#memberDetail"),
+  yearAgendaSummary: document.querySelector("#yearAgendaSummary"),
   yearAgendaGrid: document.querySelector("#yearAgendaGrid"),
   publicActivityList: document.querySelector("#publicActivityList"),
   profileForm: document.querySelector("#profileForm"),
@@ -397,6 +398,7 @@ function renderYearAgenda() {
   if (!els.yearAgendaGrid) return;
   const months = groupedYearAgendaItems();
   if (!months.length) {
+    if (els.yearAgendaSummary) els.yearAgendaSummary.textContent = "Nog geen agendapunten toegevoegd.";
     els.yearAgendaGrid.innerHTML = `
       <article class="year-month">
         <h3>Geen jaarplanning</h3>
@@ -404,6 +406,12 @@ function renderYearAgenda() {
       </article>
     `;
     return;
+  }
+
+  if (els.yearAgendaSummary) {
+    const firstMonth = months[0].monthLabel;
+    const lastMonth = months[months.length - 1].monthLabel;
+    els.yearAgendaSummary.textContent = `${state.yearAgendaItems.length} agendapunten · ${months.length} maanden · ${firstMonth} t/m ${lastMonth}`;
   }
 
   els.yearAgendaGrid.innerHTML = months
