@@ -63,6 +63,12 @@ function initializeDatabase() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   ensureColumn("users", "address", "TEXT DEFAULT ''");
@@ -71,6 +77,7 @@ function initializeDatabase() {
   renameSeedAdmin();
   seedDatabase();
   seedYearAgenda();
+  syncCsvYearAgendaData();
 }
 
 function ensureColumn(table, column, definition) {
@@ -150,6 +157,58 @@ function seedDatabase() {
   );
 }
 
+const defaultYearAgendaItems = [
+  ["Oktober 2025", 1, "2", "DispuBo"],
+  ["Oktober 2025", 1, "3-5", "Dispuutsweekend"],
+  ["Oktober 2025", 1, "15", "Rendez-vous"],
+  ["Oktober 2025", 1, "18", "Inauguratie 2.0"],
+  ["Oktober 2025", 1, "31", "Kaas-wijn proeverij"],
+  ["November 2025", 2, "6", "DispuBo (o.a. door EscalaCie)"],
+  ["November 2025", 2, "8", "Opening lustrum"],
+  ["November 2025", 2, "9", "DIS ALV"],
+  ["November 2025", 2, "28", "VrijMiBo"],
+  ["December 2025", 3, "4", "DispuBo"],
+  ["December 2025", 3, "13", "Lustrum activiteit"],
+  ["December 2025", 3, "31", "Nieuwjaarsdiner i.p.v. VrijMiBo"],
+  ["Januari 2026", 4, "8", "DispuBo"],
+  ["Januari 2026", 4, "10", "Lustrum activiteit"],
+  ["Januari 2026", 4, "16", "Rendez-vous"],
+  ["Januari 2026", 4, "24", "VrijMiBo"],
+  ["Februari 2026", 5, "5", "DispuBo"],
+  ["Februari 2026", 5, "15", "Rendez-vous"],
+  ["Februari 2026", 5, "27", "VrijMiBo"],
+  ["Maart 2026", 6, "5", "DispuBo"],
+  ["Maart 2026", 6, "15", "Rendez-vous"],
+  ["Maart 2026", 6, "27", "VrijMiBo"],
+  ["April 2026", 7, "2", "DispuBo"],
+  ["April 2026", 7, "9", "Borrel met RemeX"],
+  ["April 2026", 7, "4", "Lustrum activiteit"],
+  ["April 2026", 7, "15", "Rendez-vous"],
+  ["April 2026", 7, "26", "KoNaBo i.p.v. VrijMiBo"],
+  ["Mei 2026", 8, "7", "DispuBo"],
+  ["Mei 2026", 8, "13", "Kennismakingsborrel"],
+  ["Mei 2026", 8, "23-24", "Lustrumactiviteit"],
+  ["Mei 2026", 8, "29", "VrijMiBo"],
+  ["Juni 2026", 9, "4", "DispuBo"],
+  ["Juni 2026", 9, "6-7", "HOCT en cantus"],
+  ["Juni 2026", 9, "26", "VrijMiBo"],
+  ["Juli 2026", 10, "2", "DispuBo"],
+  ["Juli 2026", 10, "11", "Zomer ALV + Kennismakingsborrel"],
+  ["Juli 2026", 10, "30", "LustrumCassiopeia! (t/m 6 augustus)"],
+  ["Augustus 2026", 11, "24", "Eten Kennismakingsweek"],
+  ["Augustus 2026", 11, "27", "Adviesnia + pullen vullen"],
+  ["Augustus 2026", 11, "31", "Start feutenperiode"],
+  ["September 2026", 12, "?", "DispuBo"],
+  ["September 2026", 12, "18", "Avond met RemeX"],
+  ["September 2026", 12, "25", "VrijMiBo"],
+  ["September 2026", 12, "?", "Elke donderdag feutenmoment"],
+  ["September 2026", 12, "?", "Zandvoort"],
+  ["September 2026", 12, "?", "Groningen"],
+  ["Oktober 2026", 13, "2", "DispuBo"],
+  ["Oktober 2026", 13, "2-4", "Dispuutsweekend"],
+  ["Oktober 2026", 13, "24-25", "Lustrumgala met RemeX"]
+];
+
 function seedYearAgenda() {
   const count = db.prepare("SELECT COUNT(*) AS count FROM year_agenda_items").get().count;
   if (count > 0) return;
@@ -159,59 +218,39 @@ function seedYearAgenda() {
     VALUES (?, ?, ?, ?, ?)
   `);
 
-  [
-    ["Oktober", 1, "2", "DispuBo"],
-    ["Oktober", 1, "3-5", "Dispuutsweekend"],
-    ["Oktober", 1, "15", "Rendez-vous"],
-    ["Oktober", 1, "18", "Inauguratie 2.0"],
-    ["Oktober", 1, "31", "Kaas-wijn proeverij"],
-    ["November", 2, "6", "DispuBo (orga door EscalaCie)"],
-    ["November", 2, "8", "Opening lustrum"],
-    ["November", 2, "9", "DIES AIV"],
-    ["November", 2, "28", "VrijMiBo"],
-    ["December", 3, "4", "DispuBo"],
-    ["December", 3, "13", "Lustrum activiteit"],
-    ["December", 3, "31", "Nieuwjaarsdiner ipv VrijMiBo"],
-    ["Januari", 4, "8", "DispuBo"],
-    ["Januari", 4, "10", "Lustrum activiteit"],
-    ["Januari", 4, "16", "Rendez-vous"],
-    ["Januari", 4, "24", "VrijMiBo"],
-    ["Februari", 5, "5", "DispuBo"],
-    ["Februari", 5, "15", "Rendez-vous"],
-    ["Februari", 5, "27", "VrijMiBo"],
-    ["Maart", 6, "5", "DispuBo"],
-    ["Maart", 6, "15", "Rendez-vous"],
-    ["Maart", 6, "27", "VrijMiBo"],
-    ["April", 7, "2", "DispuBo"],
-    ["April", 7, "4", "Lustrum activiteit"],
-    ["April", 7, "9", "Borrel met Remex"],
-    ["April", 7, "15", "Rendez-vous"],
-    ["April", 7, "26", "KoNaBo ipv VrijMiBo"],
-    ["Mei", 8, "7", "DispuBo"],
-    ["Mei", 8, "13", "Kennismakingsborrel"],
-    ["Mei", 8, "23-24", "Lustrumactiviteit"],
-    ["Mei", 8, "29", "VrijMiBo"],
-    ["Juni", 9, "4", "DispuBo"],
-    ["Juni", 9, "6-7", "HOCT en cantus"],
-    ["Juni", 9, "26", "VrijMiBo"],
-    ["Juli", 10, "2", "DispuBo"],
-    ["Juli", 10, "11", "Zomer ALV + Kennismakingsborrel"],
-    ["Juli", 10, "30", "LustrumCassiopeitos! (t/m 6 augustus)"],
-    ["Augustus", 11, "24", "Eten Kennismakingsweek"],
-    ["Augustus", 11, "27", "Abessinia + pullen vullen"],
-    ["Augustus", 11, "31", "Start feutenperiode"],
-    ["September", 12, "?", "DispuBo"],
-    ["September", 12, "18", "Avond met Remex"],
-    ["September", 12, "25", "VrijMiBo"],
-    ["September", 12, "?", "Elke donderdag feutenmoment"],
-    ["September", 12, "?", "Zandvoort"],
-    ["September", 12, "?", "Groningen"],
-    ["Oktober", 13, "2", "DispuBo"],
-    ["Oktober", 13, "2-4", "Dispuutsweekend"],
-    ["Oktober", 13, "24-25", "Lustrumgala met Remex"]
-  ].forEach(([monthLabel, monthIndex, dayLabel, title], index) => {
+  defaultYearAgendaItems.forEach(([monthLabel, monthIndex, dayLabel, title], index) => {
     insertYearAgendaItem.run(monthLabel, monthIndex, dayLabel, title, index + 1);
   });
+}
+
+function syncCsvYearAgendaData() {
+  const versionKey = "year_agenda_data_version";
+  const csvVersion = "cassiopeia_jaarplanning_2025_2026_csv_v1";
+  const currentVersion = db.prepare("SELECT value FROM app_settings WHERE key = ?").get(versionKey)?.value;
+  if (currentVersion === csvVersion) return;
+
+  const rows = db
+    .prepare("SELECT id FROM year_agenda_items ORDER BY month_index ASC, sort_order ASC, id ASC")
+    .all();
+
+  if (rows.length !== defaultYearAgendaItems.length) return;
+
+  const updateItem = db.prepare(`
+      UPDATE year_agenda_items
+      SET month_label = ?, month_index = ?, day_label = ?, title = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+  `);
+
+  rows.forEach((row, index) => {
+    const [monthLabel, monthIndex, dayLabel, title] = defaultYearAgendaItems[index];
+    updateItem.run(monthLabel, monthIndex, dayLabel, title, index + 1, row.id);
+  });
+
+  db.prepare(`
+    INSERT INTO app_settings (key, value, updated_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+  `).run(versionKey, csvVersion);
 }
 
 function renameSeedAdmin() {
