@@ -9,6 +9,66 @@ const state = {
 
 const API_BASE = location.protocol === "file:" || location.port === "5500" ? "http://127.0.0.1:3000" : "";
 
+const DEFAULT_YEAR_AGENDA_ITEMS = [
+  ["Oktober 2025", 1, "2", "DispuBo"],
+  ["Oktober 2025", 1, "3-5", "Dispuutsweekend"],
+  ["Oktober 2025", 1, "15", "Rendez-vous"],
+  ["Oktober 2025", 1, "18", "Inauguratie 2.0"],
+  ["Oktober 2025", 1, "31", "Kaas-wijn proeverij"],
+  ["November 2025", 2, "6", "DispuBo (o.a. door EscalaCie)"],
+  ["November 2025", 2, "8", "Opening lustrum"],
+  ["November 2025", 2, "9", "DIS ALV"],
+  ["November 2025", 2, "28", "VrijMiBo"],
+  ["December 2025", 3, "4", "DispuBo"],
+  ["December 2025", 3, "13", "Lustrum activiteit"],
+  ["December 2025", 3, "31", "Nieuwjaarsdiner i.p.v. VrijMiBo"],
+  ["Januari 2026", 4, "8", "DispuBo"],
+  ["Januari 2026", 4, "10", "Lustrum activiteit"],
+  ["Januari 2026", 4, "16", "Rendez-vous"],
+  ["Januari 2026", 4, "24", "VrijMiBo"],
+  ["Februari 2026", 5, "5", "DispuBo"],
+  ["Februari 2026", 5, "15", "Rendez-vous"],
+  ["Februari 2026", 5, "27", "VrijMiBo"],
+  ["Maart 2026", 6, "5", "DispuBo"],
+  ["Maart 2026", 6, "15", "Rendez-vous"],
+  ["Maart 2026", 6, "27", "VrijMiBo"],
+  ["April 2026", 7, "2", "DispuBo"],
+  ["April 2026", 7, "9", "Borrel met RemeX"],
+  ["April 2026", 7, "4", "Lustrum activiteit"],
+  ["April 2026", 7, "15", "Rendez-vous"],
+  ["April 2026", 7, "26", "KoNaBo i.p.v. VrijMiBo"],
+  ["Mei 2026", 8, "7", "DispuBo"],
+  ["Mei 2026", 8, "13", "Kennismakingsborrel"],
+  ["Mei 2026", 8, "23-24", "Lustrumactiviteit"],
+  ["Mei 2026", 8, "29", "VrijMiBo"],
+  ["Juni 2026", 9, "4", "DispuBo"],
+  ["Juni 2026", 9, "6-7", "HOCT en cantus"],
+  ["Juni 2026", 9, "26", "VrijMiBo"],
+  ["Juli 2026", 10, "2", "DispuBo"],
+  ["Juli 2026", 10, "11", "Zomer ALV + Kennismakingsborrel"],
+  ["Juli 2026", 10, "30", "LustrumCassiopeia! (t/m 6 augustus)"],
+  ["Augustus 2026", 11, "24", "Eten Kennismakingsweek"],
+  ["Augustus 2026", 11, "27", "Adviesnia + pullen vullen"],
+  ["Augustus 2026", 11, "31", "Start feutenperiode"],
+  ["September 2026", 12, "?", "DispuBo"],
+  ["September 2026", 12, "18", "Avond met RemeX"],
+  ["September 2026", 12, "25", "VrijMiBo"],
+  ["September 2026", 12, "?", "Elke donderdag feutenmoment"],
+  ["September 2026", 12, "?", "Zandvoort"],
+  ["September 2026", 12, "?", "Groningen"],
+  ["Oktober 2026", 13, "2", "DispuBo"],
+  ["Oktober 2026", 13, "2-4", "Dispuutsweekend"],
+  ["Oktober 2026", 13, "24-25", "Lustrumgala met RemeX"]
+].map(([monthLabel, monthIndex, dayLabel, title], index) => ({
+  id: `default-${index + 1}`,
+  monthLabel,
+  monthIndex,
+  dayLabel,
+  title,
+  sortOrder: index + 1,
+  isDefault: true
+}));
+
 const els = {
   siteHeader: document.querySelector(".site-header"),
   appMain: document.querySelector("main"),
@@ -373,8 +433,13 @@ async function loadActivities() {
 }
 
 async function loadYearAgenda() {
-  const data = await api("/api/year-agenda");
-  state.yearAgendaItems = data.items;
+  try {
+    const data = await api("/api/year-agenda");
+    state.yearAgendaItems = data.items?.length ? data.items : DEFAULT_YEAR_AGENDA_ITEMS;
+  } catch (error) {
+    state.yearAgendaItems = DEFAULT_YEAR_AGENDA_ITEMS;
+    showToast("Jaarplanning lokaal geladen. Server opslaan kan tijdelijk niet werken.");
+  }
   renderYearAgenda();
 }
 
@@ -427,7 +492,7 @@ function renderYearAgenda() {
                     <span class="year-agenda-date">${escapeHtml(item.dayLabel)}</span>
                     <span class="year-agenda-title">${escapeHtml(item.title)}</span>
                     ${
-                      state.user?.isAdmin
+                      state.user?.isAdmin && !item.isDefault
                         ? `<span class="year-agenda-actions">
                             <button type="button" class="icon-action" data-edit-year-agenda="${item.id}" aria-label="Agendapunt bewerken">Bewerk</button>
                             <button type="button" class="icon-action danger-action" data-delete-year-agenda="${item.id}" aria-label="Agendapunt verwijderen">Verwijder</button>
@@ -809,15 +874,19 @@ els.memberForm.addEventListener("submit", async (event) => {
 
 els.yearAgendaForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const data = formJson(els.yearAgendaForm);
-  const id = data.id;
-  await api(id ? `/api/year-agenda/${id}` : "/api/year-agenda", {
-    method: id ? "PUT" : "POST",
-    body: JSON.stringify(data)
-  });
-  els.yearAgendaDialog.close();
-  await loadYearAgenda();
-  showToast("Agendapunt opgeslagen.");
+  try {
+    const data = formJson(els.yearAgendaForm);
+    const id = data.id;
+    await api(id ? `/api/year-agenda/${id}` : "/api/year-agenda", {
+      method: id ? "PUT" : "POST",
+      body: JSON.stringify(data)
+    });
+    els.yearAgendaDialog.close();
+    await loadYearAgenda();
+    showToast("Agendapunt opgeslagen.");
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
 els.activityForm.addEventListener("submit", async (event) => {
