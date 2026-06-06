@@ -5,7 +5,6 @@ const state = {
   yearAgendaItems: [],
   yearAgendaSummaryText: "",
   yearAgendaUsesLocalData: false,
-  activeYearAgendaMonthIndex: null,
   memberStatusFilter: "",
   openMemberId: null
 };
@@ -111,9 +110,6 @@ const els = {
   memberGrid: document.querySelector("#memberGrid"),
   memberDetail: document.querySelector("#memberDetail"),
   yearAgendaSummary: document.querySelector("#yearAgendaSummary"),
-  yearAgendaPrev: document.querySelector("#yearAgendaPrev"),
-  yearAgendaNext: document.querySelector("#yearAgendaNext"),
-  yearAgendaMonthSelect: document.querySelector("#yearAgendaMonthSelect"),
   yearAgendaGrid: document.querySelector("#yearAgendaGrid"),
   publicActivityList: document.querySelector("#publicActivityList"),
   profileForm: document.querySelector("#profileForm"),
@@ -491,37 +487,13 @@ function groupedYearAgendaItems() {
     }
     months.get(key).items.push(item);
   });
-  months.forEach((month) => {
-    month.items.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  });
   return [...months.values()].sort((a, b) => a.monthIndex - b.monthIndex);
-}
-
-function activeYearAgendaMonth(months) {
-  if (!months.length) return null;
-  const activeMonth = months.find((month) => month.monthIndex === state.activeYearAgendaMonthIndex);
-  if (activeMonth) return activeMonth;
-  state.activeYearAgendaMonthIndex = months[0].monthIndex;
-  return months[0];
-}
-
-function renderYearAgendaToolbar(months, activeMonth) {
-  if (!els.yearAgendaMonthSelect) return;
-  els.yearAgendaMonthSelect.innerHTML = months
-    .map((month) => `<option value="${month.monthIndex}">${escapeHtml(month.monthLabel)}</option>`)
-    .join("");
-  els.yearAgendaMonthSelect.value = String(activeMonth?.monthIndex || "");
-
-  const activeIndex = months.findIndex((month) => month.monthIndex === activeMonth?.monthIndex);
-  if (els.yearAgendaPrev) els.yearAgendaPrev.disabled = activeIndex <= 0;
-  if (els.yearAgendaNext) els.yearAgendaNext.disabled = activeIndex === -1 || activeIndex >= months.length - 1;
 }
 
 function renderYearAgenda() {
   if (!els.yearAgendaGrid) return;
   const months = groupedYearAgendaItems();
   if (!months.length) {
-    renderYearAgendaToolbar([], null);
     if (els.yearAgendaSummary) els.yearAgendaSummary.textContent = state.yearAgendaSummaryText || "Nog geen agendapunten toegevoegd.";
     els.yearAgendaGrid.innerHTML = `
       <article class="year-month">
@@ -531,8 +503,6 @@ function renderYearAgenda() {
     `;
     return;
   }
-  const activeMonth = activeYearAgendaMonth(months);
-  renderYearAgendaToolbar(months, activeMonth);
 
   if (els.yearAgendaSummary) {
     const firstMonth = months[0].monthLabel;
@@ -544,31 +514,35 @@ function renderYearAgenda() {
     `;
   }
 
-  els.yearAgendaGrid.innerHTML = `
-    <article class="year-month year-month-active">
-      <h3>${escapeHtml(activeMonth.monthLabel)}</h3>
-      <div class="year-month-items">
-        ${activeMonth.items
-          .map(
-            (item) => `
-              <div class="year-agenda-item">
-                <span class="year-agenda-date">${escapeHtml(item.dayLabel)}</span>
-                <span class="year-agenda-title">${escapeHtml(item.title)}</span>
-                ${
-                  state.user?.isAdmin
-                    ? `<span class="year-agenda-actions">
-                        <button type="button" class="icon-action" data-edit-year-agenda="${item.id}" aria-label="Agendapunt bewerken" title="Bewerk">B</button>
-                        <button type="button" class="icon-action danger-action" data-delete-year-agenda="${item.id}" aria-label="Agendapunt verwijderen" title="Verwijder">x</button>
-                      </span>`
-                    : ""
-                }
-              </div>
-            `
-          )
-          .join("")}
-      </div>
-    </article>
-  `;
+  els.yearAgendaGrid.innerHTML = months
+    .map(
+      (month) => `
+        <article class="year-month">
+          <h3>${escapeHtml(month.monthLabel)}</h3>
+          <div class="year-month-items">
+            ${month.items
+              .map(
+                (item) => `
+                  <div class="year-agenda-item">
+                    <span class="year-agenda-date">${escapeHtml(item.dayLabel)}</span>
+                    <span class="year-agenda-title">${escapeHtml(item.title)}</span>
+                    ${
+                      state.user?.isAdmin
+                        ? `<span class="year-agenda-actions">
+                            <button type="button" class="icon-action" data-edit-year-agenda="${item.id}" aria-label="Agendapunt bewerken" title="Bewerk">B</button>
+                            <button type="button" class="icon-action danger-action" data-delete-year-agenda="${item.id}" aria-label="Agendapunt verwijderen" title="Verwijder">x</button>
+                          </span>`
+                        : ""
+                    }
+                  </div>
+                `
+              )
+              .join("")}
+          </div>
+        </article>
+      `
+    )
+    .join("");
 }
 
 function renderPublicActivities() {
@@ -662,11 +636,10 @@ function openYearAgendaDialog(item = null) {
   els.yearAgendaDialogTitle.textContent = item ? "Agendapunt wijzigen" : "Nieuw agendapunt";
   const fields = els.yearAgendaForm.elements;
   const bulkFields = els.yearAgendaForm.querySelectorAll("[data-bulk-year-agenda]");
-  const activeMonth = item ? null : activeYearAgendaMonth(groupedYearAgendaItems());
   const nextSortOrder = state.yearAgendaItems.length ? Math.max(...state.yearAgendaItems.map((agendaItem) => agendaItem.sortOrder || 0)) + 1 : 1;
   fields.id.value = item?.id || "";
-  fields.monthLabel.value = item?.monthLabel || activeMonth?.monthLabel || "";
-  fields.monthIndex.value = item?.monthIndex || activeMonth?.monthIndex || "";
+  fields.monthLabel.value = item?.monthLabel || "";
+  fields.monthIndex.value = item?.monthIndex || "";
   fields.dayLabel.value = item?.dayLabel || "";
   fields.sortOrder.value = item?.sortOrder ?? nextSortOrder;
   fields.title.value = item?.title || "";
@@ -849,29 +822,6 @@ els.newMemberBtn.addEventListener("click", () => openMemberDialog());
 els.newYearAgendaItemBtn.addEventListener("click", () => openYearAgendaDialog());
 els.newActivityBtn.addEventListener("click", () => openActivityDialog());
 
-els.yearAgendaMonthSelect.addEventListener("change", () => {
-  state.activeYearAgendaMonthIndex = Number(els.yearAgendaMonthSelect.value);
-  renderYearAgenda();
-});
-
-els.yearAgendaPrev.addEventListener("click", () => {
-  const months = groupedYearAgendaItems();
-  const index = months.findIndex((month) => month.monthIndex === state.activeYearAgendaMonthIndex);
-  if (index > 0) {
-    state.activeYearAgendaMonthIndex = months[index - 1].monthIndex;
-    renderYearAgenda();
-  }
-});
-
-els.yearAgendaNext.addEventListener("click", () => {
-  const months = groupedYearAgendaItems();
-  const index = months.findIndex((month) => month.monthIndex === state.activeYearAgendaMonthIndex);
-  if (index >= 0 && index < months.length - 1) {
-    state.activeYearAgendaMonthIndex = months[index + 1].monthIndex;
-    renderYearAgenda();
-  }
-});
-
 els.menuToggle.addEventListener("click", () => {
   const isOpen = els.siteHeader.classList.toggle("menu-open");
   els.menuToggle.setAttribute("aria-expanded", String(isOpen));
@@ -1036,7 +986,6 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
 
     if (state.yearAgendaUsesLocalData || String(id).startsWith("default-") || String(id).startsWith("local-")) {
       if (bulkItems.length) {
-        state.activeYearAgendaMonthIndex = bulkItems[0].monthIndex;
         const nextItems = [
           ...state.yearAgendaItems,
           ...bulkItems.map((item, index) => ({
@@ -1066,7 +1015,6 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
         ? state.yearAgendaItems.map((agendaItem) => (String(agendaItem.id) === String(id) ? item : agendaItem))
         : [...state.yearAgendaItems, item];
       state.yearAgendaItems = nextItems;
-      state.activeYearAgendaMonthIndex = item.monthIndex;
       state.yearAgendaUsesLocalData = true;
       saveLocalYearAgendaItems(nextItems);
       els.yearAgendaDialog.close();
@@ -1075,7 +1023,6 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
     }
 
     if (bulkItems.length) {
-      state.activeYearAgendaMonthIndex = bulkItems[0].monthIndex;
       await Promise.all(
         bulkItems.map((item) =>
           api("/api/year-agenda", {
@@ -1094,7 +1041,6 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
       body: JSON.stringify(data)
     });
     els.yearAgendaDialog.close();
-    state.activeYearAgendaMonthIndex = Number(data.monthIndex) || state.activeYearAgendaMonthIndex;
     await loadYearAgenda();
     showToast("Agendapunt opgeslagen.");
   } catch (error) {
