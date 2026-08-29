@@ -1615,6 +1615,74 @@ label {
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
 }
 
+.admin-image-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-image-edit-card {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  background: var(--lavender-50);
+}
+
+.admin-image-preview {
+  width: 116px;
+  height: 116px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
+}
+
+.admin-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.admin-image-preview-hero img {
+  object-fit: cover;
+}
+
+.admin-image-edit-card h3 {
+  margin: 5px 0 12px;
+  font-family: var(--serif);
+  font-size: 22px;
+}
+
+.image-upload-button {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border: 1px solid rgba(128, 104, 146, 0.22);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: var(--plum);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.image-upload-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .confession-card p {
   margin: 0 0 12px;
   white-space: pre-wrap;
@@ -2307,6 +2375,10 @@ dialog::backdrop {
   }
 
   .confession-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-image-edit-grid {
     grid-template-columns: 1fr;
   }
 

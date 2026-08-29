@@ -1513,6 +1513,19 @@ els.siteImagesForm?.addEventListener("submit", async (event) => {
   }
 });
 
+["logo", "hero"].forEach((key) => {
+  const input = els.siteImagesForm?.elements[key];
+  input?.addEventListener("change", () => {
+    const file = input.files[0];
+    if (!file) return;
+    const preview = document.querySelector(`[data-admin-image-preview="${key}"]`);
+    if (!preview) return;
+    const objectUrl = URL.createObjectURL(file);
+    preview.src = objectUrl;
+    preview.addEventListener("load", () => URL.revokeObjectURL(objectUrl), { once: true });
+  });
+});
+
 els.confessionForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
