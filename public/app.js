@@ -10,7 +10,8 @@ const state = {
   openMemberId: null,
   activationToken: "",
   importRecords: [],
-  bulkInvitations: []
+  bulkInvitations: [],
+  selectedMemberIds: new Set()
 };
 
 const API_BASE = location.protocol === "file:" || location.port === "5500" ? "http://127.0.0.1:3000" : "";
@@ -179,6 +180,12 @@ const els = {
   bulkInvitationList: document.querySelector("#bulkInvitationList"),
   downloadBulkInvitations: document.querySelector("#downloadBulkInvitations"),
   copyBulkInvitations: document.querySelector("#copyBulkInvitations"),
+  adminSelectAll: document.querySelector("#adminSelectAll"),
+  adminSelectionCount: document.querySelector("#adminSelectionCount"),
+  bulkDeleteMembers: document.querySelector("#bulkDeleteMembers"),
+  bulkDeleteDialog: document.querySelector("#bulkDeleteDialog"),
+  bulkDeleteIntro: document.querySelector("#bulkDeleteIntro"),
+  bulkDeleteForm: document.querySelector("#bulkDeleteForm"),
   toast: document.querySelector("#toast")
 };
 
@@ -466,6 +473,7 @@ function setLoggedOut() {
   state.activities = [];
   state.yearAgendaItems = [];
   state.openMemberId = null;
+  state.selectedMemberIds.clear();
   els.loginScreen.classList.remove("hidden");
   els.loginForm.classList.toggle("hidden", Boolean(state.activationToken));
   els.activationForm.classList.toggle("hidden", !state.activationToken);
@@ -578,6 +586,7 @@ function renderAdminAccounts() {
   if (!els.adminAccountList) return;
   if (!state.user?.isAdmin) {
     els.adminAccountList.innerHTML = "";
+    syncMemberSelection([]);
     return;
   }
   const query = String(els.adminSearch?.value || "").trim().toLocaleLowerCase("nl");
@@ -591,12 +600,16 @@ function renderAdminAccounts() {
   if (els.adminDisabledCount) els.adminDisabledCount.textContent = String(state.members.filter((member) => member.accountStatus === "disabled").length);
   if (!members.length) {
     els.adminAccountList.innerHTML = '<article class="locked-panel"><h3>Geen accounts gevonden</h3><p>Probeer een andere naam of e-mailadres.</p></article>';
+    syncMemberSelection(members);
     return;
   }
   els.adminAccountList.innerHTML = members
     .map(
       (member) => `
-        <article class="admin-account-row">
+        <article class="admin-account-row has-select" data-selected="${state.selectedMemberIds.has(Number(member.id))}">
+          <label class="admin-account-select-wrap${member.isAdmin ? " is-locked" : ""}" title="${member.isAdmin ? "Adminaccounts kunnen niet bulk worden verwijderd" : "Selecteer lid"}">
+            <input class="admin-account-select" type="checkbox" data-member-select="${member.id}" ${member.isAdmin ? "disabled" : ""} ${state.selectedMemberIds.has(Number(member.id)) ? "checked" : ""} aria-label="Selecteer ${escapeHtml(member.name)}" />
+          </label>
           <div class="admin-account-copy">
             <strong>${escapeHtml(member.name)}</strong>
             <p class="meta">${escapeHtml(member.email)} · ${escapeHtml(formatLichting(member.yearLayer))}</p>
@@ -616,6 +629,31 @@ function renderAdminAccounts() {
       `
     )
     .join("");
+  syncMemberSelection(members);
+}
+
+function syncMemberSelection(visibleMembers = []) {
+  const validIds = new Set(state.members.filter((member) => !member.isAdmin).map((member) => Number(member.id)));
+  state.selectedMemberIds = new Set([...state.selectedMemberIds].filter((id) => validIds.has(id)));
+  const selectableVisible = visibleMembers.filter((member) => !member.isAdmin);
+  const selectedVisible = selectableVisible.filter((member) => state.selectedMemberIds.has(Number(member.id)));
+  if (els.adminSelectionCount) {
+    const count = state.selectedMemberIds.size;
+    els.adminSelectionCount.textContent = `${count} ${count === 1 ? "lid" : "leden"} geselecteerd`;
+  }
+  if (els.bulkDeleteMembers) els.bulkDeleteMembers.disabled = state.selectedMemberIds.size === 0;
+  if (els.adminSelectAll) {
+    els.adminSelectAll.checked = selectableVisible.length > 0 && selectedVisible.length === selectableVisible.length;
+    els.adminSelectAll.indeterminate = selectedVisible.length > 0 && selectedVisible.length < selectableVisible.length;
+    els.adminSelectAll.disabled = selectableVisible.length === 0;
+  }
+}
+
+function openBulkDeleteDialog() {
+  const count = state.selectedMemberIds.size;
+  if (!count) return;
+  els.bulkDeleteIntro.textContent = `Je staat op het punt ${count} ${count === 1 ? "lid" : "leden"} definitief te verwijderen. Profielen, uitnodigingen en inschrijvingen verdwijnen mee.`;
+  els.bulkDeleteDialog.showModal();
 }
 
 async function showMemberDetail(id) {
@@ -1197,6 +1235,35 @@ els.copyBulkInvitations.addEventListener("click", async () => {
 els.memberSearch.addEventListener("input", () => loadMembers().catch((error) => showToast(error.message)));
 els.memberYearFilter.addEventListener("change", renderMembers);
 els.adminSearch?.addEventListener("input", renderAdminAccounts);
+els.adminSelectAll?.addEventListener("change", () => {
+  const query = String(els.adminSearch?.value || "").trim().toLocaleLowerCase("nl");
+  const visibleMembers = state.members.filter((member) => {
+    if (!query) return true;
+    return [member.name, member.email, member.yearLayer, member.roleTitle]
+      .some((value) => String(value || "").toLocaleLowerCase("nl").includes(query));
+  });
+  visibleMembers.filter((member) => !member.isAdmin).forEach((member) => {
+    const id = Number(member.id);
+    if (els.adminSelectAll.checked) state.selectedMemberIds.add(id);
+    else state.selectedMemberIds.delete(id);
+  });
+  renderAdminAccounts();
+});
+els.adminAccountList?.addEventListener("change", (event) => {
+  const checkbox = event.target.closest("[data-member-select]");
+  if (!checkbox || checkbox.disabled) return;
+  const id = Number(checkbox.dataset.memberSelect);
+  if (checkbox.checked) state.selectedMemberIds.add(id);
+  else state.selectedMemberIds.delete(id);
+  const row = checkbox.closest(".admin-account-row");
+  if (row) row.dataset.selected = String(checkbox.checked);
+  syncMemberSelection(state.members.filter((member) => {
+    const query = String(els.adminSearch?.value || "").trim().toLocaleLowerCase("nl");
+    return !query || [member.name, member.email, member.yearLayer, member.roleTitle]
+      .some((value) => String(value || "").toLocaleLowerCase("nl").includes(query));
+  }));
+});
+els.bulkDeleteMembers?.addEventListener("click", openBulkDeleteDialog);
 els.clearMemberFilters.addEventListener("click", () => {
   state.memberStatusFilter = "";
   els.memberYearFilter.value = "";
@@ -1312,6 +1379,28 @@ els.profileForm.addEventListener("submit", async (event) => {
     showToast("Profiel opgeslagen.");
   } catch (error) {
     showToast(error.message);
+  }
+});
+
+els.bulkDeleteForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const ids = [...state.selectedMemberIds];
+  if (!ids.length) return els.bulkDeleteDialog.close();
+  const submitButton = els.bulkDeleteForm.querySelector("[type='submit']");
+  submitButton.disabled = true;
+  try {
+    const { deleted } = await api("/api/members/bulk-delete", {
+      method: "POST",
+      body: JSON.stringify({ ids })
+    });
+    els.bulkDeleteDialog.close();
+    state.selectedMemberIds.clear();
+    await refreshPortal();
+    showToast(`${deleted} ${deleted === 1 ? "lid is" : "leden zijn"} verwijderd.`);
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    submitButton.disabled = false;
   }
 });
 

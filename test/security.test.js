@@ -352,6 +352,37 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(duplicateBulkImport.response.status, 409);
 
+  const bulkDeleteCandidates = await Promise.all([
+    jsonRequest(baseUrl, "/api/members", {
+      method: "POST",
+      cookie: adminLogin.cookie,
+      body: { name: "Bulk Verwijder Een", email: "bulk-delete-one@example.nl", yearLayer: "2026" }
+    }),
+    jsonRequest(baseUrl, "/api/members", {
+      method: "POST",
+      cookie: adminLogin.cookie,
+      body: { name: "Bulk Verwijder Twee", email: "bulk-delete-two@example.nl", yearLayer: "2025" }
+    })
+  ]);
+  assert.deepEqual(bulkDeleteCandidates.map((candidate) => candidate.response.status).sort(), [201, 201]);
+  const bulkDelete = await jsonRequest(baseUrl, "/api/members/bulk-delete", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { ids: bulkDeleteCandidates.map((candidate) => candidate.data.member.id) }
+  });
+  assert.equal(bulkDelete.response.status, 200);
+  assert.equal(bulkDelete.data.deleted, 2);
+  const deletedMember = await jsonRequest(baseUrl, `/api/members/${bulkDeleteCandidates[0].data.member.id}`, {
+    cookie: adminLogin.cookie
+  });
+  assert.equal(deletedMember.response.status, 404);
+  const protectedBulkDelete = await jsonRequest(baseUrl, "/api/members/bulk-delete", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { ids: [adminLogin.data.user.id] }
+  });
+  assert.equal(protectedBulkDelete.response.status, 400);
+
   const created = await jsonRequest(baseUrl, "/api/members", {
     method: "POST",
     cookie: adminLogin.cookie,

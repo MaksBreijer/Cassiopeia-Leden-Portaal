@@ -273,6 +273,11 @@
           <div><p class="eyebrow">Accounts</p><h2>Ledenbeheer</h2></div>
           <label class="search-field"><span>Zoeken</span><input id="adminSearch" type="search" placeholder="Zoek op naam of e-mail" /></label>
         </div>
+        <div class="admin-bulk-toolbar" aria-label="Bulkacties">
+          <label class="bulk-select-all"><input id="adminSelectAll" type="checkbox" /> <span>Selecteer alle zichtbare niet-adminleden</span></label>
+          <span id="adminSelectionCount" class="admin-selection-count" aria-live="polite">0 leden geselecteerd</span>
+          <button id="bulkDeleteMembers" class="danger" type="button" disabled>Verwijder selectie</button>
+        </div>
         <div id="adminAccountList" class="admin-account-list" aria-live="polite"></div>
       </section>
     </main>
@@ -337,6 +342,21 @@
           <button id="copyBulkInvitations" type="button" class="primary">Kopieer alle links</button>
         </div>
       </div>
+    </dialog>
+
+    <dialog id="bulkDeleteDialog">
+      <form id="bulkDeleteForm" method="dialog" class="dialog-card">
+        <div class="dialog-heading">
+          <p class="eyebrow">Ledenbeheer</p>
+          <h3>Geselecteerde leden verwijderen?</h3>
+          <p id="bulkDeleteIntro">Je staat op het punt geselecteerde leden definitief te verwijderen.</p>
+        </div>
+        <p class="bulk-delete-note">Profielen, uitnodigingen en inschrijvingen worden definitief verwijderd. Adminaccounts blijven altijd behouden.</p>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" data-close>Annuleren</button>
+          <button type="submit" class="danger">Definitief verwijderen</button>
+        </div>
+      </form>
     </dialog>
 
     <dialog id="memberDialog">
@@ -450,6 +470,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260829-responsive"></script>
+    <script src="app.js?v=20260829-bulk-delete"></script>
   </body>
 </html>

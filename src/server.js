@@ -567,6 +567,42 @@ app.post("/api/members", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+app.post("/api/members/bulk-delete", requireAuth, requireAdmin, (req, res) => {
+  const rawIds = Array.isArray(req.body.ids) ? req.body.ids : [];
+  const ids = [...new Set(rawIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0))];
+  if (!ids.length) return res.status(400).json({ error: "Selecteer minimaal één lid." });
+  if (ids.length > MAX_IMPORT_ROWS) return res.status(400).json({ error: `Verwijder maximaal ${MAX_IMPORT_ROWS} leden tegelijk.` });
+  if (ids.includes(Number(req.session.userId))) {
+    return res.status(400).json({ error: "Je kunt je eigen adminaccount niet verwijderen." });
+  }
+
+  const placeholders = ids.map(() => "?").join(",");
+  const targets = db.prepare(`SELECT id, is_admin FROM users WHERE id IN (${placeholders})`).all(...ids);
+  if (targets.length !== ids.length) {
+    return res.status(409).json({ error: "De ledenlijst is gewijzigd. Vernieuw de pagina en probeer opnieuw." });
+  }
+  if (targets.some((target) => target.is_admin)) {
+    return res.status(403).json({ error: "Adminaccounts kunnen niet bulk worden verwijderd." });
+  }
+
+  const targetIds = targets.map((target) => Number(target.id));
+  const deleteUsers = db.prepare(`DELETE FROM users WHERE id IN (${targetIds.map(() => "?").join(",")}) AND is_admin = 0`);
+  const deleted = db.transaction(() => {
+    const deleteSession = db.prepare("DELETE FROM sessions WHERE sid = ?");
+    const targetSet = new Set(targetIds);
+    db.prepare("SELECT sid, sess FROM sessions").all().forEach((session) => {
+      try {
+        if (targetSet.has(Number(JSON.parse(session.sess).userId))) deleteSession.run(session.sid);
+      } catch {
+        // Leave malformed sessions untouched; deleting users still invalidates their account data.
+      }
+    });
+    return deleteUsers.run(...targetIds).changes;
+  })();
+
+  res.json({ deleted });
+});
+
 app.put("/api/members/:id", requireAuth, requireAdmin, async (req, res) => {
   const existing = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);
   if (!existing) return res.status(404).json({ error: "Lid niet gevonden." });
