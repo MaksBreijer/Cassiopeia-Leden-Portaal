@@ -4,7 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dameschdispuut Cassiopeia</title>
-    <link rel="stylesheet" href="styles.css?v=20260606-year-agenda" />
+    <link rel="icon" type="image/jpeg" href="assets/cassiopeia-embleem.jpeg" />
+    <link rel="stylesheet" href="styles.css?v=20260829-secure-accounts" />
   </head>
   <body>
     <div class="top-marquee" aria-hidden="true">
@@ -19,17 +20,30 @@
       <div class="login-word login-word-lef" aria-hidden="true">LEF</div>
       <div class="login-word login-word-lustrum" aria-hidden="true">LUSTRUM III</div>
       <form id="loginForm" class="login-card">
+        <img class="login-crest" src="assets/cassiopeia-embleem.jpeg" alt="Embleem van Dameschdispuut Cassiopeia" />
         <h1>Login Dameschdispuut Cassiopeia</h1>
         <input name="email" type="email" autocomplete="email" placeholder="E-mailadres" aria-label="E-mail" required />
         <input name="password" type="password" autocomplete="current-password" placeholder="Wachtwoord" aria-label="Wachtwoord" required />
         <button type="submit" class="login-submit">Inloggen</button>
+        <p class="login-help">Nog geen wachtwoord? Vraag een beheerder om een persoonlijke uitnodigingslink.</p>
         <p id="loginError" class="login-error"></p>
+      </form>
+      <form id="activationForm" class="login-card hidden">
+        <img class="login-crest" src="assets/cassiopeia-embleem.jpeg" alt="Embleem van Dameschdispuut Cassiopeia" />
+        <p class="eyebrow">Persoonlijke uitnodiging</p>
+        <h1 id="activationTitle">Account activeren</h1>
+        <p id="activationIntro" class="login-help">Uitnodiging controleren...</p>
+        <input name="password" type="password" autocomplete="new-password" minlength="12" placeholder="Nieuw wachtwoord (minimaal 12 tekens)" aria-label="Nieuw wachtwoord" required />
+        <input name="passwordConfirm" type="password" autocomplete="new-password" minlength="12" placeholder="Herhaal nieuw wachtwoord" aria-label="Herhaal nieuw wachtwoord" required />
+        <button type="submit" class="login-submit">Wachtwoord instellen</button>
+        <button type="button" class="ghost" data-cancel-activation>Terug naar inloggen</button>
+        <p id="activationError" class="login-error"></p>
       </form>
     </section>
 
     <header class="site-header hidden">
       <a class="brand" href="#home" aria-label="Cassiopeia home">
-        <span class="brand-mark">C</span>
+        <span class="brand-mark brand-mark-crest"><img src="assets/cassiopeia-embleem.jpeg" alt="" /></span>
         <span class="brand-name">Dameschdispuut Cassiopeia</span>
       </a>
       <button id="menuToggle" class="menu-toggle" type="button" aria-label="Menu openen" aria-expanded="false">
@@ -40,6 +54,7 @@
       <nav class="site-nav" aria-label="Hoofdnavigatie">
         <a href="#home">Home</a>
         <a href="#leden">Leden</a>
+        <a class="admin-only hidden" href="#beheer">Beheer</a>
         <a href="#profiel">Profiel</a>
         <a class="header-profile-link" href="#profiel" aria-label="Mijn profiel">
           <span id="headerProfileAvatar" class="header-profile-avatar avatar">C</span>
@@ -146,13 +161,27 @@
             <label class="wide">Adres<input name="address" autocomplete="street-address" /></label>
             <label class="wide">Profielfoto wijzigen<input id="profilePhoto" name="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp" /></label>
             <label>Huidig wachtwoord<input name="currentPassword" type="password" autocomplete="current-password" /></label>
-            <label>Nieuw wachtwoord<input name="newPassword" type="password" autocomplete="new-password" minlength="8" /></label>
-            <p class="profile-help wide">Je profielfoto mag maximaal 5 MB zijn. Wil je je standaard wachtwoord wijzigen? Vul dan je huidige wachtwoord en een nieuw wachtwoord in.</p>
+            <label>Nieuw wachtwoord<input name="newPassword" type="password" autocomplete="new-password" minlength="12" /></label>
+            <p class="profile-help wide">Je profielfoto mag maximaal 5 MB zijn. Een nieuw wachtwoord heeft minimaal 12 tekens. Na een wijziging worden je andere sessies uitgelogd.</p>
           </div>
           <div class="dialog-actions">
             <button type="submit" class="primary">Profiel opslaan</button>
           </div>
         </form>
+      </section>
+
+      <section id="beheer" class="section page-view admin-only hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Adminomgeving</p>
+            <h1>Accounts beheren</h1>
+          </div>
+          <button class="primary" data-new-member>Nieuw lid uitnodigen</button>
+        </div>
+        <div class="admin-summary">
+          <p>Nieuwe leden krijgen een eenmalige link en kiezen zelf hun wachtwoord. Wachtwoorden zijn nooit zichtbaar voor beheerders.</p>
+        </div>
+        <div id="adminAccountList" class="admin-account-list"></div>
       </section>
     </main>
 
@@ -176,14 +205,35 @@
           <label>Initialen zonder profielfoto<input name="avatar" maxlength="2" placeholder="Alleen als er geen foto is" /></label>
           <label class="wide">Adres<input name="address" autocomplete="street-address" /></label>
           <label class="wide">Bio<textarea name="bio" rows="4"></textarea></label>
-          <label class="wide">Nieuw wachtwoord<input name="password" type="password" autocomplete="new-password" minlength="8" placeholder="Alleen invullen bij nieuw of wijzigen" /></label>
+          <label>Accountstatus
+            <select name="accountStatus">
+              <option value="pending">Uitnodiging open</option>
+              <option value="active">Actief</option>
+              <option value="disabled">Uitgeschakeld</option>
+            </select>
+          </label>
           <label class="check wide"><input name="isAdmin" type="checkbox" /> Adminrechten</label>
+          <p class="form-help wide">Bij een nieuw lid wordt automatisch een eenmalige uitnodigingslink gemaakt. Het lid kiest daarmee zelf een wachtwoord.</p>
         </div>
         <div class="dialog-actions">
           <button type="button" class="ghost" data-close>Sluiten</button>
           <button type="submit" class="primary">Opslaan</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog id="invitationDialog">
+      <div class="dialog-card">
+        <p class="eyebrow">Eenmalige link</p>
+        <h3 id="invitationDialogTitle">Uitnodiging delen</h3>
+        <p id="invitationDialogText" class="meta"></p>
+        <label class="wide">Persoonlijke link<input id="invitationUrl" readonly /></label>
+        <p class="form-help">De link verloopt na 48 uur en werkt maar één keer. Deel hem uitsluitend privé met het betreffende lid.</p>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" data-close>Sluiten</button>
+          <button id="copyInvitationBtn" type="button" class="primary">Link kopiëren</button>
+        </div>
+      </div>
     </dialog>
 
     <dialog id="yearAgendaDialog">
@@ -246,6 +296,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260606-year-agenda"></script>
+    <script src="app.js?v=20260829-secure-accounts"></script>
   </body>
 </html>

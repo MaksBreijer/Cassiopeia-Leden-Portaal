@@ -2,7 +2,9 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { spawnSync } = require("node:child_process");
+const net = require("node:net");
+const { once } = require("node:events");
+const { spawn, spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const projectRoot = path.join(__dirname, "..");
@@ -15,6 +17,46 @@ function runDatabaseScript(dataDir, script, extraEnv = {}) {
   });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
+}
+
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const { port } = server.address();
+      server.close(() => resolve(port));
+    });
+  });
+}
+
+async function waitForServer(baseUrl, child, stderr) {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    if (child.exitCode !== null) throw new Error(`Server stopte voortijdig: ${stderr()}`);
+    try {
+      const response = await fetch(`${baseUrl}/api/session`);
+      if (response.ok) return;
+    } catch (error) {
+      // De server is nog aan het starten.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`Server startte niet op tijd: ${stderr()}`);
+}
+
+async function jsonRequest(baseUrl, pathName, { method = "GET", body, cookie, origin } = {}) {
+  const headers = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (cookie) headers.Cookie = cookie;
+  if (origin) headers.Origin = origin;
+  const response = await fetch(`${baseUrl}${pathName}`, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+  const data = await response.json().catch(() => ({}));
+  const setCookie = response.headers.get("set-cookie");
+  return { response, data, cookie: setCookie?.split(";")[0] || "" };
 }
 
 test("the login form does not publish credentials", () => {
@@ -127,4 +169,145 @@ test("previously exposed passwords and sessions are revoked once", (t) => {
     safePasswordStillWorks: true,
     sessions: 0
   });
+});
+
+test("admins invite members who set and reset their own password", async (t) => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "cassiopeia-http-test-"));
+  const port = await freePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  let serverError = "";
+  const child = spawn(process.execPath, ["src/server.js"], {
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      NODE_ENV: "test",
+      DATA_DIR: dataDir,
+      PORT: String(port),
+      BOOTSTRAP_ADMIN_EMAIL: "beheerder@example.nl",
+      BOOTSTRAP_ADMIN_PASSWORD: "een-uniek-veilig-wachtwoord"
+    },
+    stdio: ["ignore", "ignore", "pipe"]
+  });
+  child.stderr.on("data", (chunk) => {
+    serverError += chunk;
+  });
+  t.after(async () => {
+    if (child.exitCode === null) {
+      child.kill("SIGTERM");
+      await once(child, "exit");
+    }
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+  await waitForServer(baseUrl, child, () => serverError);
+
+  const adminLogin = await jsonRequest(baseUrl, "/api/login", {
+    method: "POST",
+    body: { email: "beheerder@example.nl", password: "een-uniek-veilig-wachtwoord" }
+  });
+  assert.equal(adminLogin.response.status, 200);
+  assert.match(adminLogin.cookie, /^cassiopeia\.sid=/);
+  assert.equal(adminLogin.response.headers.get("x-frame-options"), "DENY");
+
+  const forgedRequest = await jsonRequest(baseUrl, "/api/members", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    origin: "https://aanvaller.example",
+    body: { name: "Aanvaller", email: "aanvaller@example.nl", yearLayer: "2026" }
+  });
+  assert.equal(forgedRequest.response.status, 403);
+
+  const created = await jsonRequest(baseUrl, "/api/members", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { name: "Nieuw Lid", email: "nieuw@example.nl", yearLayer: "2026", memberStatus: "actief" }
+  });
+  assert.equal(created.response.status, 201);
+  assert.equal(created.data.member.accountStatus, "pending");
+  assert.equal(created.data.invitation.purpose, "invite");
+  const inviteToken = created.data.invitation.invitePath.split("#activate=")[1];
+  assert.ok(inviteToken);
+
+  const inspected = await jsonRequest(baseUrl, "/api/account-token/inspect", {
+    method: "POST",
+    body: { token: inviteToken }
+  });
+  assert.equal(inspected.response.status, 200);
+  assert.equal(inspected.data.email, "nieuw@example.nl");
+
+  const activated = await jsonRequest(baseUrl, "/api/account/activate", {
+    method: "POST",
+    body: { token: inviteToken, password: "nog-een-uniek-veilig-wachtwoord" }
+  });
+  assert.equal(activated.response.status, 200);
+  assert.equal(activated.data.user.accountStatus, "active");
+  assert.match(activated.cookie, /^cassiopeia\.sid=/);
+
+  const tokenReuse = await jsonRequest(baseUrl, "/api/account/activate", {
+    method: "POST",
+    body: { token: inviteToken, password: "nog-een-uniek-veilig-wachtwoord" }
+  });
+  assert.equal(tokenReuse.response.status, 400);
+
+  const reset = await jsonRequest(baseUrl, `/api/members/${created.data.member.id}/invitations`, {
+    method: "POST",
+    cookie: adminLogin.cookie
+  });
+  assert.equal(reset.response.status, 201);
+  assert.equal(reset.data.invitation.purpose, "reset");
+  const resetToken = reset.data.invitation.invitePath.split("#activate=")[1];
+
+  const simultaneousResetAttempts = await Promise.all([
+    jsonRequest(baseUrl, "/api/account/activate", {
+      method: "POST",
+      body: { token: resetToken, password: "een-vervangend-veilig-wachtwoord" }
+    }),
+    jsonRequest(baseUrl, "/api/account/activate", {
+      method: "POST",
+      body: { token: resetToken, password: "een-vervangend-veilig-wachtwoord" }
+    })
+  ]);
+  assert.deepEqual(simultaneousResetAttempts.map((attempt) => attempt.response.status).sort(), [200, 400]);
+
+  const staleSession = await jsonRequest(baseUrl, "/api/members", { cookie: activated.cookie });
+  assert.equal(staleSession.response.status, 401);
+
+  const linkBeforeDisable = await jsonRequest(baseUrl, `/api/members/${created.data.member.id}/invitations`, {
+    method: "POST",
+    cookie: adminLogin.cookie
+  });
+  assert.equal(linkBeforeDisable.response.status, 201);
+  const disabled = await jsonRequest(baseUrl, `/api/members/${created.data.member.id}`, {
+    method: "PUT",
+    cookie: adminLogin.cookie,
+    body: {
+      name: "Nieuw Lid",
+      email: "nieuw@example.nl",
+      yearLayer: "2026",
+      roleTitle: "Lid",
+      memberStatus: "actief",
+      accountStatus: "disabled",
+      isAdmin: false
+    }
+  });
+  assert.equal(disabled.response.status, 200);
+  assert.equal(disabled.data.member.accountStatus, "disabled");
+  const disabledToken = linkBeforeDisable.data.invitation.invitePath.split("#activate=")[1];
+  const activationAfterDisable = await jsonRequest(baseUrl, "/api/account/activate", {
+    method: "POST",
+    body: { token: disabledToken, password: "dit-wachtwoord-mag-niet-werken" }
+  });
+  assert.equal(activationAfterDisable.response.status, 400);
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const failure = await jsonRequest(baseUrl, "/api/login", {
+      method: "POST",
+      body: { email: "onbekend@example.nl", password: "verkeerd-wachtwoord" }
+    });
+    assert.equal(failure.response.status, 401);
+  }
+  const limited = await jsonRequest(baseUrl, "/api/login", {
+    method: "POST",
+    body: { email: "onbekend@example.nl", password: "verkeerd-wachtwoord" }
+  });
+  assert.equal(limited.response.status, 429);
 });

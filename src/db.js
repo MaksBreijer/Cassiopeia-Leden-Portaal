@@ -27,6 +27,9 @@ function initializeDatabase() {
       member_status TEXT DEFAULT 'actief',
       committee TEXT DEFAULT '',
       is_admin INTEGER DEFAULT 0,
+      account_status TEXT NOT NULL DEFAULT 'active',
+      password_changed_at TEXT,
+      last_login_at TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -76,11 +79,30 @@ function initializeDatabase() {
       sess TEXT NOT NULL,
       expires INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS account_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      purpose TEXT NOT NULL CHECK (purpose IN ('invite', 'reset')),
+      expires_at INTEGER NOT NULL,
+      used_at TEXT,
+      created_by INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS account_tokens_lookup
+    ON account_tokens(token_hash, expires_at, used_at);
   `);
 
   ensureColumn("users", "address", "TEXT DEFAULT ''");
   ensureColumn("users", "member_status", "TEXT DEFAULT 'actief'");
   ensureColumn("users", "committee", "TEXT DEFAULT ''");
+  ensureColumn("users", "account_status", "TEXT NOT NULL DEFAULT 'active'");
+  ensureColumn("users", "password_changed_at", "TEXT");
+  ensureColumn("users", "last_login_at", "TEXT");
   revokeExposedCredentials();
   bootstrapAdmin();
   seedYearAgenda();
@@ -125,7 +147,8 @@ function bootstrapAdmin() {
     if (existing) {
       db.prepare(`
         UPDATE users
-        SET password_hash = ?, is_admin = 1, updated_at = CURRENT_TIMESTAMP
+        SET password_hash = ?, is_admin = 1, account_status = 'active',
+            password_changed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).run(passwordHash, existing.id);
     } else {
@@ -151,7 +174,7 @@ function revokeExposedCredentials() {
   db.transaction(() => {
     const revokeUser = db.prepare(`
       UPDATE users
-      SET password_hash = ?, is_admin = 0, updated_at = CURRENT_TIMESTAMP
+      SET password_hash = ?, is_admin = 0, account_status = 'disabled', updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
     compromisedUsers.forEach((user) => {

@@ -7,7 +7,8 @@ const state = {
   yearAgendaUsesLocalData: false,
   activeYearAgendaMonthIndex: null,
   memberStatusFilter: "",
-  openMemberId: null
+  openMemberId: null,
+  activationToken: ""
 };
 
 const API_BASE = location.protocol === "file:" || location.port === "5500" ? "http://127.0.0.1:3000" : "";
@@ -103,6 +104,10 @@ const els = {
   loginScreen: document.querySelector("#loginScreen"),
   loginForm: document.querySelector("#loginForm"),
   loginError: document.querySelector("#loginError"),
+  activationForm: document.querySelector("#activationForm"),
+  activationTitle: document.querySelector("#activationTitle"),
+  activationIntro: document.querySelector("#activationIntro"),
+  activationError: document.querySelector("#activationError"),
   memberSearch: document.querySelector("#memberSearch"),
   memberYearFilter: document.querySelector("#memberYearFilter"),
   clearMemberFilters: document.querySelector("#clearMemberFilters"),
@@ -110,6 +115,7 @@ const els = {
   loggedOutMembers: document.querySelector("#loggedOutMembers"),
   memberGrid: document.querySelector("#memberGrid"),
   memberDetail: document.querySelector("#memberDetail"),
+  adminAccountList: document.querySelector("#adminAccountList"),
   yearAgendaSummary: document.querySelector("#yearAgendaSummary"),
   yearAgendaPrev: document.querySelector("#yearAgendaPrev"),
   yearAgendaNext: document.querySelector("#yearAgendaNext"),
@@ -137,6 +143,11 @@ const els = {
   activityDialogTitle: document.querySelector("#activityDialogTitle"),
   registrationsDialog: document.querySelector("#registrationsDialog"),
   registrationsList: document.querySelector("#registrationsList"),
+  invitationDialog: document.querySelector("#invitationDialog"),
+  invitationDialogTitle: document.querySelector("#invitationDialogTitle"),
+  invitationDialogText: document.querySelector("#invitationDialogText"),
+  invitationUrl: document.querySelector("#invitationUrl"),
+  copyInvitationBtn: document.querySelector("#copyInvitationBtn"),
   toast: document.querySelector("#toast")
 };
 
@@ -283,7 +294,7 @@ function closeMobileMenu() {
 }
 
 function showPage(page = location.hash.slice(1) || "home") {
-  const allowedPages = ["home", "leden", "profiel"];
+  const allowedPages = ["home", "leden", "profiel", ...(state.user?.isAdmin ? ["beheer"] : [])];
   const activePage = allowedPages.includes(page) ? page : "home";
   document.querySelectorAll(".page-view").forEach((section) => {
     section.classList.toggle("hidden", section.id !== activePage);
@@ -315,6 +326,8 @@ function setLoggedOut() {
   state.yearAgendaItems = [];
   state.openMemberId = null;
   els.loginScreen.classList.remove("hidden");
+  els.loginForm.classList.toggle("hidden", Boolean(state.activationToken));
+  els.activationForm.classList.toggle("hidden", !state.activationToken);
   els.siteHeader.classList.add("hidden");
   els.appMain.classList.add("hidden");
   els.logoutBtn.classList.add("hidden");
@@ -326,6 +339,7 @@ function setLoggedOut() {
   renderYearAgenda();
   renderPublicActivities();
   renderMembers();
+  renderAdminAccounts();
 }
 
 async function refreshPortal() {
@@ -339,6 +353,7 @@ async function loadMembers() {
   state.members = data.members;
   renderMemberFilters();
   renderMembers();
+  renderAdminAccounts();
 }
 
 function uniqueSorted(values) {
@@ -352,7 +367,7 @@ function setFilterOptions(select, values, emptyLabel) {
 }
 
 function renderMemberFilters() {
-  setFilterOptions(els.memberYearFilter, uniqueSorted(state.members.map((member) => member.yearLayer)).reverse(), "Alle lichtingen");
+  setFilterOptions(els.memberYearFilter, uniqueSorted(state.members.filter((member) => member.accountStatus === "active").map((member) => member.yearLayer)).reverse(), "Alle lichtingen");
   document.querySelectorAll("[data-status-filter]").forEach((button) => {
     button.classList.toggle("active", button.dataset.statusFilter === state.memberStatusFilter);
   });
@@ -362,6 +377,7 @@ function filteredMembers() {
   const status = state.memberStatusFilter;
   const year = els.memberYearFilter.value;
   return state.members.filter((member) => {
+    if (member.accountStatus !== "active") return false;
     if (status && member.memberStatus !== status) return false;
     if (year && member.yearLayer !== year) return false;
     return true;
@@ -406,6 +422,41 @@ function renderMembers() {
                 </div>`
               : ""
           }
+        </article>
+      `
+    )
+    .join("");
+}
+
+function accountStatusLabel(status) {
+  return { pending: "Uitnodiging open", active: "Actief", disabled: "Uitgeschakeld" }[status] || "Onbekend";
+}
+
+function renderAdminAccounts() {
+  if (!els.adminAccountList) return;
+  if (!state.user?.isAdmin) {
+    els.adminAccountList.innerHTML = "";
+    return;
+  }
+  els.adminAccountList.innerHTML = state.members
+    .map(
+      (member) => `
+        <article class="admin-account-row">
+          <div class="admin-account-copy">
+            <strong>${escapeHtml(member.name)}</strong>
+            <p class="meta">${escapeHtml(member.email)} · ${escapeHtml(formatLichting(member.yearLayer))}</p>
+            <div class="member-card-badges">
+              <span class="badge account-status-${escapeHtml(member.accountStatus)}">${escapeHtml(accountStatusLabel(member.accountStatus))}</span>
+              ${member.isAdmin ? '<span class="badge">Admin</span>' : ""}
+            </div>
+          </div>
+          <div class="row-actions">
+            <button class="secondary" data-invite-member="${member.id}">
+              ${member.accountStatus === "pending" ? "Uitnodigingslink" : "Wachtwoordlink"}
+            </button>
+            <button class="secondary" data-edit-member="${member.id}">Bewerken</button>
+            ${member.id !== state.user.id ? `<button class="danger" data-delete-member="${member.id}">Verwijderen</button>` : ""}
+          </div>
         </article>
       `
     )
@@ -620,6 +671,7 @@ function renderPublicActivities() {
 function renderAdmin() {
   document.querySelectorAll(".admin-only").forEach((el) => el.classList.toggle("hidden", !state.user?.isAdmin));
   renderYearAgenda();
+  renderAdminAccounts();
 }
 
 function openMemberDialog(member = null) {
@@ -640,8 +692,17 @@ function openMemberDialog(member = null) {
   fields.avatar.value = editableInitials;
   fields.bio.value = member?.bio || "";
   fields.isAdmin.checked = Boolean(member?.isAdmin);
-  fields.password.required = !member;
+  fields.accountStatus.value = member?.accountStatus || "pending";
+  fields.accountStatus.disabled = !member;
   els.memberDialog.showModal();
+}
+
+function openInvitationDialog(member, invitation) {
+  const invitationUrl = new URL(invitation.invitePath, window.location.origin).toString();
+  els.invitationDialogTitle.textContent = invitation.purpose === "invite" ? "Uitnodiging delen" : "Wachtwoordlink delen";
+  els.invitationDialogText.textContent = `Voor ${member.name}. Geldig tot ${formatDate(invitation.expiresAt)}.`;
+  els.invitationUrl.value = invitationUrl;
+  els.invitationDialog.showModal();
 }
 
 function openActivityDialog(activity = null) {
@@ -777,6 +838,46 @@ function openLogin() {
   els.loginScreen.classList.remove("hidden");
 }
 
+function activationTokenFromHash() {
+  if (!location.hash.startsWith("#activate=")) return "";
+  try {
+    const token = decodeURIComponent(location.hash.slice("#activate=".length));
+    return /^[A-Za-z0-9_-]{32,200}$/.test(token) ? token : "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function closeActivation() {
+  state.activationToken = "";
+  els.activationForm.reset();
+  els.activationForm.classList.add("hidden");
+  els.loginForm.classList.remove("hidden");
+  history.replaceState(null, "", `${location.pathname}${location.search}`);
+}
+
+async function openActivation(token) {
+  state.activationToken = token;
+  els.loginForm.classList.add("hidden");
+  els.activationForm.classList.remove("hidden");
+  els.loginScreen.classList.remove("hidden");
+  els.activationError.textContent = "";
+  els.activationIntro.textContent = "Uitnodiging controleren...";
+  els.activationForm.querySelector("button[type='submit']").disabled = false;
+  try {
+    const invitation = await api("/api/account-token/inspect", {
+      method: "POST",
+      body: JSON.stringify({ token })
+    });
+    els.activationTitle.textContent = invitation.purpose === "invite" ? `Welkom ${invitation.name}` : "Nieuw wachtwoord instellen";
+    els.activationIntro.textContent = `${invitation.email} · link geldig tot ${formatDate(invitation.expiresAt)}`;
+  } catch (error) {
+    els.activationIntro.textContent = "We konden deze uitnodiging niet openen.";
+    els.activationError.textContent = error.message;
+    els.activationForm.querySelector("button[type='submit']").disabled = true;
+  }
+}
+
 function loadImageFromFile(file) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -885,6 +986,7 @@ els.loginForm.addEventListener("submit", async (event) => {
       method: "POST",
       body: JSON.stringify(formJson(els.loginForm))
     });
+    els.loginForm.reset();
     setLoggedIn(user);
     await refreshPortal();
     if (!focusSharedActivity()) {
@@ -894,6 +996,41 @@ els.loginForm.addEventListener("submit", async (event) => {
   } catch (error) {
     els.loginError.textContent = error.message;
   }
+});
+
+els.activationForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  els.activationError.textContent = "";
+  const password = String(els.activationForm.elements.password.value || "");
+  const passwordConfirm = String(els.activationForm.elements.passwordConfirm.value || "");
+  if (password !== passwordConfirm) {
+    els.activationError.textContent = "De wachtwoorden zijn niet hetzelfde.";
+    return;
+  }
+  try {
+    const { user } = await api("/api/account/activate", {
+      method: "POST",
+      body: JSON.stringify({ token: state.activationToken, password })
+    });
+    closeActivation();
+    setLoggedIn(user);
+    await refreshPortal();
+    location.hash = "#home";
+    showPage("home");
+    showToast("Je account is veilig geactiveerd.");
+  } catch (error) {
+    els.activationError.textContent = error.message;
+  }
+});
+
+els.copyInvitationBtn.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(els.invitationUrl.value);
+  } catch (error) {
+    els.invitationUrl.select();
+    document.execCommand("copy");
+  }
+  showToast("Persoonlijke link gekopieerd.");
 });
 
 els.logoutBtn.addEventListener("click", async () => {
@@ -929,6 +1066,12 @@ document.body.addEventListener("click", async (event) => {
 
   const loginBtn = event.target.closest("[data-open-login]");
   if (loginBtn) return openLogin();
+
+  const cancelActivationBtn = event.target.closest("[data-cancel-activation]");
+  if (cancelActivationBtn) return closeActivation();
+
+  const newMemberButton = event.target.closest("[data-new-member]");
+  if (newMemberButton) return openMemberDialog();
 
   const closeBtn = event.target.closest("[data-close]");
   if (closeBtn) return closeBtn.closest("dialog").close();
@@ -994,6 +1137,17 @@ document.body.addEventListener("click", async (event) => {
   const editMemberBtn = event.target.closest("[data-edit-member]");
   if (editMemberBtn) return openMemberDialog(state.members.find((member) => member.id === Number(editMemberBtn.dataset.editMember)));
 
+  const inviteMemberBtn = event.target.closest("[data-invite-member]");
+  if (inviteMemberBtn) {
+    try {
+      const data = await api(`/api/members/${inviteMemberBtn.dataset.inviteMember}/invitations`, { method: "POST" });
+      openInvitationDialog(data.member, data.invitation);
+    } catch (error) {
+      showToast(error.message);
+    }
+    return;
+  }
+
   const deleteMemberBtn = event.target.closest("[data-delete-member]");
   if (deleteMemberBtn && confirm("Weet je zeker dat je dit lid wilt verwijderen?")) {
     await api(`/api/members/${deleteMemberBtn.dataset.deleteMember}`, { method: "DELETE" });
@@ -1014,16 +1168,24 @@ document.body.addEventListener("click", async (event) => {
 
 els.memberForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const data = formJson(els.memberForm);
-  const id = data.id;
-  if (!data.password) delete data.password;
-  await api(id ? `/api/members/${id}` : "/api/members", {
-    method: id ? "PUT" : "POST",
-    body: JSON.stringify(data)
-  });
-  els.memberDialog.close();
-  await refreshPortal();
-  showToast("Lid opgeslagen.");
+  try {
+    const data = formJson(els.memberForm);
+    const id = data.id;
+    if (!id) delete data.accountStatus;
+    const response = await api(id ? `/api/members/${id}` : "/api/members", {
+      method: id ? "PUT" : "POST",
+      body: JSON.stringify(data)
+    });
+    els.memberDialog.close();
+    await refreshPortal();
+    if (response.invitation) {
+      openInvitationDialog(response.member, response.invitation);
+    } else {
+      showToast("Lid opgeslagen.");
+    }
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
 els.yearAgendaForm.addEventListener("submit", async (event) => {
@@ -1128,16 +1290,23 @@ els.activityForm.addEventListener("submit", async (event) => {
   showToast("Activiteit opgeslagen.");
 });
 
-api("/api/session")
-  .then(async ({ user }) => {
-    if (!user) return setLoggedOut();
-    setLoggedIn(user);
-    await refreshPortal();
-  })
-  .catch(async () => {
-    setLoggedOut();
-  });
+const initialActivationToken = activationTokenFromHash();
+if (initialActivationToken) {
+  openActivation(initialActivationToken);
+} else {
+  api("/api/session")
+    .then(async ({ user }) => {
+      if (!user) return setLoggedOut();
+      setLoggedIn(user);
+      await refreshPortal();
+    })
+    .catch(async () => {
+      setLoggedOut();
+    });
+}
 
 window.addEventListener("hashchange", () => {
+  const token = activationTokenFromHash();
+  if (token) return openActivation(token);
   if (state.user) showPage();
 });

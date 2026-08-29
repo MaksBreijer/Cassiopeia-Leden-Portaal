@@ -1,4 +1,5 @@
 const path = require("path");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const express = require("express");
 const session = require("express-session");
@@ -12,16 +13,41 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const SESSION_SECRET = process.env.SESSION_SECRET || (process.env.NODE_ENV === "production" ? null : "cassiopeia-local-development-secret");
+const SESSION_COOKIE = "cassiopeia.sid";
+const PASSWORD_MIN_LENGTH = 12;
+const ACCOUNT_TOKEN_LIFETIME_MS = 1000 * 60 * 60 * 48;
+const LOGIN_WINDOW_MS = 1000 * 60 * 15;
+const LOGIN_MAX_ATTEMPTS = 5;
+const loginAttempts = new Map();
 
 if (!SESSION_SECRET) {
   throw new Error("SESSION_SECRET is verplicht in productie.");
 }
 
 if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
+app.disable("x-powered-by");
+
+app.use((req, res, next) => {
+  const connectSources = process.env.NODE_ENV === "production"
+    ? "'self'"
+    : "'self' http://127.0.0.1:3000 http://localhost:3000";
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader(
+    "Content-Security-Policy",
+    `default-src 'self'; img-src 'self' data: https:; style-src 'self'; script-src 'self'; connect-src ${connectSources}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`
+  );
+  if (process.env.NODE_ENV === "production") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  next();
+});
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const isLocalDevOrigin = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin || "");
+  const isLocalDevOrigin = process.env.NODE_ENV !== "production" && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin || "");
   if (isLocalDevOrigin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -29,6 +55,15 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
   }
   if (req.method === "OPTIONS") return res.sendStatus(204);
+
+  if (!["GET", "HEAD", "OPTIONS"].includes(req.method) && origin && !isLocalDevOrigin) {
+    try {
+      const requestOrigin = new URL(origin);
+      if (requestOrigin.host !== req.get("host")) return res.status(403).json({ error: "Ongeldige aanvraagbron." });
+    } catch (error) {
+      return res.status(403).json({ error: "Ongeldige aanvraagbron." });
+    }
+  }
   next();
 });
 
@@ -36,10 +71,12 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(
   session({
+    name: SESSION_COOKIE,
     store: new SQLiteSessionStore(),
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    rolling: true,
     cookie: {
       httpOnly: true,
       sameSite: "lax",
@@ -48,6 +85,11 @@ app.use(
     }
   })
 );
+
+app.use("/api", (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
 
 app.use(
   express.static(path.join(__dirname, "..", "public"), {
@@ -80,24 +122,31 @@ function publicUser(user) {
     avatar: user.avatar || user.name.charAt(0).toUpperCase(),
     memberStatus: user.member_status || "actief",
     committee: user.committee || "",
-    isAdmin: Boolean(user.is_admin)
+    isAdmin: Boolean(user.is_admin),
+    accountStatus: user.account_status || "active"
   };
 }
 
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: "Je moet ingelogd zijn." });
+  const user = db.prepare("SELECT account_status FROM users WHERE id = ?").get(req.session.userId);
+  if (!user || user.account_status !== "active") {
+    return req.session.destroy(() => res.status(401).json({ error: "Je account is niet actief." }));
+  }
   next();
 }
 
 function requireAdmin(req, res, next) {
-  const user = db.prepare("SELECT is_admin FROM users WHERE id = ?").get(req.session.userId);
-  if (!user || !user.is_admin) return res.status(403).json({ error: "Alleen admins mogen dit doen." });
+  const user = db.prepare("SELECT is_admin, account_status FROM users WHERE id = ?").get(req.session.userId);
+  if (!user || user.account_status !== "active" || !user.is_admin) {
+    return res.status(403).json({ error: "Alleen actieve admins mogen dit doen." });
+  }
   next();
 }
 
 function getCurrentUser(req) {
   if (!req.session.userId) return null;
-  return db.prepare("SELECT * FROM users WHERE id = ?").get(req.session.userId);
+  return db.prepare("SELECT * FROM users WHERE id = ? AND account_status = 'active'").get(req.session.userId);
 }
 
 function valueFromBody(body, key, existingValue = "") {
@@ -107,6 +156,7 @@ function valueFromBody(body, key, existingValue = "") {
 function memberFromBody(body, existing = {}) {
   const avatarInput = String(body.avatar || "").trim();
   const memberStatus = String(body.memberStatus || existing.member_status || "actief");
+  const accountStatus = String(body.accountStatus || existing.account_status || "active");
   return {
     name: valueFromBody(body, "name", existing.name),
     email: valueFromBody(body, "email", existing.email).toLowerCase(),
@@ -118,8 +168,90 @@ function memberFromBody(body, existing = {}) {
     avatar: avatarInput && avatarInput.length <= 2 ? avatarInput.toUpperCase() : existing.avatar || "",
     member_status: ["actief", "oud"].includes(memberStatus) ? memberStatus : "actief",
     committee: valueFromBody(body, "committee", existing.committee),
-    is_admin: body.isAdmin ? 1 : 0
+    is_admin: body.isAdmin ? 1 : 0,
+    account_status: ["pending", "active", "disabled"].includes(accountStatus) ? accountStatus : "active"
   };
+}
+
+function passwordError(password, email = "") {
+  if (password.length < PASSWORD_MIN_LENGTH) return `Je wachtwoord moet minimaal ${PASSWORD_MIN_LENGTH} tekens zijn.`;
+  if (password.length > 200) return "Je wachtwoord is te lang.";
+  const normalized = password.toLowerCase();
+  if (["cassio2026!", "welkom2026!", "wachtwoord123!"].includes(normalized)) return "Kies een uniek wachtwoord.";
+  if (email && normalized.includes(String(email).toLowerCase().split("@")[0])) return "Gebruik je e-mailadres niet in je wachtwoord.";
+  return "";
+}
+
+function tokenHash(token) {
+  return crypto.createHash("sha256").update(String(token || "")).digest("hex");
+}
+
+function destroyUserSessions(userId, exceptSid = "") {
+  const deleteSession = db.prepare("DELETE FROM sessions WHERE sid = ?");
+  db.prepare("SELECT sid, sess FROM sessions").all().forEach((row) => {
+    if (row.sid === exceptSid) return;
+    try {
+      if (Number(JSON.parse(row.sess).userId) === Number(userId)) deleteSession.run(row.sid);
+    } catch (error) {
+      deleteSession.run(row.sid);
+    }
+  });
+}
+
+function isLastActiveAdmin(userId) {
+  const target = db.prepare("SELECT is_admin, account_status FROM users WHERE id = ?").get(userId);
+  if (!target || !target.is_admin || target.account_status !== "active") return false;
+  return db.prepare("SELECT COUNT(*) AS count FROM users WHERE is_admin = 1 AND account_status = 'active'").get().count <= 1;
+}
+
+function createAccountToken(userId, purpose, createdBy) {
+  const token = crypto.randomBytes(32).toString("base64url");
+  const expiresAt = Date.now() + ACCOUNT_TOKEN_LIFETIME_MS;
+  db.transaction(() => {
+    db.prepare("UPDATE account_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL").run(userId);
+    db.prepare(`
+      INSERT INTO account_tokens (user_id, token_hash, purpose, expires_at, created_by)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, tokenHash(token), purpose, expiresAt, createdBy);
+  })();
+  return { invitePath: `/#activate=${encodeURIComponent(token)}`, expiresAt: new Date(expiresAt).toISOString(), purpose };
+}
+
+function loginAttemptKey(req, email) {
+  return `${req.ip}:${email}`;
+}
+
+function activeLoginAttempt(key) {
+  const attempt = loginAttempts.get(key);
+  if (!attempt || attempt.resetAt <= Date.now()) {
+    loginAttempts.delete(key);
+    return null;
+  }
+  return attempt;
+}
+
+function recordFailedLogin(key) {
+  if (loginAttempts.size > 5000) {
+    loginAttempts.forEach((attempt, attemptKey) => {
+      if (attempt.resetAt <= Date.now()) loginAttempts.delete(attemptKey);
+    });
+    if (loginAttempts.size > 10000) loginAttempts.clear();
+  }
+  const current = activeLoginAttempt(key) || { count: 0, resetAt: Date.now() + LOGIN_WINDOW_MS };
+  current.count += 1;
+  loginAttempts.set(key, current);
+  return current;
+}
+
+function createAuthenticatedSession(req, res, user, status = 200) {
+  req.session.regenerate((error) => {
+    if (error) return res.status(500).json({ error: "Inloggen is tijdelijk niet mogelijk." });
+    req.session.userId = user.id;
+    req.session.save((saveError) => {
+      if (saveError) return res.status(500).json({ error: "Inloggen is tijdelijk niet mogelijk." });
+      res.status(status).json({ user: publicUser(user) });
+    });
+  });
 }
 
 function profileAvatarFromBody(value, existingAvatar) {
@@ -145,27 +277,99 @@ app.post("/api/login", async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ error: "Vul je e-mailadres en wachtwoord in." });
   }
+  const attemptKey = loginAttemptKey(req, email);
+  const attempt = activeLoginAttempt(attemptKey);
+  if (attempt?.count >= LOGIN_MAX_ATTEMPTS) {
+    const retryAfter = Math.max(1, Math.ceil((attempt.resetAt - Date.now()) / 1000));
+    res.setHeader("Retry-After", String(retryAfter));
+    return res.status(429).json({ error: "Te veel mislukte pogingen. Probeer het over 15 minuten opnieuw." });
+  }
+
   const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
 
   if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+    recordFailedLogin(attemptKey);
     return res.status(401).json({ error: "E-mail of wachtwoord klopt niet." });
   }
+  if (user.account_status === "pending") {
+    return res.status(403).json({ error: "Gebruik eerst je persoonlijke uitnodigingslink om een wachtwoord in te stellen." });
+  }
+  if (user.account_status !== "active") {
+    return res.status(403).json({ error: "Dit account is uitgeschakeld. Neem contact op met een beheerder." });
+  }
 
-  req.session.regenerate((error) => {
-    if (error) return res.status(500).json({ error: "Inloggen is tijdelijk niet mogelijk." });
-    req.session.userId = user.id;
-    req.session.save((saveError) => {
-      if (saveError) return res.status(500).json({ error: "Inloggen is tijdelijk niet mogelijk." });
-      res.json({ user: publicUser(user) });
-    });
-  });
+  loginAttempts.delete(attemptKey);
+  db.prepare("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?").run(user.id);
+  createAuthenticatedSession(req, res, db.prepare("SELECT * FROM users WHERE id = ?").get(user.id));
 });
 
 app.post("/api/logout", (req, res) => {
   req.session.destroy(() => {
-    res.clearCookie("connect.sid");
+    res.clearCookie(SESSION_COOKIE, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production"
+    });
     res.json({ ok: true });
   });
+});
+
+app.post("/api/account-token/inspect", (req, res) => {
+  const token = String(req.body.token || "");
+  if (token.length < 32 || token.length > 200) return res.status(400).json({ error: "Deze link is ongeldig." });
+  const row = db.prepare(`
+    SELECT t.purpose, t.expires_at, u.name, u.email
+    FROM account_tokens t
+    JOIN users u ON u.id = t.user_id
+    WHERE t.token_hash = ? AND t.used_at IS NULL AND t.expires_at > ?
+  `).get(tokenHash(token), Date.now());
+  if (!row) return res.status(400).json({ error: "Deze link is ongeldig, verlopen of al gebruikt." });
+  res.json({
+    name: row.name,
+    email: row.email,
+    purpose: row.purpose,
+    expiresAt: new Date(row.expires_at).toISOString()
+  });
+});
+
+app.post("/api/account/activate", async (req, res) => {
+  const token = String(req.body.token || "");
+  const password = String(req.body.password || "");
+  const tokenRow = db.prepare(`
+    SELECT t.id, t.user_id, t.purpose, t.expires_at, u.email
+    FROM account_tokens t
+    JOIN users u ON u.id = t.user_id
+    WHERE t.token_hash = ? AND t.used_at IS NULL AND t.expires_at > ?
+  `).get(tokenHash(token), Date.now());
+  if (!tokenRow) return res.status(400).json({ error: "Deze link is ongeldig, verlopen of al gebruikt." });
+
+  const validationError = passwordError(password, tokenRow.email);
+  if (validationError) return res.status(400).json({ error: validationError });
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  const activated = db.transaction(() => {
+    const currentUser = db.prepare("SELECT account_status FROM users WHERE id = ?").get(tokenRow.user_id);
+    if (!currentUser || currentUser.account_status === "disabled") return false;
+    const consumed = db.prepare(`
+      UPDATE account_tokens
+      SET used_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND used_at IS NULL AND expires_at > ?
+    `).run(tokenRow.id, Date.now());
+    if (!consumed.changes) return false;
+    db.prepare(`
+      UPDATE users
+      SET password_hash = ?, account_status = 'active', password_changed_at = CURRENT_TIMESTAMP,
+          last_login_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(passwordHash, tokenRow.user_id);
+    db.prepare("UPDATE account_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL").run(tokenRow.user_id);
+    destroyUserSessions(tokenRow.user_id);
+    return true;
+  })();
+  if (!activated) return res.status(400).json({ error: "Deze link is ongeldig, verlopen of al gebruikt." });
+
+  const user = db.prepare("SELECT * FROM users WHERE id = ?").get(tokenRow.user_id);
+  createAuthenticatedSession(req, res, user);
 });
 
 app.put("/api/me", requireAuth, async (req, res) => {
@@ -184,12 +388,14 @@ app.put("/api/me", requireAuth, async (req, res) => {
   const address = req.body.address === undefined ? existing.address || "" : String(req.body.address || "").trim();
 
   if (newPassword) {
-    if (newPassword.length < 8) return res.status(400).json({ error: "Je nieuwe wachtwoord moet minimaal 8 tekens zijn." });
+    const validationError = passwordError(newPassword, existing.email);
+    if (validationError) return res.status(400).json({ error: validationError });
     if (!(await bcrypt.compare(currentPassword, existing.password_hash))) {
       return res.status(401).json({ error: "Je huidige wachtwoord klopt niet." });
     }
     const password_hash = await bcrypt.hash(newPassword, 12);
-    db.prepare("UPDATE users SET address = ?, avatar = ?, password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(address, avatar, password_hash, req.session.userId);
+    db.prepare("UPDATE users SET address = ?, avatar = ?, password_hash = ?, password_changed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(address, avatar, password_hash, req.session.userId);
+    destroyUserSessions(req.session.userId, req.sessionID);
   } else {
     db.prepare("UPDATE users SET address = ?, avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(address, avatar, req.session.userId);
   }
@@ -199,38 +405,45 @@ app.put("/api/me", requireAuth, async (req, res) => {
 
 app.get("/api/members", requireAuth, (req, res) => {
   const q = `%${String(req.query.q || "").trim()}%`;
+  const currentUser = db.prepare("SELECT is_admin FROM users WHERE id = ?").get(req.session.userId);
   const rows = db
     .prepare(`
       SELECT * FROM users
-      WHERE name LIKE ? OR year_layer LIKE ?
+      WHERE (name LIKE ? OR year_layer LIKE ?)
+        AND (account_status = 'active' OR ? = 1)
       ORDER BY year_layer DESC, name ASC
     `)
-    .all(q, q);
+    .all(q, q, currentUser?.is_admin ? 1 : 0);
   res.json({ members: rows.map(publicUser) });
 });
 
 app.get("/api/members/:id", requireAuth, (req, res) => {
   const member = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);
   if (!member) return res.status(404).json({ error: "Lid niet gevonden." });
+  const currentUser = db.prepare("SELECT is_admin FROM users WHERE id = ?").get(req.session.userId);
+  if (member.account_status !== "active" && !currentUser?.is_admin) {
+    return res.status(404).json({ error: "Lid niet gevonden." });
+  }
   res.json({ member: publicUser(member) });
 });
 
 app.post("/api/members", requireAuth, requireAdmin, async (req, res) => {
   const member = memberFromBody(req.body);
-  const password = String(req.body.password || "");
-  if (!member.name || !member.email || !member.year_layer || password.length < 8) {
-    return res.status(400).json({ error: "Naam, e-mail, jaarlaag en wachtwoord van minimaal 8 tekens zijn verplicht." });
+  if (!member.name || !member.email || !member.year_layer) {
+    return res.status(400).json({ error: "Naam, e-mail en jaarlaag zijn verplicht." });
   }
 
-  const password_hash = await bcrypt.hash(password, 12);
+  const password_hash = await bcrypt.hash(crypto.randomBytes(48).toString("base64url"), 12);
   try {
     const result = db
       .prepare(`
-        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, address, bio, avatar, member_status, committee, is_admin)
-        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @address, @bio, @avatar, @member_status, @committee, @is_admin)
+        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, address, bio, avatar, member_status, committee, is_admin, account_status)
+        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @address, @bio, @avatar, @member_status, @committee, @is_admin, @account_status)
       `)
-      .run({ ...member, password_hash });
-    res.status(201).json({ member: publicUser(db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid)) });
+      .run({ ...member, password_hash, account_status: "pending" });
+    const created = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid);
+    const invitation = createAccountToken(created.id, "invite", req.session.userId);
+    res.status(201).json({ member: publicUser(created), invitation });
   } catch (error) {
     res.status(409).json({ error: "Er bestaat al een lid met dit e-mailadres." });
   }
@@ -244,21 +457,30 @@ app.put("/api/members/:id", requireAuth, requireAdmin, async (req, res) => {
   if (!member.name || !member.email || !member.year_layer) {
     return res.status(400).json({ error: "Naam, e-mail en jaarlaag zijn verplicht." });
   }
+  const targetId = Number(req.params.id);
+  if (targetId === Number(req.session.userId) && (!member.is_admin || member.account_status !== "active")) {
+    return res.status(400).json({ error: "Je kunt je eigen adminaccount niet uitschakelen of demoveren." });
+  }
+  if (isLastActiveAdmin(targetId) && (!member.is_admin || member.account_status !== "active")) {
+    return res.status(400).json({ error: "Er moet minimaal één actieve admin blijven." });
+  }
+  if (existing.account_status === "pending" && member.account_status === "active" && !existing.password_changed_at) {
+    return res.status(400).json({ error: "Activeer dit account via de persoonlijke uitnodigingslink." });
+  }
 
   try {
     db.prepare(`
       UPDATE users
       SET name = @name, email = @email, year_layer = @year_layer, role_title = @role_title,
           phone = @phone, address = @address, bio = @bio, avatar = @avatar,
-          member_status = @member_status, committee = @committee, is_admin = @is_admin, updated_at = CURRENT_TIMESTAMP
+          member_status = @member_status, committee = @committee, is_admin = @is_admin,
+          account_status = @account_status, updated_at = CURRENT_TIMESTAMP
       WHERE id = @id
     `).run({ ...member, id: req.params.id });
 
-    if (req.body.password) {
-      const password = String(req.body.password);
-      if (password.length < 8) return res.status(400).json({ error: "Het nieuwe wachtwoord moet minimaal 8 tekens zijn." });
-      const password_hash = await bcrypt.hash(password, 12);
-      db.prepare("UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(password_hash, req.params.id);
+    if (member.account_status !== "active" || member.email !== existing.email) {
+      db.prepare("UPDATE account_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL").run(targetId);
+      destroyUserSessions(targetId);
     }
 
     res.json({ member: publicUser(db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id)) });
@@ -271,9 +493,24 @@ app.delete("/api/members/:id", requireAuth, requireAdmin, (req, res) => {
   if (Number(req.params.id) === Number(req.session.userId)) {
     return res.status(400).json({ error: "Je kunt je eigen account niet verwijderen." });
   }
+  if (isLastActiveAdmin(req.params.id)) {
+    return res.status(400).json({ error: "Er moet minimaal één actieve admin blijven." });
+  }
+  destroyUserSessions(req.params.id);
   const result = db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
   if (!result.changes) return res.status(404).json({ error: "Lid niet gevonden." });
   res.json({ ok: true });
+});
+
+app.post("/api/members/:id/invitations", requireAuth, requireAdmin, (req, res) => {
+  const user = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);
+  if (!user) return res.status(404).json({ error: "Lid niet gevonden." });
+  if (user.account_status === "disabled") {
+    return res.status(400).json({ error: "Zet het account eerst op actief voordat je een wachtwoordlink maakt." });
+  }
+  const purpose = user.account_status === "pending" ? "invite" : "reset";
+  const invitation = createAccountToken(user.id, purpose, req.session.userId);
+  res.status(201).json({ invitation, member: publicUser(user) });
 });
 
 function activityFromBody(body, existing = {}) {
