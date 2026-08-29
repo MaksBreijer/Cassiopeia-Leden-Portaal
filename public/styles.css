@@ -1278,6 +1278,30 @@ label {
   font-weight: 750;
 }
 
+.address-fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.address-fieldset legend {
+  margin-bottom: 7px;
+  color: var(--plum-soft);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.address-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(110px, 0.6fr) minmax(0, 0.8fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.address-grid label {
+  font-size: 12px;
+}
+
 .label-hint {
   color: var(--orange-strong);
   font-size: 10px;
@@ -2577,6 +2601,10 @@ dialog::backdrop {
 
   .profile-layout {
     grid-template-columns: 1fr;
+  }
+
+  .address-grid {
+    grid-template-columns: 1fr 0.65fr;
   }
 
   .map-layout {

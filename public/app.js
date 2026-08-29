@@ -226,6 +226,42 @@ function formJson(form) {
   return data;
 }
 
+function splitAddress(address) {
+  const value = String(address || "").trim();
+  if (!value) return { street: "", houseNumber: "", postalCode: "", city: "" };
+  const postalMatch = value.match(/\b(\d{4}\s?[A-Za-z]{2})\b/);
+  const postalCode = postalMatch ? postalMatch[1].toUpperCase().replace(/(\d{4})([A-Z]{2})/, "$1 $2") : "";
+  const beforePostal = postalMatch ? value.slice(0, postalMatch.index).trim().replace(/[,:-]+$/, "").trim() : value;
+  const city = postalMatch ? value.slice(postalMatch.index + postalMatch[0].length).replace(/^[,\s-]+/, "").trim() : "";
+  const numberMatch = beforePostal.match(/^(.*?)[\s,]+(\d+[A-Za-z]?(?:[-/]\d+[A-Za-z]?)?)$/);
+  return {
+    street: numberMatch ? numberMatch[1].trim() : beforePostal,
+    houseNumber: numberMatch ? numberMatch[2].trim() : "",
+    postalCode,
+    city
+  };
+}
+
+function syncAddressFields(form) {
+  const fields = form?.elements;
+  if (!fields?.address) return "";
+  const parts = [fields.street?.value, fields.houseNumber?.value, fields.postalCode?.value, fields.city?.value]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  fields.address.value = parts.join(" ").replace(/\s+/g, " ").trim();
+  return fields.address.value;
+}
+
+function fillAddressFields(form, address) {
+  const parts = splitAddress(address);
+  if (!form?.elements) return;
+  if (form.elements.street) form.elements.street.value = parts.street;
+  if (form.elements.houseNumber) form.elements.houseNumber.value = parts.houseNumber;
+  if (form.elements.postalCode) form.elements.postalCode.value = parts.postalCode;
+  if (form.elements.city) form.elements.city.value = parts.city;
+  if (form.elements.address) form.elements.address.value = String(address || "");
+}
+
 function showToast(message) {
   els.toast.textContent = message;
   els.toast.classList.remove("hidden");
@@ -437,7 +473,7 @@ function renderProfile() {
   els.profileEmail.textContent = state.user.email;
   if (els.headerUserName) els.headerUserName.textContent = state.user.name.split(/\s+/)[0] || "Profiel";
   if (els.welcomeName) els.welcomeName.textContent = state.user.name.split(/\s+/)[0] || "Cassiopeia";
-  els.profileForm.elements.address.value = state.user.address || "";
+  fillAddressFields(els.profileForm, state.user.address || "");
 }
 
 function renderPortalOverview() {
@@ -1067,7 +1103,7 @@ function openMemberDialog(member = null) {
   fields.memberStatus.value = member?.memberStatus || "actief";
   fields.committee.value = member?.committee || "";
   fields.phone.value = member?.phone || "";
-  fields.address.value = member?.address || "";
+  fillAddressFields(els.memberForm, member?.address || "");
   fields.avatar.value = editableInitials;
   fields.bio.value = member?.bio || "";
   fields.isAdmin.checked = Boolean(member?.isAdmin);
@@ -1551,6 +1587,7 @@ els.logoutBtn.addEventListener("click", async () => {
 els.profileForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
+    syncAddressFields(els.profileForm);
     const data = formJson(els.profileForm);
     data.avatar = await readProfilePhoto(els.profileForm.elements.profilePhoto.files[0]);
     const { user } = await api("/api/me", {
@@ -1808,6 +1845,7 @@ document.body.addEventListener("click", async (event) => {
 els.memberForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
+    syncAddressFields(els.memberForm);
     const data = formJson(els.memberForm);
     const id = data.id;
     if (!id) delete data.accountStatus;

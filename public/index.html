@@ -18,7 +18,7 @@
     <meta name="twitter:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />
     <meta name="twitter:image" content="https://www.dispuutcassiopeia.nl/assets/og.png" />
     <link rel="icon" type="image/png" href="assets/cassiopeia-embleem.png" />
-    <link rel="stylesheet" href="styles.css?v=20260829-crib-map" />
+    <link rel="stylesheet" href="styles.css?v=20260829-address-fields" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -241,7 +241,17 @@
           <form id="profileForm" class="profile-card">
             <div class="form-section-heading"><span>Persoonlijke gegevens</span><p>Werk alleen bij wat is veranderd.</p></div>
             <div class="form-grid">
-              <label class="wide">Adres <span class="label-hint">voor de plattegrond</span><input name="address" autocomplete="street-address" placeholder="Straat 12, 1234 AB Plaats" /><span class="form-help">Vul straat, huisnummer, postcode en woonplaats in voor een betrouwbare kaartpositie.</span></label>
+              <fieldset class="address-fieldset wide">
+                <legend>Adres <span class="label-hint">voor de plattegrond</span></legend>
+                <div class="address-grid">
+                  <label>Straat<input name="street" autocomplete="address-line1" placeholder="Straatnaam" /></label>
+                  <label>Huisnummer<input name="houseNumber" autocomplete="address-line2" inputmode="numeric" placeholder="12" /></label>
+                  <label>Postcode<input name="postalCode" autocomplete="postal-code" placeholder="1234 AB" /></label>
+                  <label>Woonplaats<input name="city" autocomplete="address-level2" placeholder="Plaats" /></label>
+                </div>
+                <input type="hidden" name="address" />
+                <span class="form-help">Vul alle velden in voor een betrouwbare kaartpositie.</span>
+              </fieldset>
               <label class="wide">Profielfoto wijzigen<input id="profilePhoto" name="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp" /></label>
             </div>
             <div class="form-section-heading"><span>Wachtwoord wijzigen</span><p>Laat leeg als je alleen je profiel bijwerkt.</p></div>
@@ -458,7 +468,17 @@
           <label>Commissie<input name="committee" /></label>
           <label>Telefoon<input name="phone" /></label>
           <label>Initialen zonder profielfoto<input name="avatar" maxlength="2" placeholder="Alleen als er geen foto is" /></label>
-          <label class="wide">Adres <span class="label-hint">voor de plattegrond</span><input name="address" autocomplete="street-address" placeholder="Straat 12, 1234 AB Plaats" /><span class="form-help">Straat, huisnummer, postcode en woonplaats zorgen voor de juiste marker.</span></label>
+          <fieldset class="address-fieldset wide">
+            <legend>Adres <span class="label-hint">voor de plattegrond</span></legend>
+            <div class="address-grid">
+              <label>Straat<input name="street" autocomplete="address-line1" placeholder="Straatnaam" /></label>
+              <label>Huisnummer<input name="houseNumber" autocomplete="address-line2" inputmode="numeric" placeholder="12" /></label>
+              <label>Postcode<input name="postalCode" autocomplete="postal-code" placeholder="1234 AB" /></label>
+              <label>Woonplaats<input name="city" autocomplete="address-level2" placeholder="Plaats" /></label>
+            </div>
+            <input type="hidden" name="address" />
+            <span class="form-help">Straat, huisnummer, postcode en woonplaats zorgen voor de juiste marker.</span>
+          </fieldset>
           <label class="wide">Bio<textarea name="bio" rows="4"></textarea></label>
           <label>Accountstatus
             <select name="accountStatus">
@@ -552,6 +572,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260829-crib-map"></script>
+    <script src="app.js?v=20260829-address-fields"></script>
   </body>
 </html>
