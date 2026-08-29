@@ -8,7 +8,9 @@ const state = {
   activeYearAgendaMonthIndex: null,
   memberStatusFilter: "",
   openMemberId: null,
-  activationToken: ""
+  activationToken: "",
+  importRecords: [],
+  bulkInvitations: []
 };
 
 const API_BASE = location.protocol === "file:" || location.port === "5500" ? "http://127.0.0.1:3000" : "";
@@ -159,6 +161,24 @@ const els = {
   adminActiveCount: document.querySelector("#adminActiveCount"),
   adminPendingCount: document.querySelector("#adminPendingCount"),
   adminDisabledCount: document.querySelector("#adminDisabledCount"),
+  memberImportDialog: document.querySelector("#memberImportDialog"),
+  memberImportForm: document.querySelector("#memberImportForm"),
+  memberImportFile: document.querySelector("#memberImportFile"),
+  memberImportPreview: document.querySelector("#memberImportPreview"),
+  memberImportRows: document.querySelector("#memberImportRows"),
+  memberImportHint: document.querySelector("#memberImportHint"),
+  memberImportError: document.querySelector("#memberImportError"),
+  importReadyCount: document.querySelector("#importReadyCount"),
+  importDuplicateCount: document.querySelector("#importDuplicateCount"),
+  importInvalidCount: document.querySelector("#importInvalidCount"),
+  previewMemberImport: document.querySelector("#previewMemberImport"),
+  confirmMemberImport: document.querySelector("#confirmMemberImport"),
+  downloadImportTemplate: document.querySelector("#downloadImportTemplate"),
+  bulkInvitationDialog: document.querySelector("#bulkInvitationDialog"),
+  bulkInvitationIntro: document.querySelector("#bulkInvitationIntro"),
+  bulkInvitationList: document.querySelector("#bulkInvitationList"),
+  downloadBulkInvitations: document.querySelector("#downloadBulkInvitations"),
+  copyBulkInvitations: document.querySelector("#copyBulkInvitations"),
   toast: document.querySelector("#toast")
 };
 
@@ -279,8 +299,8 @@ function csvValue(value) {
   return `"${String(value ?? "").replaceAll('"', '""')}"`;
 }
 
-function downloadCsv(filename, rows) {
-  const csv = rows.map((row) => row.map(csvValue).join(",")).join("\n");
+function downloadCsv(filename, rows, delimiter = ",") {
+  const csv = rows.map((row) => row.map(csvValue).join(delimiter)).join("\n");
   const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -288,6 +308,93 @@ function downloadCsv(filename, rows) {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function fileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "").split(",")[1] || ""));
+    reader.addEventListener("error", () => reject(new Error("Het bestand kon niet worden gelezen.")));
+    reader.readAsDataURL(file);
+  });
+}
+
+function resetMemberImportPreview() {
+  state.importRecords = [];
+  els.memberImportPreview.classList.add("hidden");
+  els.confirmMemberImport.classList.add("hidden");
+  els.memberImportRows.innerHTML = "";
+  els.memberImportError.textContent = "";
+}
+
+function openMemberImportDialog() {
+  els.memberImportForm.reset();
+  resetMemberImportPreview();
+  els.previewMemberImport.disabled = false;
+  els.previewMemberImport.textContent = "Bestand controleren";
+  els.memberImportDialog.showModal();
+}
+
+function importRecordStatus(record) {
+  if (record.errors?.length) return { label: record.errors.join(", "), className: "row-invalid" };
+  if (record.duplicate) return { label: "Bestaat al", className: "row-duplicate" };
+  return { label: "Gereed", className: "" };
+}
+
+function renderMemberImportPreview(data) {
+  state.importRecords = data.records;
+  els.importReadyCount.textContent = String(data.summary.ready);
+  els.importDuplicateCount.textContent = String(data.summary.duplicates);
+  els.importInvalidCount.textContent = String(data.summary.invalid);
+  els.memberImportRows.innerHTML = data.records
+    .map((record) => {
+      const status = importRecordStatus(record);
+      return `
+        <tr class="${status.className}">
+          <td>${record.sourceRow || "—"}</td>
+          <td>${escapeHtml(record.name || "—")}</td>
+          <td>${escapeHtml(record.email || "—")}</td>
+          <td>${escapeHtml(record.yearLayer || "—")}</td>
+          <td><span class="import-row-status" title="${escapeHtml(status.label)}">${escapeHtml(status.label)}</span></td>
+        </tr>
+      `;
+    })
+    .join("");
+  const skipped = data.summary.duplicates + data.summary.invalid;
+  const readyLabel = `${data.summary.ready} ${data.summary.ready === 1 ? "lid staat" : "leden staan"}`;
+  els.memberImportHint.textContent = skipped
+    ? `${readyLabel} klaar. ${skipped} ${skipped === 1 ? "rij wordt" : "rijen worden"} overgeslagen.`
+    : `${readyLabel} klaar om te importeren.`;
+  els.memberImportPreview.classList.remove("hidden");
+  els.confirmMemberImport.textContent = `${data.summary.ready} ${data.summary.ready === 1 ? "lid" : "leden"} importeren`;
+  els.confirmMemberImport.disabled = data.summary.ready === 0;
+  els.confirmMemberImport.classList.remove("hidden");
+}
+
+function bulkInvitationRows() {
+  return state.bulkInvitations.map(({ member, invitation }) => [
+    member.name,
+    member.email,
+    new URL(invitation.invitePath, window.location.origin).toString(),
+    invitation.expiresAt
+  ]);
+}
+
+function openBulkInvitationDialog(created) {
+  state.bulkInvitations = created;
+  els.bulkInvitationIntro.textContent = `${created.length} ${created.length === 1 ? "lid is" : "leden zijn"} toegevoegd met een openstaande uitnodiging.`;
+  els.bulkInvitationList.innerHTML = created
+    .map(({ member, invitation }) => {
+      const invitationUrl = new URL(invitation.invitePath, window.location.origin).toString();
+      return `
+        <div class="bulk-invitation-row">
+          <div><strong>${escapeHtml(member.name)}</strong><span>${escapeHtml(member.email)}</span></div>
+          <code title="${escapeHtml(invitationUrl)}">${escapeHtml(invitationUrl)}</code>
+        </div>
+      `;
+    })
+    .join("");
+  els.bulkInvitationDialog.showModal();
 }
 
 function renderProfile() {
@@ -989,6 +1096,102 @@ els.profileForm.elements.profilePhoto.addEventListener("change", async () => {
   }
 });
 
+els.memberImportFile.addEventListener("change", resetMemberImportPreview);
+els.memberImportForm.elements.defaultYear.addEventListener("input", resetMemberImportPreview);
+
+els.memberImportForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  resetMemberImportPreview();
+  const file = els.memberImportFile.files[0];
+  if (!file) {
+    els.memberImportError.textContent = "Kies eerst een CSV- of PDF-bestand.";
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    els.memberImportError.textContent = "Het importbestand mag maximaal 5 MB zijn.";
+    return;
+  }
+  if (!/\.(csv|pdf)$/i.test(file.name)) {
+    els.memberImportError.textContent = "Gebruik een CSV- of PDF-bestand.";
+    return;
+  }
+
+  els.previewMemberImport.disabled = true;
+  els.previewMemberImport.textContent = "Controleren…";
+  try {
+    const data = await api("/api/members/import/preview", {
+      method: "POST",
+      body: JSON.stringify({
+        fileName: file.name,
+        data: await fileAsBase64(file),
+        defaultYear: els.memberImportForm.elements.defaultYear.value
+      })
+    });
+    renderMemberImportPreview(data);
+  } catch (error) {
+    els.memberImportError.textContent = error.message;
+  } finally {
+    els.previewMemberImport.disabled = false;
+    els.previewMemberImport.textContent = "Opnieuw controleren";
+  }
+});
+
+els.confirmMemberImport.addEventListener("click", async () => {
+  const readyRecords = state.importRecords.filter((record) => record.ready);
+  if (!readyRecords.length) return;
+  els.confirmMemberImport.disabled = true;
+  els.confirmMemberImport.textContent = "Importeren…";
+  els.memberImportError.textContent = "";
+  try {
+    const { created } = await api("/api/members/import", {
+      method: "POST",
+      body: JSON.stringify({ records: readyRecords })
+    });
+    els.memberImportDialog.close();
+    openBulkInvitationDialog(created);
+    refreshPortal().catch((error) => showToast(error.message));
+  } catch (error) {
+    els.memberImportError.textContent = error.message;
+    els.confirmMemberImport.disabled = false;
+    els.confirmMemberImport.textContent = `${readyRecords.length} ${readyRecords.length === 1 ? "lid" : "leden"} importeren`;
+  }
+});
+
+els.downloadImportTemplate.addEventListener("click", () => {
+  downloadCsv(
+    "cassiopeia-leden-import-sjabloon.csv",
+    [["naam", "e-mail", "lichting", "functie", "status", "commissie", "telefoon", "adres", "bio"]],
+    ";"
+  );
+});
+
+els.downloadBulkInvitations.addEventListener("click", () => {
+  downloadCsv(
+    "cassiopeia-uitnodigingslinks.csv",
+    [["naam", "e-mail", "uitnodigingslink", "verloopt-op"], ...bulkInvitationRows()],
+    ";"
+  );
+});
+
+els.copyBulkInvitations.addEventListener("click", async () => {
+  const text = bulkInvitationRows()
+    .map(([name, email, url]) => `${name} (${email})\n${url}`)
+    .join("\n\n");
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (error) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.append(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+  showToast("Alle uitnodigingslinks zijn gekopieerd.");
+});
+
 els.memberSearch.addEventListener("input", () => loadMembers().catch((error) => showToast(error.message)));
 els.memberYearFilter.addEventListener("change", renderMembers);
 els.adminSearch?.addEventListener("input", renderAdminAccounts);
@@ -1131,6 +1334,9 @@ document.body.addEventListener("click", async (event) => {
 
   const newMemberButton = event.target.closest("[data-new-member]");
   if (newMemberButton) return openMemberDialog();
+
+  const importMembersButton = event.target.closest("[data-import-members]");
+  if (importMembersButton) return openMemberImportDialog();
 
   const closeBtn = event.target.closest("[data-close]");
   if (closeBtn) return closeBtn.closest("dialog").close();

@@ -18,7 +18,7 @@
     <meta name="twitter:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />
     <meta name="twitter:image" content="https://www.dispuutcassiopeia.nl/assets/og.png" />
     <link rel="icon" type="image/jpeg" href="assets/cassiopeia-embleem.jpeg" />
-    <link rel="stylesheet" href="styles.css?v=20260829-lustrum-portal" />
+    <link rel="stylesheet" href="styles.css?v=20260829-member-import" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -250,7 +250,10 @@
             <h1>Beheer</h1>
             <p>Nodig leden uit, bewaak toegang en houd het ledenbestand actueel.</p>
           </div>
-          <button class="primary" data-new-member>Nieuw lid uitnodigen</button>
+          <div class="admin-banner-actions">
+            <button class="secondary" type="button" data-import-members>Importeer PDF/CSV</button>
+            <button class="primary" type="button" data-new-member>Nieuw lid uitnodigen</button>
+          </div>
         </div>
         <div class="admin-stat-grid" aria-label="Accountoverzicht">
           <article><span>Actief</span><strong id="adminActiveCount">0</strong></article>
@@ -268,6 +271,68 @@
         <div id="adminAccountList" class="admin-account-list" aria-live="polite"></div>
       </section>
     </main>
+
+    <dialog id="memberImportDialog">
+      <form id="memberImportForm" method="dialog" class="dialog-card import-dialog-card">
+        <div class="dialog-heading">
+          <p class="eyebrow">Ledenbestand</p>
+          <h3>Leden importeren</h3>
+          <p>Upload een CSV of tekst-PDF. Je ziet altijd eerst een controlevoorbeeld voordat accounts worden aangemaakt.</p>
+        </div>
+        <div class="import-guide">
+          <strong>Benodigde gegevens</strong>
+          <p>Naam, e-mail en lichting zijn verplicht. Optioneel: functie, status, commissie, telefoon, adres en bio.</p>
+        </div>
+        <div class="form-grid">
+          <label class="wide import-file-field">CSV- of PDF-bestand
+            <input id="memberImportFile" name="memberImportFile" type="file" accept=".csv,.pdf,text/csv,application/pdf" required />
+            <span>Maximaal 5 MB en 250 leden. Een gescande PDF zonder selecteerbare tekst werkt niet.</span>
+          </label>
+          <label class="wide">Standaardlichting bij ontbrekende waarden
+            <input name="defaultYear" placeholder="Bijvoorbeeld '26" />
+          </label>
+        </div>
+        <div id="memberImportPreview" class="import-preview hidden" aria-live="polite">
+          <div class="import-summary-grid">
+            <article><span>Gereed</span><strong id="importReadyCount">0</strong></article>
+            <article><span>Bestaat al</span><strong id="importDuplicateCount">0</strong></article>
+            <article><span>Ongeldig</span><strong id="importInvalidCount">0</strong></article>
+          </div>
+          <div class="import-table-wrap">
+            <table class="import-table">
+              <thead><tr><th>Rij</th><th>Naam</th><th>E-mail</th><th>Lichting</th><th>Status</th></tr></thead>
+              <tbody id="memberImportRows"></tbody>
+            </table>
+          </div>
+          <p id="memberImportHint" class="form-help"></p>
+        </div>
+        <p id="memberImportError" class="error" role="alert"></p>
+        <div class="dialog-actions import-actions">
+          <button id="downloadImportTemplate" type="button" class="text-button">Download CSV-sjabloon</button>
+          <span class="action-spacer"></span>
+          <button type="button" class="ghost" data-close>Sluiten</button>
+          <button id="previewMemberImport" type="submit" class="secondary">Bestand controleren</button>
+          <button id="confirmMemberImport" type="button" class="primary hidden">Geldige leden importeren</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="bulkInvitationDialog">
+      <div class="dialog-card bulk-invitation-card">
+        <div class="dialog-heading">
+          <p class="eyebrow">Import voltooid</p>
+          <h3>Uitnodigingen staan klaar</h3>
+          <p id="bulkInvitationIntro">De leden zijn toegevoegd met een openstaande uitnodiging.</p>
+        </div>
+        <div id="bulkInvitationList" class="bulk-invitation-list"></div>
+        <p class="form-help">De links verlopen na 48 uur en werken één keer. Deel iedere link uitsluitend privé met het betreffende lid.</p>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" data-close>Sluiten</button>
+          <button id="downloadBulkInvitations" type="button" class="secondary">Download CSV</button>
+          <button id="copyBulkInvitations" type="button" class="primary">Kopieer alle links</button>
+        </div>
+      </div>
+    </dialog>
 
     <dialog id="memberDialog">
       <form id="memberForm" method="dialog" class="dialog-card">
@@ -380,6 +445,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260829-lustrum-portal"></script>
+    <script src="app.js?v=20260829-member-import"></script>
   </body>
 </html>

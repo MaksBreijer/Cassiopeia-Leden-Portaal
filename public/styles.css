@@ -960,6 +960,21 @@ main {
   flex: 0 0 auto;
 }
 
+.admin-banner-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.admin-banner-actions .secondary {
+  border-color: rgba(255, 255, 255, 0.26);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 /* Directory */
 .directory-toolbar {
   display: grid;
@@ -1439,6 +1454,201 @@ label {
   gap: 14px;
 }
 
+.text-button {
+  border: 0;
+  padding: 8px 0;
+  color: var(--orange-strong);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dialog-heading h3 {
+  margin-bottom: 8px;
+}
+
+.dialog-heading > p:last-child {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+#memberImportDialog {
+  width: min(940px, calc(100% - 24px));
+}
+
+.import-dialog-card {
+  gap: 18px;
+}
+
+.import-guide {
+  border: 1px solid rgba(118, 84, 143, 0.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--lavender-50);
+}
+
+.import-guide strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--lavender-700);
+  font-size: 13px;
+}
+
+.import-guide p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.import-file-field > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.import-preview {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+
+.import-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.import-summary-grid article {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--lavender-50);
+}
+
+.import-summary-grid span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.import-summary-grid strong {
+  color: var(--lavender-700);
+  font-family: var(--serif);
+  font-size: 32px;
+  line-height: 0.9;
+}
+
+.import-table-wrap {
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.import-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.import-table th,
+.import-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.import-table th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  color: var(--muted);
+  background: #fff;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.import-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.import-table .row-invalid {
+  background: #fff7f7;
+}
+
+.import-table .row-duplicate {
+  background: #fffaf2;
+}
+
+.import-row-status {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: var(--success);
+  background: #edf7f1;
+  font-size: 9px;
+  font-weight: 850;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.row-invalid .import-row-status {
+  color: var(--danger);
+  background: #fbecef;
+}
+
+.row-duplicate .import-row-status {
+  color: #8c5d12;
+  background: #fff0d7;
+}
+
+.import-actions .action-spacer {
+  flex: 1;
+}
+
+.bulk-invitation-list {
+  display: grid;
+  gap: 8px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.bulk-invitation-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.55fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--lavender-50);
+}
+
+.bulk-invitation-row strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 12px;
+}
+
+.bulk-invitation-row span,
+.bulk-invitation-row code {
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .wide {
   grid-column: 1 / -1;
 }
@@ -1768,6 +1978,23 @@ dialog::backdrop {
     grid-template-columns: 1fr;
   }
 
+  .admin-banner-actions,
+  .admin-banner-actions button {
+    width: 100%;
+  }
+
+  .import-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .import-actions .action-spacer {
+    display: none;
+  }
+
+  .bulk-invitation-row {
+    grid-template-columns: 1fr;
+  }
+
   .admin-stat-grid article {
     min-height: 96px;
   }
@@ -1796,6 +2023,17 @@ dialog::backdrop {
 }
 
 @media (max-width: 480px) {
+  .import-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .import-actions button,
+  .import-actions .text-button {
+    width: 100%;
+    text-align: center;
+  }
+
   .brand-copy strong {
     max-width: 150px;
   }

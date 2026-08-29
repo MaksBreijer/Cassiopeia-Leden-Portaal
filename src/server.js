@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const express = require("express");
 const session = require("express-session");
 const { db, initializeDatabase, ensureYearAgendaItems } = require("./db");
+const { MAX_IMPORT_ROWS, parseMemberImport, validateRecords } = require("./member-import");
 const { createSqliteSessionStore } = require("./session-store");
 
 initializeDatabase();
@@ -18,6 +19,7 @@ const PASSWORD_MIN_LENGTH = 12;
 const ACCOUNT_TOKEN_LIFETIME_MS = 1000 * 60 * 60 * 48;
 const LOGIN_WINDOW_MS = 1000 * 60 * 15;
 const LOGIN_MAX_ATTEMPTS = 5;
+const MEMBER_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
 const loginAttempts = new Map();
 
 if (!SESSION_SECRET) {
@@ -103,7 +105,7 @@ app.use(
 
 app.use((error, req, res, next) => {
   if (error.type === "entity.too.large") {
-    return res.status(413).json({ error: "De afbeelding is te groot. Kies een foto van maximaal 5 MB." });
+    return res.status(413).json({ error: "Het bestand is te groot." });
   }
   next(error);
 });
@@ -170,6 +172,37 @@ function memberFromBody(body, existing = {}) {
     committee: valueFromBody(body, "committee", existing.committee),
     is_admin: body.isAdmin ? 1 : 0,
     account_status: ["pending", "active", "disabled"].includes(accountStatus) ? accountStatus : "active"
+  };
+}
+
+function importBufferFromBody(body) {
+  const fileName = path.basename(String(body.fileName || "").trim());
+  const encoded = String(body.data || "").trim();
+  if (!fileName || !encoded) throw new Error("Kies een CSV- of PDF-bestand.");
+  if (encoded.length > Math.ceil(MEMBER_IMPORT_MAX_BYTES * 4 / 3) + 16) {
+    throw new Error("Het importbestand mag maximaal 5 MB zijn.");
+  }
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) throw new Error("Het importbestand kon niet worden gelezen.");
+  const buffer = Buffer.from(encoded, "base64");
+  if (!buffer.length || buffer.length > MEMBER_IMPORT_MAX_BYTES) {
+    throw new Error("Het importbestand mag maximaal 5 MB zijn.");
+  }
+  return { buffer, fileName };
+}
+
+function importRecordFromBody(body) {
+  const member = memberFromBody({ ...body, isAdmin: false, accountStatus: "pending" });
+  return {
+    sourceRow: Number(body.sourceRow) || 0,
+    name: member.name,
+    email: member.email,
+    yearLayer: member.year_layer,
+    roleTitle: member.role_title,
+    phone: member.phone,
+    address: member.address,
+    bio: member.bio,
+    memberStatus: member.member_status,
+    committee: member.committee
   };
 }
 
@@ -425,6 +458,91 @@ app.get("/api/members/:id", requireAuth, (req, res) => {
     return res.status(404).json({ error: "Lid niet gevonden." });
   }
   res.json({ member: publicUser(member) });
+});
+
+app.post("/api/members/import/preview", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { buffer, fileName } = importBufferFromBody(req.body);
+    const defaultYear = String(req.body.defaultYear || "").trim();
+    const parsed = await parseMemberImport({ buffer, fileName, defaultYear });
+    const existingEmails = new Set(db.prepare("SELECT email FROM users").all().map((row) => row.email.toLowerCase()));
+    const records = parsed.map((record) => {
+      const duplicate = Boolean(record.email && existingEmails.has(record.email));
+      return {
+        ...record,
+        duplicate,
+        ready: !record.errors.length && !duplicate
+      };
+    });
+    res.json({
+      fileName,
+      records,
+      summary: {
+        total: records.length,
+        ready: records.filter((record) => record.ready).length,
+        duplicates: records.filter((record) => record.duplicate).length,
+        invalid: records.filter((record) => record.errors.length).length
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message || "Het importbestand kon niet worden gelezen." });
+  }
+});
+
+app.post("/api/members/import", requireAuth, requireAdmin, (req, res) => {
+  const inputRecords = Array.isArray(req.body.records) ? req.body.records : [];
+  if (!inputRecords.length) return res.status(400).json({ error: "Er zijn geen leden geselecteerd om te importeren." });
+  if (inputRecords.length > MAX_IMPORT_ROWS) {
+    return res.status(400).json({ error: `Importeer maximaal ${MAX_IMPORT_ROWS} leden tegelijk.` });
+  }
+
+  const records = validateRecords(inputRecords.map(importRecordFromBody));
+  const invalid = records.filter((record) => record.errors.length);
+  if (invalid.length) {
+    return res.status(400).json({ error: "Controleer de ongeldige rijen en maak opnieuw een voorbeeld." });
+  }
+
+  const existingEmails = new Set(db.prepare("SELECT email FROM users").all().map((row) => row.email.toLowerCase()));
+  if (records.some((record) => existingEmails.has(record.email))) {
+    return res.status(409).json({ error: "Minimaal één e-mailadres bestaat al. Maak opnieuw een voorbeeld." });
+  }
+
+  const expiresAt = Date.now() + ACCOUNT_TOKEN_LIFETIME_MS;
+  const prepared = records.map((record) => ({
+    member: memberFromBody({ ...record, isAdmin: false, accountStatus: "pending" }),
+    passwordHash: bcrypt.hashSync(crypto.randomBytes(48).toString("base64url"), 6),
+    token: crypto.randomBytes(32).toString("base64url")
+  }));
+
+  try {
+    const created = db.transaction(() => {
+      const insertMember = db.prepare(`
+        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, address, bio, avatar, member_status, committee, is_admin, account_status)
+        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @address, @bio, @avatar, @member_status, @committee, 0, 'pending')
+      `);
+      const insertToken = db.prepare(`
+        INSERT INTO account_tokens (user_id, token_hash, purpose, expires_at, created_by)
+        VALUES (?, ?, 'invite', ?, ?)
+      `);
+
+      return prepared.map(({ member, passwordHash, token }) => {
+        const result = insertMember.run({ ...member, password_hash: passwordHash });
+        insertToken.run(result.lastInsertRowid, tokenHash(token), expiresAt, req.session.userId);
+        const user = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid);
+        return {
+          member: publicUser(user),
+          invitation: {
+            invitePath: `/#activate=${encodeURIComponent(token)}`,
+            expiresAt: new Date(expiresAt).toISOString(),
+            purpose: "invite"
+          }
+        };
+      });
+    })();
+    res.status(201).json({ created });
+  } catch (error) {
+    res.status(409).json({ error: "De import kon niet worden opgeslagen. Controleer of e-mailadressen uniek zijn." });
+  }
 });
 
 app.post("/api/members", requireAuth, requireAdmin, async (req, res) => {

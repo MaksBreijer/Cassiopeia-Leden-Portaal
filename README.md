@@ -14,6 +14,7 @@ Moderne website voor damesdispuut Cassiopeia met een besloten ledenomgeving.
 * Activiteitenoverzicht
 * Inschrijven en uitschrijven voor activiteiten
 * Aparte adminomgeving voor accounts en uitnodigingen
+* Veilige ledenimport via CSV of tekst-PDF, met controlevoorbeeld en dubbele-detectie
 * Beheeromgeving voor activiteiten
 * Overzicht van inschrijvingen per activiteit
 * Brute-forcebeperking, beveiligingsheaders en sessie-intrekking
@@ -34,6 +35,12 @@ Moderne website voor damesdispuut Cassiopeia met een besloten ledenomgeving.
 4. Het lid kiest zelf een wachtwoord van minimaal 12 tekens en wordt direct ingelogd.
 
 Voor een bestaand account kan een admin op dezelfde plek een nieuwe wachtwoordlink maken. Hiermee wordt het oude wachtwoord vervangen en worden oudere sessies ingetrokken. Er is nog geen maildienst gekoppeld; links worden daarom handmatig via een privékanaal gedeeld.
+
+## Leden importeren
+
+Een admin kan onder **Beheer** een CSV of tekst-PDF uploaden. Naam, e-mail en lichting zijn verplicht; functie, status, commissie, telefoon, adres en bio zijn optioneel. De app toont eerst een controlevoorbeeld, slaat bestaande e-mailadressen en ongeldige rijen over en maakt pas na bevestiging accounts met een persoonlijke uitnodigingslink aan.
+
+De import accepteert maximaal 250 leden en een bestand van maximaal 5 MB. Gescande PDF's zonder selecteerbare tekst worden niet verwerkt. In het importvenster staat een CSV-sjabloon klaar om te downloaden.
 
 ## Beheerder eenmalig instellen of herstellen
 

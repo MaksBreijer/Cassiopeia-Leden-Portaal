@@ -8,6 +8,36 @@ const { spawn, spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const projectRoot = path.join(__dirname, "..");
+const { parseCsvText, parseMemberImport } = require(path.join(projectRoot, "src", "member-import"));
+
+function simpleTextPdf(lines) {
+  const escapedLines = lines.map((line) => String(line).replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)"));
+  const content = [
+    "BT",
+    "/F1 12 Tf",
+    "50 780 Td",
+    ...escapedLines.flatMap((line, index) => [index ? "0 -24 Td" : "", `(${line}) Tj`]).filter(Boolean),
+    "ET"
+  ].join("\n");
+  const objects = [
+    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
+    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n",
+    "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+    `5 0 obj\n<< /Length ${Buffer.byteLength(content, "latin1")} >>\nstream\n${content}\nendstream\nendobj\n`
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((object) => {
+    offsets.push(Buffer.byteLength(pdf, "latin1"));
+    pdf += object;
+  });
+  const xrefOffset = Buffer.byteLength(pdf, "latin1");
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  pdf += offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("");
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  return Buffer.from(pdf, "latin1");
+}
 
 function runDatabaseScript(dataDir, script, extraEnv = {}) {
   const result = spawnSync(process.execPath, ["-e", script], {
@@ -67,6 +97,31 @@ test("the login form does not publish credentials", () => {
   assert.doesNotMatch(html, /top-marquee/);
   assert.match(loginForm, /LUSTRUM|Cassiopeia/);
   assert.match(html, /assets\/og\.png/);
+});
+
+test("member import parses Dutch CSV and text PDFs", async () => {
+  const csv = [
+    "naam;e-mail;lichting;functie;status;commissie",
+    '"Anna van Test";anna@example.nl;\'26;Ab-actis;actief;Lustrumcommissie',
+    '"Dubbel Lid";anna@example.nl;2026;;;',
+    '"Geen Lichting";zonderjaar@example.nl;;;;'
+  ].join("\n");
+  const csvRecords = parseCsvText(csv);
+  assert.equal(csvRecords[0].name, "Anna van Test");
+  assert.equal(csvRecords[0].roleTitle, "Ab-actis");
+  assert.deepEqual(csvRecords[0].errors, []);
+  assert.match(csvRecords[1].errors.join(" "), /Dubbel/);
+  assert.match(csvRecords[2].errors.join(" "), /Lichting/);
+
+  const pdfRecords = await parseMemberImport({
+    buffer: simpleTextPdf(["naam;e-mail;lichting", "PDF Lid;pdf@example.nl;2025"]),
+    fileName: "leden.pdf"
+  });
+  assert.equal(pdfRecords.length, 1);
+  assert.deepEqual(
+    { name: pdfRecords[0].name, email: pdfRecords[0].email, yearLayer: pdfRecords[0].yearLayer, errors: pdfRecords[0].errors },
+    { name: "PDF Lid", email: "pdf@example.nl", yearLayer: "2025", errors: [] }
+  );
 });
 
 test("an empty non-production database does not get demo users", (t) => {
@@ -218,6 +273,44 @@ test("admins invite members who set and reset their own password", async (t) => 
     body: { name: "Aanvaller", email: "aanvaller@example.nl", yearLayer: "2026" }
   });
   assert.equal(forgedRequest.response.status, 403);
+
+  const importCsv = [
+    "naam;e-mail;lichting;status",
+    "Bulk Lid;bulk@example.nl;2026;actief",
+    "Bestaand;beheerder@example.nl;2020;actief",
+    "Mist Lichting;mist@example.nl;;actief"
+  ].join("\n");
+  const importPreview = await jsonRequest(baseUrl, "/api/members/import/preview", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { fileName: "leden.csv", data: Buffer.from(importCsv).toString("base64") }
+  });
+  assert.equal(importPreview.response.status, 200);
+  assert.deepEqual(importPreview.data.summary, { total: 3, ready: 1, duplicates: 1, invalid: 1 });
+
+  const bulkCreated = await jsonRequest(baseUrl, "/api/members/import", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { records: importPreview.data.records.filter((record) => record.ready) }
+  });
+  assert.equal(bulkCreated.response.status, 201);
+  assert.equal(bulkCreated.data.created.length, 1);
+  assert.equal(bulkCreated.data.created[0].member.email, "bulk@example.nl");
+  assert.equal(bulkCreated.data.created[0].member.accountStatus, "pending");
+  const bulkInviteToken = bulkCreated.data.created[0].invitation.invitePath.split("#activate=")[1];
+  const bulkInvite = await jsonRequest(baseUrl, "/api/account-token/inspect", {
+    method: "POST",
+    body: { token: bulkInviteToken }
+  });
+  assert.equal(bulkInvite.response.status, 200);
+  assert.equal(bulkInvite.data.email, "bulk@example.nl");
+
+  const duplicateBulkImport = await jsonRequest(baseUrl, "/api/members/import", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { records: importPreview.data.records.filter((record) => record.ready) }
+  });
+  assert.equal(duplicateBulkImport.response.status, 409);
 
   const created = await jsonRequest(baseUrl, "/api/members", {
     method: "POST",
