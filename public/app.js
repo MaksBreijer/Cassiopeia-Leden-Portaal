@@ -1,6 +1,7 @@
 const state = {
   user: null,
   members: [],
+  mapMembers: [],
   activities: [],
   documents: [],
   confessions: [],
@@ -494,6 +495,7 @@ function setLoggedOut() {
   state.user = null;
   document.body.classList.remove("is-authenticated");
   state.members = [];
+  state.mapMembers = [];
   state.activities = [];
   state.documents = [];
   state.confessions = [];
@@ -520,7 +522,7 @@ function setLoggedOut() {
 }
 
 async function refreshPortal() {
-  await Promise.all([loadMembers(), loadActivities(), loadYearAgenda(), loadDocuments(), loadConfessions(), loadSiteAssets()]);
+  await Promise.all([loadMembers(), loadMapMembers(), loadActivities(), loadYearAgenda(), loadDocuments(), loadConfessions(), loadSiteAssets()]);
   focusSharedActivity();
 }
 
@@ -533,6 +535,17 @@ async function loadMembers() {
   renderCribMap();
   renderAdminAccounts();
   renderPortalOverview();
+}
+
+async function loadMapMembers() {
+  try {
+    const data = await api("/api/map-members");
+    state.mapMembers = data.members || [];
+  } catch (error) {
+    // Keep the rest of the portal usable while an older server is being deployed.
+    state.mapMembers = [];
+  }
+  renderCribMap();
 }
 
 function uniqueSorted(values) {
@@ -631,8 +644,9 @@ function mapZoomForMembers(members) {
 
 function renderCribMap() {
   if (!els.cribMap) return;
-  const mappedMembers = state.members.filter((member) => Number.isFinite(Number(member.latitude)) && Number.isFinite(Number(member.longitude)) && member.accountStatus === "active");
-  const unmappedMembers = state.members.filter((member) => member.accountStatus === "active" && (!Number.isFinite(Number(member.latitude)) || !Number.isFinite(Number(member.longitude))));
+  const sourceMembers = state.mapMembers.length ? state.mapMembers : state.members;
+  const mappedMembers = sourceMembers.filter((member) => Number.isFinite(Number(member.latitude)) && Number.isFinite(Number(member.longitude)) && member.accountStatus === "active");
+  const unmappedMembers = sourceMembers.filter((member) => member.accountStatus === "active" && (!Number.isFinite(Number(member.latitude)) || !Number.isFinite(Number(member.longitude))));
   if (els.mapMemberCount) els.mapMemberCount.textContent = `${mappedMembers.length} van ${mappedMembers.length + unmappedMembers.length} op de kaart`;
   if (els.mapUnmapped) {
     els.mapUnmapped.innerHTML = unmappedMembers.length
@@ -1547,6 +1561,7 @@ els.profileForm.addEventListener("submit", async (event) => {
     els.profileForm.reset();
     renderProfile();
     await loadMembers();
+    await loadMapMembers();
     showToast("Profiel opgeslagen.");
   } catch (error) {
     showToast(error.message);

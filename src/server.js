@@ -523,6 +523,34 @@ app.get("/api/members", requireAuth, (req, res) => {
   res.json({ members: rows.map(publicUser) });
 });
 
+app.get("/api/map-members", requireAuth, async (req, res) => {
+  const rows = db.prepare(`
+    SELECT * FROM users
+    WHERE account_status = 'active' AND TRIM(address) <> ''
+    ORDER BY name ASC
+  `).all();
+  const missing = rows.filter((row) => !Number.isFinite(Number(row.latitude)) || !Number.isFinite(Number(row.longitude))).slice(0, 12);
+
+  // Existing addresses are geocoded lazily the first time the map is opened.
+  // New or changed addresses are geocoded when the profile is saved.
+  for (const member of missing) {
+    const coordinates = await coordinatesForAddress(member.address, { address: "" });
+    if (!coordinates.location_updated_at) continue;
+    db.prepare("UPDATE users SET latitude = ?, longitude = ?, location_updated_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .run(coordinates.latitude, coordinates.longitude, coordinates.location_updated_at, member.id);
+    member.latitude = coordinates.latitude;
+    member.longitude = coordinates.longitude;
+    member.location_updated_at = coordinates.location_updated_at;
+  }
+
+  const members = db.prepare(`
+    SELECT * FROM users
+    WHERE account_status = 'active' AND TRIM(address) <> ''
+    ORDER BY name ASC
+  `).all();
+  res.json({ members: members.map(publicUser) });
+});
+
 app.get("/api/members/:id", requireAuth, (req, res) => {
   const member = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);
   if (!member) return res.status(404).json({ error: "Lid niet gevonden." });
