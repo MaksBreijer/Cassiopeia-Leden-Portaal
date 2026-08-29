@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const Database = require("better-sqlite3");
 
@@ -69,13 +70,19 @@ function initializeDatabase() {
       value TEXT NOT NULL,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      sid TEXT PRIMARY KEY,
+      sess TEXT NOT NULL,
+      expires INTEGER NOT NULL
+    );
   `);
 
   ensureColumn("users", "address", "TEXT DEFAULT ''");
   ensureColumn("users", "member_status", "TEXT DEFAULT 'actief'");
   ensureColumn("users", "committee", "TEXT DEFAULT ''");
-  renameSeedAdmin();
-  seedDatabase();
+  revokeExposedCredentials();
+  bootstrapAdmin();
   seedYearAgenda();
   syncCsvYearAgendaData();
 }
@@ -87,74 +94,77 @@ function ensureColumn(table, column, definition) {
   }
 }
 
-function seedDatabase() {
+function bootstrapAdmin() {
   const count = db.prepare("SELECT COUNT(*) AS count FROM users").get().count;
-  if (count > 0) return;
+  const email = String(process.env.BOOTSTRAP_ADMIN_EMAIL || "").trim().toLowerCase();
+  const password = String(process.env.BOOTSTRAP_ADMIN_PASSWORD || "");
+  const name = String(process.env.BOOTSTRAP_ADMIN_NAME || "Cassiopeia beheerder").trim();
 
-  const hash = bcrypt.hashSync("Cassio2026!", 12);
-  const memberHash = bcrypt.hashSync("Welkom2026!", 12);
+  if (!email && !password) {
+    if (!count && process.env.NODE_ENV === "production") {
+      throw new Error("Stel BOOTSTRAP_ADMIN_EMAIL en BOOTSTRAP_ADMIN_PASSWORD in voor de eerste beheerder.");
+    }
+    return;
+  }
+  if (!email || !password) {
+    throw new Error("BOOTSTRAP_ADMIN_EMAIL en BOOTSTRAP_ADMIN_PASSWORD moeten samen worden ingesteld.");
+  }
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    throw new Error("BOOTSTRAP_ADMIN_EMAIL is geen geldig e-mailadres.");
+  }
+  if (password.length < 12 || ["Cassio2026!", "Welkom2026!"].includes(password)) {
+    throw new Error("BOOTSTRAP_ADMIN_PASSWORD moet uniek zijn en minimaal 12 tekens bevatten.");
+  }
 
-  const insertUser = db.prepare(`
-    INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, address, bio, avatar, member_status, committee, is_admin)
-    VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @address, @bio, @avatar, @member_status, @committee, @is_admin)
-  `);
+  const bootstrapKey = `bootstrap_admin_v1:${email}`;
+  if (db.prepare("SELECT 1 FROM app_settings WHERE key = ?").get(bootstrapKey)) return;
 
-  insertUser.run({
-    name: "AdminCassio",
-    email: "admin@cassiopeia.local",
-    password_hash: hash,
-    year_layer: "2020",
-    role_title: "Admin",
-    phone: "+31 6 00000000",
-    address: "",
-    bio: "Beheert het ledenbestand en bewaakt de Cassiopeia-tradities.",
-    avatar: "C",
-    member_status: "actief",
-    committee: "Bestuur",
-    is_admin: 1
-  });
+  db.transaction(() => {
+    const passwordHash = bcrypt.hashSync(password, 12);
+    const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+    if (existing) {
+      db.prepare(`
+        UPDATE users
+        SET password_hash = ?, is_admin = 1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(passwordHash, existing.id);
+    } else {
+      db.prepare(`
+        INSERT INTO users (name, email, password_hash, year_layer, role_title, avatar, member_status, committee, is_admin)
+        VALUES (?, ?, ?, ?, 'Admin', 'C', 'actief', 'Bestuur', 1)
+      `).run(name, email, passwordHash, String(new Date().getFullYear()));
+    }
+    db.prepare("INSERT INTO app_settings (key, value) VALUES (?, 'complete')").run(bootstrapKey);
+  })();
+}
 
-  [
-    ["Lotte de Vries", "lotte@cassiopeia.local", "2021", "Abactis", "L"],
-    ["Noor Jansen", "noor@cassiopeia.local", "2022", "Quaestor", "N"],
-    ["Sofie Bakker", "sofie@cassiopeia.local", "2023", "Activiteitencommissie", "S"],
-    ["Emma Visser", "emma@cassiopeia.local", "2024", "Lid", "E"]
-  ].forEach(([name, email, year_layer, role_title, avatar]) => {
-    insertUser.run({
-      name,
-      email,
-      password_hash: memberHash,
-      year_layer,
-      role_title,
-      phone: "",
-      address: "",
-      bio: "Cassiopeia-lid met liefde voor borrels, tradities en sterke plannen.",
-      avatar,
-      member_status: "actief",
-      committee: role_title === "Lid" ? "" : role_title,
-      is_admin: 0
+function revokeExposedCredentials() {
+  const migrationKey = "security_revoke_exposed_seed_credentials_v1";
+  if (db.prepare("SELECT 1 FROM app_settings WHERE key = ?").get(migrationKey)) return;
+
+  const exposedPasswords = ["Cassio2026!", "Welkom2026!"];
+  const compromisedUsers = db
+    .prepare("SELECT id, password_hash FROM users WHERE email LIKE '%@cassiopeia.local' OR is_admin = 1")
+    .all()
+    .filter((user) => exposedPasswords.some((password) => bcrypt.compareSync(password, user.password_hash)));
+
+  db.transaction(() => {
+    const revokeUser = db.prepare(`
+      UPDATE users
+      SET password_hash = ?, is_admin = 0, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    compromisedUsers.forEach((user) => {
+      const unknownPassword = crypto.randomBytes(48).toString("base64url");
+      revokeUser.run(bcrypt.hashSync(unknownPassword, 12), user.id);
     });
-  });
 
-  const insertActivity = db.prepare(`
-    INSERT INTO activities (title, description, location, starts_at, capacity, created_by)
-    VALUES (?, ?, ?, ?, ?, 1)
-  `);
-
-  insertActivity.run(
-    "Zomerborrel",
-    "Een elegante avond om het verenigingsjaar samen af te sluiten.",
-    "Sociëteit",
-    "2026-06-21T20:00",
-    40
-  );
-  insertActivity.run(
-    "Jaarlaagdiner",
-    "Diner voor alle jaarlagen met tafelmomenten en speeches.",
-    "De Salon",
-    "2026-07-04T19:00",
-    28
-  );
+    db.prepare("DELETE FROM sessions").run();
+    db.prepare(`
+      INSERT INTO app_settings (key, value, updated_at)
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+    `).run(migrationKey, JSON.stringify({ revokedUsers: compromisedUsers.length }));
+  })();
 }
 
 const defaultYearAgendaItems = [
@@ -271,14 +281,6 @@ function ensureYearAgendaItems() {
   const count = db.prepare("SELECT COUNT(*) AS count FROM year_agenda_items").get().count;
   if (count > 0) return;
   insertDefaultYearAgendaItems();
-}
-
-function renameSeedAdmin() {
-  db.prepare(`
-    UPDATE users
-    SET name = 'AdminCassio', role_title = 'Admin', avatar = 'C', updated_at = CURRENT_TIMESTAMP
-    WHERE email = 'admin@cassiopeia.local'
-  `).run();
 }
 
 module.exports = { db, initializeDatabase, ensureYearAgendaItems };

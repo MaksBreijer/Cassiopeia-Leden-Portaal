@@ -25,10 +25,21 @@ Moderne website voor damesdispuut Cassiopeia met een besloten ledenomgeving.
 * Bcrypt authenticatie
 * Server-side rendering
 
-## Beheerdersaccount
+## Beheerder eenmalig instellen of herstellen
 
-**Naam:** AdminCassio
-**E-mail:** [admin@cassiopeia.local](mailto:admin@cassiopeia.local)
-**Wachtwoord:** Cassio2026!
+Er worden bewust geen standaard- of demoaccounts aangemaakt. Stel een eerste beheerder in via omgevingsvariabelen. Dezelfde methode kan een bestaand account eenmalig een nieuw veilig wachtwoord en adminrechten geven:
 
-> Wijzig het standaard wachtwoord na de eerste keer inloggen.
+```bash
+BOOTSTRAP_ADMIN_NAME="Cassiopeia beheerder" \
+BOOTSTRAP_ADMIN_EMAIL="beheerder@example.nl" \
+BOOTSTRAP_ADMIN_PASSWORD="kies-hier-een-uniek-lang-wachtwoord" \
+npm start
+```
+
+Het wachtwoord moet uniek zijn en minimaal 12 tekens bevatten. De bootstrap wordt per e-mailadres slechts eenmaal uitgevoerd; verwijder de variabelen na de eerste succesvolle start.
+
+In productie zijn daarnaast `NODE_ENV=production` en een sterke, willekeurige `SESSION_SECRET` verplicht.
+
+## Beveiligingsmigratie
+
+Bij de eerste start van deze versie worden de eerder gepubliceerde standaardaccounts automatisch geblokkeerd, adminrechten van die accounts ingetrokken en bestaande sessies eenmalig verwijderd. Een beheerder moet voor getroffen echte leden daarna een nieuw wachtwoord instellen.

@@ -12,11 +12,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const SESSION_SECRET = process.env.SESSION_SECRET || (process.env.NODE_ENV === "production" ? null : "cassiopeia-local-development-secret");
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
 
 if (!SESSION_SECRET) {
   throw new Error("SESSION_SECRET is verplicht in productie.");
 }
+
+if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -141,14 +142,23 @@ app.get("/api/session", (req, res) => {
 app.post("/api/login", async (req, res) => {
   const email = String(req.body.email || "").trim().toLowerCase();
   const password = String(req.body.password || "");
+  if (!email || !password) {
+    return res.status(400).json({ error: "Vul je e-mailadres en wachtwoord in." });
+  }
   const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
 
   if (!user || !(await bcrypt.compare(password, user.password_hash))) {
     return res.status(401).json({ error: "E-mail of wachtwoord klopt niet." });
   }
 
-  req.session.userId = user.id;
-  res.json({ user: publicUser(user) });
+  req.session.regenerate((error) => {
+    if (error) return res.status(500).json({ error: "Inloggen is tijdelijk niet mogelijk." });
+    req.session.userId = user.id;
+    req.session.save((saveError) => {
+      if (saveError) return res.status(500).json({ error: "Inloggen is tijdelijk niet mogelijk." });
+      res.json({ user: publicUser(user) });
+    });
+  });
 });
 
 app.post("/api/logout", (req, res) => {
