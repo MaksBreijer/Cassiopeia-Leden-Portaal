@@ -51,9 +51,10 @@ body {
 body.is-authenticated {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 5% 8%, rgba(212, 192, 228, 0.3), transparent 28rem),
-    radial-gradient(circle at 100% 25%, rgba(246, 160, 113, 0.08), transparent 26rem),
+    linear-gradient(rgba(250, 248, 252, 0.74), rgba(250, 248, 252, 0.74)),
+    url("assets/lustrum-patroon.png") center top / 420px auto repeat,
     var(--lavender-50);
+  background-attachment: fixed;
 }
 
 button,
@@ -432,11 +433,7 @@ main {
   gap: 24px;
   padding: clamp(10px, 2vw, 22px);
   border-radius: 42px;
-  background:
-    linear-gradient(rgba(250, 248, 252, 0.84), rgba(250, 248, 252, 0.84)),
-    url("assets/lustrum-patroon.png") center;
-  background-size: cover, 420px auto;
-  background-repeat: no-repeat, repeat;
+  background: rgba(250, 248, 252, 0.48);
 }
 
 .portal-hero {
