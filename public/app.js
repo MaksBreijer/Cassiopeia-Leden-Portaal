@@ -127,6 +127,13 @@ const els = {
   headerProfileAvatar: document.querySelector("#headerProfileAvatar"),
   profileName: document.querySelector("#profileName"),
   profileEmail: document.querySelector("#profileEmail"),
+  headerUserName: document.querySelector("#headerUserName"),
+  welcomeName: document.querySelector("#welcomeName"),
+  overviewMemberCount: document.querySelector("#overviewMemberCount"),
+  overviewActivityCount: document.querySelector("#overviewActivityCount"),
+  overviewAgendaCount: document.querySelector("#overviewAgendaCount"),
+  overviewNextActivity: document.querySelector("#overviewNextActivity"),
+  overviewNextDate: document.querySelector("#overviewNextDate"),
   newMemberBtn: document.querySelector("#newMemberBtn"),
   newYearAgendaItemBtn: document.querySelector("#newYearAgendaItemBtn"),
   newActivityBtn: document.querySelector("#newActivityBtn"),
@@ -148,6 +155,10 @@ const els = {
   invitationDialogText: document.querySelector("#invitationDialogText"),
   invitationUrl: document.querySelector("#invitationUrl"),
   copyInvitationBtn: document.querySelector("#copyInvitationBtn"),
+  adminSearch: document.querySelector("#adminSearch"),
+  adminActiveCount: document.querySelector("#adminActiveCount"),
+  adminPendingCount: document.querySelector("#adminPendingCount"),
+  adminDisabledCount: document.querySelector("#adminDisabledCount"),
   toast: document.querySelector("#toast")
 };
 
@@ -285,7 +296,24 @@ function renderProfile() {
   els.headerProfileAvatar.innerHTML = avatarHtml(state.user);
   els.profileName.textContent = state.user.name;
   els.profileEmail.textContent = state.user.email;
+  if (els.headerUserName) els.headerUserName.textContent = state.user.name.split(/\s+/)[0] || "Profiel";
+  if (els.welcomeName) els.welcomeName.textContent = state.user.name.split(/\s+/)[0] || "Cassiopeia";
   els.profileForm.elements.address.value = state.user.address || "";
+}
+
+function renderPortalOverview() {
+  const activeMembers = state.members.filter((member) => member.accountStatus === "active");
+  const now = Date.now();
+  const upcomingActivities = state.activities
+    .filter((activity) => new Date(activity.startsAt).getTime() >= now)
+    .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+  const nextActivity = upcomingActivities[0];
+
+  if (els.overviewMemberCount) els.overviewMemberCount.textContent = String(activeMembers.length);
+  if (els.overviewActivityCount) els.overviewActivityCount.textContent = String(upcomingActivities.length || state.activities.length);
+  if (els.overviewAgendaCount) els.overviewAgendaCount.textContent = String(state.yearAgendaItems.length);
+  if (els.overviewNextActivity) els.overviewNextActivity.textContent = nextActivity?.title || "Nog niets gepland";
+  if (els.overviewNextDate) els.overviewNextDate.textContent = nextActivity ? formatDate(nextActivity.startsAt) : "De agenda is nog leeg";
 }
 
 function closeMobileMenu() {
@@ -298,6 +326,10 @@ function showPage(page = location.hash.slice(1) || "home") {
   const activePage = allowedPages.includes(page) ? page : "home";
   document.querySelectorAll(".page-view").forEach((section) => {
     section.classList.toggle("hidden", section.id !== activePage);
+  });
+  document.querySelectorAll(".site-nav a[href^='#']").forEach((link) => {
+    if (link.getAttribute("href") === `#${activePage}`) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
   });
   closeMobileMenu();
   if (activePage !== "leden") closeMemberDetail();
@@ -354,6 +386,7 @@ async function loadMembers() {
   renderMemberFilters();
   renderMembers();
   renderAdminAccounts();
+  renderPortalOverview();
 }
 
 function uniqueSorted(values) {
@@ -386,7 +419,7 @@ function filteredMembers() {
 
 function renderMembers() {
   const members = filteredMembers();
-  els.memberResultCount.textContent = `${members.length} ${members.length === 1 ? "Actief" : "leden"}`;
+  els.memberResultCount.textContent = `${members.length} ${members.length === 1 ? "lid" : "leden"}`;
   if (state.openMemberId && !members.some((member) => String(member.id) === state.openMemberId)) {
     closeMemberDetail();
   }
@@ -405,7 +438,7 @@ function renderMembers() {
               <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Actief")}</p>
               ${member.committee ? `<p class="meta">Commissie: ${escapeHtml(member.committee)}</p>` : ""}
               <div class="member-card-badges">
-                <span class="badge">${member.memberStatus === "oud" ? "Reunist" : "Actief"}</span>
+                <span class="badge">${member.memberStatus === "oud" ? "Reünist" : "Actief"}</span>
                 ${member.isAdmin ? '<span class="badge">Admin</span>' : ""}
               </div>
             </div>
@@ -438,7 +471,20 @@ function renderAdminAccounts() {
     els.adminAccountList.innerHTML = "";
     return;
   }
-  els.adminAccountList.innerHTML = state.members
+  const query = String(els.adminSearch?.value || "").trim().toLocaleLowerCase("nl");
+  const members = state.members.filter((member) => {
+    if (!query) return true;
+    return [member.name, member.email, member.yearLayer, member.roleTitle]
+      .some((value) => String(value || "").toLocaleLowerCase("nl").includes(query));
+  });
+  if (els.adminActiveCount) els.adminActiveCount.textContent = String(state.members.filter((member) => member.accountStatus === "active").length);
+  if (els.adminPendingCount) els.adminPendingCount.textContent = String(state.members.filter((member) => member.accountStatus === "pending").length);
+  if (els.adminDisabledCount) els.adminDisabledCount.textContent = String(state.members.filter((member) => member.accountStatus === "disabled").length);
+  if (!members.length) {
+    els.adminAccountList.innerHTML = '<article class="locked-panel"><h3>Geen accounts gevonden</h3><p>Probeer een andere naam of e-mailadres.</p></article>';
+    return;
+  }
+  els.adminAccountList.innerHTML = members
     .map(
       (member) => `
         <article class="admin-account-row">
@@ -478,7 +524,7 @@ async function showMemberDetail(id) {
         <p class="eyebrow">${member.isAdmin ? "Admin" : "Lidprofiel"}</p>
         <h2>${escapeHtml(member.name)}</h2>
         <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Actief")}</p>
-        <p class="meta">${member.memberStatus === "oud" ? "Reunist" : "Actief"}${member.committee ? ` · Commissie: ${escapeHtml(member.committee)}` : ""}</p>
+        <p class="meta">${member.memberStatus === "oud" ? "Reünist" : "Actief"}${member.committee ? ` · Commissie: ${escapeHtml(member.committee)}` : ""}</p>
       </div>
     </div>
     <p>${escapeHtml(member.bio || "Nog geen profieltekst ingevuld.")}</p>
@@ -512,6 +558,7 @@ async function loadActivities() {
   const data = await api("/api/activities");
   state.activities = data.activities;
   renderPublicActivities();
+  renderPortalOverview();
 }
 
 async function loadYearAgenda() {
@@ -527,6 +574,7 @@ async function loadYearAgenda() {
     showToast("Jaarplanning lokaal geladen.");
   }
   renderYearAgenda();
+  renderPortalOverview();
 }
 
 function groupedYearAgendaItems() {
@@ -552,8 +600,11 @@ function activeYearAgendaMonth(months) {
   if (!months.length) return null;
   const activeMonth = months.find((month) => month.monthIndex === state.activeYearAgendaMonthIndex);
   if (activeMonth) return activeMonth;
-  state.activeYearAgendaMonthIndex = months[0].monthIndex;
-  return months[0];
+  const currentMonthLabel = new Intl.DateTimeFormat("nl-NL", { month: "long", year: "numeric" }).format(new Date());
+  const currentMonth = months.find((month) => month.monthLabel.toLocaleLowerCase("nl") === currentMonthLabel.toLocaleLowerCase("nl"));
+  const initialMonth = currentMonth || months[0];
+  state.activeYearAgendaMonthIndex = initialMonth.monthIndex;
+  return initialMonth;
 }
 
 function renderYearAgendaToolbar(months, activeMonth) {
@@ -830,7 +881,7 @@ async function exportRegistrations(activityId) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
   downloadCsv(`inschrijvingen-${safeTitle || "activiteit"}.csv`, rows);
-  showToast("Inschrijvingen geexporteerd.");
+  showToast("Inschrijvingen geëxporteerd.");
 }
 
 function openLogin() {
@@ -940,6 +991,7 @@ els.profileForm.elements.profilePhoto.addEventListener("change", async () => {
 
 els.memberSearch.addEventListener("input", () => loadMembers().catch((error) => showToast(error.message)));
 els.memberYearFilter.addEventListener("change", renderMembers);
+els.adminSearch?.addEventListener("input", renderAdminAccounts);
 els.clearMemberFilters.addEventListener("click", () => {
   state.memberStatusFilter = "";
   els.memberYearFilter.value = "";
@@ -1062,6 +1114,13 @@ document.body.addEventListener("click", async (event) => {
   const navLink = event.target.closest(".site-nav a");
   if (navLink) {
     showPage(navLink.getAttribute("href").replace("#", ""));
+  }
+
+  const scrollTargetButton = event.target.closest("[data-scroll-target]");
+  if (scrollTargetButton) {
+    const target = document.getElementById(scrollTargetButton.dataset.scrollTarget);
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
   }
 
   const loginBtn = event.target.closest("[data-open-login]");

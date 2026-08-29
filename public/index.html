@@ -4,18 +4,23 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dameschdispuut Cassiopeia</title>
+    <meta name="description" content="Het besloten ledenportaal van Dameschdispuut Cassiopeia — activiteiten, jaarplanning, leden en lustrum." />
+    <meta name="theme-color" content="#b79ad9" />
+    <meta property="og:title" content="Dameschdispuut Cassiopeia · Lustrum III" />
+    <meta property="og:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />
+    <meta property="og:image" content="https://www.dispuutcassiopeia.nl/assets/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.dispuutcassiopeia.nl/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Dameschdispuut Cassiopeia · Lustrum III" />
+    <meta name="twitter:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />
+    <meta name="twitter:image" content="https://www.dispuutcassiopeia.nl/assets/og.png" />
     <link rel="icon" type="image/jpeg" href="assets/cassiopeia-embleem.jpeg" />
-    <link rel="stylesheet" href="styles.css?v=20260829-secure-accounts" />
+    <link rel="stylesheet" href="styles.css?v=20260829-lustrum-portal" />
   </head>
   <body>
-    <div class="top-marquee" aria-hidden="true">
-      <div class="top-marquee-track">
-        <span>Lustrum III · Dameschdispuut Cassiopeia ·</span>
-        <span>Lustrum III · Dameschdispuut Cassiopeia ·</span>
-        <span>Lustrum III · Dameschdispuut Cassiopeia ·</span>
-        <span>Lustrum III · Dameschdispuut Cassiopeia ·</span>
-      </div>
-    </div>
     <section id="loginScreen" class="login-screen">
       <div class="login-word login-word-lef" aria-hidden="true">LEF</div>
       <div class="login-word login-word-lustrum" aria-hidden="true">LUSTRUM III</div>
@@ -26,7 +31,7 @@
         <input name="password" type="password" autocomplete="current-password" placeholder="Wachtwoord" aria-label="Wachtwoord" required />
         <button type="submit" class="login-submit">Inloggen</button>
         <p class="login-help">Nog geen wachtwoord? Vraag een beheerder om een persoonlijke uitnodigingslink.</p>
-        <p id="loginError" class="login-error"></p>
+        <p id="loginError" class="login-error" role="alert"></p>
       </form>
       <form id="activationForm" class="login-card hidden">
         <img class="login-crest" src="assets/cassiopeia-embleem.jpeg" alt="Embleem van Dameschdispuut Cassiopeia" />
@@ -37,14 +42,14 @@
         <input name="passwordConfirm" type="password" autocomplete="new-password" minlength="12" placeholder="Herhaal nieuw wachtwoord" aria-label="Herhaal nieuw wachtwoord" required />
         <button type="submit" class="login-submit">Wachtwoord instellen</button>
         <button type="button" class="ghost" data-cancel-activation>Terug naar inloggen</button>
-        <p id="activationError" class="login-error"></p>
+        <p id="activationError" class="login-error" role="alert"></p>
       </form>
     </section>
 
     <header class="site-header hidden">
       <a class="brand" href="#home" aria-label="Cassiopeia home">
         <span class="brand-mark brand-mark-crest"><img src="assets/cassiopeia-embleem.jpeg" alt="" /></span>
-        <span class="brand-name">Dameschdispuut Cassiopeia</span>
+        <span class="brand-copy"><strong>Dameschdispuut Cassiopeia</strong><span>Lustrum III · Ledenportaal</span></span>
       </a>
       <button id="menuToggle" class="menu-toggle" type="button" aria-label="Menu openen" aria-expanded="false">
         <span></span>
@@ -55,9 +60,9 @@
         <a href="#home">Home</a>
         <a href="#leden">Leden</a>
         <a class="admin-only hidden" href="#beheer">Beheer</a>
-        <a href="#profiel">Profiel</a>
         <a class="header-profile-link" href="#profiel" aria-label="Mijn profiel">
           <span id="headerProfileAvatar" class="header-profile-avatar avatar">C</span>
+          <span id="headerUserName">Profiel</span>
         </a>
         <button id="logoutBtn" class="nav-button hidden">Uitloggen</button>
       </nav>
@@ -65,73 +70,129 @@
 
     <main class="hidden">
       <section id="home" class="section page-view page-intro">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Inschrijven</p>
-            <h1>Activiteiten</h1>
-          </div>
-          <div class="section-actions">
-            <button id="newActivityBtn" class="primary admin-only hidden">Nieuwe activiteit</button>
-          </div>
-        </div>
-        <div id="publicActivityList" class="activity-list">
-          <article class="activity-card">
-            <div>
-              <p class="eyebrow">Agenda laden</p>
-              <h3>Even geduld</h3>
-              <p>De activiteiten worden opgehaald.</p>
+        <div class="portal-hero">
+          <div class="portal-hero-copy">
+            <span class="lustrum-label"><strong>XV</strong> Lustrum III · 2025—2026</span>
+            <p class="eyebrow">Jouw Cassiopeia</p>
+            <h1>Welkom terug,<br /><span id="welcomeName">Cassiopeia</span>.</h1>
+            <p class="hero-intro">Alles voor het lustrumjaar op één plek: schrijf je in, bekijk de jaarplanning en blijf verbonden met alle generaties.</p>
+            <div class="hero-actions">
+              <button class="primary" type="button" data-scroll-target="activitiesOverview">Bekijk activiteiten</button>
+              <a class="secondary" href="#leden">Open het smoelenboek</a>
             </div>
-          </article>
+          </div>
+          <div class="portal-hero-media" aria-label="Groepsfoto van Cassiopeia">
+            <div class="hero-crest-card">
+              <img src="assets/cassiopeia-embleem.jpeg" alt="Embleem van Cassiopeia" />
+              <span>R.S.V.U. Okeanos</span>
+            </div>
+          </div>
         </div>
 
-        <div class="section-head year-agenda-section-head">
-          <div>
-            <p class="eyebrow">Jaaragenda</p>
-            <h2>Jaarplanning</h2>
+        <div class="overview-grid" aria-label="Jouw overzicht">
+          <button class="overview-card overview-card-featured" type="button" data-scroll-target="activitiesOverview">
+            <span class="overview-index">01</span>
+            <span class="overview-label">Eerstvolgend</span>
+            <strong id="overviewNextActivity">Agenda laden…</strong>
+            <span id="overviewNextDate" class="overview-meta">Even geduld</span>
+          </button>
+          <button class="overview-card" type="button" data-scroll-target="yearAgendaOverview">
+            <span class="overview-index">02</span>
+            <span class="overview-label">Jaarplanning</span>
+            <strong><span id="overviewAgendaCount">—</span> momenten</strong>
+            <span class="overview-meta">Het volledige lustrumjaar</span>
+          </button>
+          <a class="overview-card" href="#leden">
+            <span class="overview-index">03</span>
+            <span class="overview-label">Smoelenboek</span>
+            <strong><span id="overviewMemberCount">—</span> leden</strong>
+            <span class="overview-meta">Van actief tot reünist</span>
+          </a>
+        </div>
+
+        <div id="activitiesOverview" class="content-module">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Agenda &amp; inschrijven</p>
+              <h2>Activiteiten</h2>
+              <p class="section-intro">Bekijk wat eraan komt en laat meteen weten of je erbij bent.</p>
+            </div>
+            <div class="section-actions">
+              <span class="count-pill"><span id="overviewActivityCount">0</span> gepland</span>
+              <button id="newActivityBtn" class="primary admin-only hidden">Nieuwe activiteit</button>
+            </div>
           </div>
-          <div class="section-actions">
-            <button id="newYearAgendaItemBtn" class="primary admin-only hidden">Nieuw agendapunt</button>
+          <div id="publicActivityList" class="activity-list">
+            <article class="activity-card">
+              <div>
+                <p class="eyebrow">Agenda laden</p>
+                <h3>Even geduld</h3>
+                <p>De activiteiten worden opgehaald.</p>
+              </div>
+            </article>
           </div>
         </div>
-        <div class="year-agenda-board">
-          <h3>Cassiopeia jaarplanning 2025-2026</h3>
-          <div id="yearAgendaSummary" class="year-agenda-summary">Jaarplanning laden...</div>
-          <div class="year-agenda-toolbar" aria-label="Jaarplanning navigatie">
-            <button id="yearAgendaPrev" class="calendar-nav-button" type="button" aria-label="Vorige maand">&lt;</button>
-            <select id="yearAgendaMonthSelect" class="calendar-month-select" aria-label="Maand kiezen"></select>
-            <button id="yearAgendaNext" class="calendar-nav-button" type="button" aria-label="Volgende maand">&gt;</button>
+
+        <div id="yearAgendaOverview" class="content-module year-agenda-module">
+          <div class="section-head year-agenda-section-head">
+            <div>
+              <p class="eyebrow">Lustrum III</p>
+              <h2>Jaarplanning</h2>
+              <p class="section-intro">Van DispuBo tot lustrumgala — blader per maand door het programma.</p>
+            </div>
+            <div class="section-actions">
+              <button id="newYearAgendaItemBtn" class="primary admin-only hidden">Nieuw agendapunt</button>
+            </div>
           </div>
-          <div id="yearAgendaGrid" class="year-agenda-grid" aria-live="polite">
-            <article class="year-month">
-              <h3>Agenda laden</h3>
-              <p class="meta">De jaarplanning wordt opgehaald.</p>
-            </article>
+          <div class="year-agenda-board">
+            <div class="year-agenda-titlebar">
+              <div>
+                <span class="module-label">Academisch jaar</span>
+                <h3>2025—2026</h3>
+              </div>
+              <div id="yearAgendaSummary" class="year-agenda-summary">Jaarplanning laden...</div>
+            </div>
+            <div class="year-agenda-toolbar" aria-label="Jaarplanning navigatie">
+              <button id="yearAgendaPrev" class="calendar-nav-button" type="button" aria-label="Vorige maand">←</button>
+              <select id="yearAgendaMonthSelect" class="calendar-month-select" aria-label="Maand kiezen"></select>
+              <button id="yearAgendaNext" class="calendar-nav-button" type="button" aria-label="Volgende maand">→</button>
+            </div>
+            <div id="yearAgendaGrid" class="year-agenda-grid" aria-live="polite">
+              <article class="year-month">
+                <h3>Agenda laden</h3>
+                <p class="meta">De jaarplanning wordt opgehaald.</p>
+              </article>
+            </div>
           </div>
         </div>
       </section>
 
       <section id="leden" class="section page-view members-section hidden">
-        <div class="section-head">
-          <div>
+        <div class="page-banner">
+          <div class="page-banner-copy">
             <p class="eyebrow">Smoelenboek</p>
             <h1>Leden</h1>
+            <p>Alle gezichten, lichtingen en verhalen van Cassiopeia bij elkaar.</p>
           </div>
-          <div class="section-actions">
-            <input id="memberSearch" class="search" type="search" placeholder="Zoek op naam of lichting" />
-            <button id="newMemberBtn" class="primary admin-only hidden">Nieuw lid</button>
-          </div>
+          <span class="page-number" aria-hidden="true">02</span>
         </div>
-        <div class="member-filterbar" aria-label="Ledenfilters">
-          <div class="filter-segments" role="group" aria-label="Filter op leden of reunisten">
-            <button class="filter-chip active" type="button" data-status-filter="">Alles</button>
-            <button class="filter-chip" type="button" data-status-filter="actief">Actief</button>
-            <button class="filter-chip" type="button" data-status-filter="oud">Reunisten</button>
+        <div class="directory-toolbar">
+          <div class="section-actions">
+            <label class="search-field"><span>Zoeken</span><input id="memberSearch" class="search" type="search" placeholder="Naam, lichting of commissie" /></label>
+            <button id="newMemberBtn" class="primary admin-only hidden">Nieuw lid uitnodigen</button>
           </div>
-          <select id="memberYearFilter" class="filter-select" aria-label="Filter op lichting">
-            <option value="">Alle lichtingen</option>
-          </select>
-          <button id="clearMemberFilters" class="filter-clear" type="button">Reset</button>
-          <span id="memberResultCount" class="member-count"></span>
+          <div class="member-filterbar" aria-label="Ledenfilters">
+            <div class="filter-segments" role="group" aria-label="Filter op leden of reunisten">
+              <button class="filter-chip active" type="button" data-status-filter="">Alles</button>
+              <button class="filter-chip" type="button" data-status-filter="actief">Actief</button>
+              <button class="filter-chip" type="button" data-status-filter="oud">Reünisten</button>
+            </div>
+            <select id="memberYearFilter" class="filter-select" aria-label="Filter op lichting">
+              <option value="">Alle lichtingen</option>
+            </select>
+            <button id="clearMemberFilters" class="filter-clear" type="button">Filters wissen</button>
+            <span id="memberResultCount" class="member-count"></span>
+          </div>
         </div>
         <div id="loggedOutMembers" class="locked-panel hidden">
           <h3>Log in om leden te bekijken</h3>
@@ -143,45 +204,68 @@
       </section>
 
       <section id="profiel" class="section page-view profile-section hidden">
-        <div class="section-head">
-          <div>
+        <div class="page-banner page-banner-compact">
+          <div class="page-banner-copy">
             <p class="eyebrow">Mijn account</p>
             <h1>Profiel</h1>
+            <p>Houd je contactgegevens en toegang veilig en actueel.</p>
           </div>
+          <span class="page-number" aria-hidden="true">03</span>
         </div>
-        <form id="profileForm" class="profile-card">
-          <div class="profile-preview">
-            <div id="profileAvatar" class="avatar">C</div>
-            <div>
-              <h3 id="profileName">Cassiopeia</h3>
-              <p id="profileEmail" class="meta"></p>
+        <div class="profile-layout">
+          <aside class="profile-sidebar">
+            <div class="profile-preview">
+              <div id="profileAvatar" class="avatar">C</div>
+              <div>
+                <span class="module-label">Ingelogd als</span>
+                <h3 id="profileName">Cassiopeia</h3>
+                <p id="profileEmail" class="meta"></p>
+              </div>
             </div>
-          </div>
-          <div class="form-grid">
-            <label class="wide">Adres<input name="address" autocomplete="street-address" /></label>
-            <label class="wide">Profielfoto wijzigen<input id="profilePhoto" name="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp" /></label>
-            <label>Huidig wachtwoord<input name="currentPassword" type="password" autocomplete="current-password" /></label>
-            <label>Nieuw wachtwoord<input name="newPassword" type="password" autocomplete="new-password" minlength="12" /></label>
-            <p class="profile-help wide">Je profielfoto mag maximaal 5 MB zijn. Een nieuw wachtwoord heeft minimaal 12 tekens. Na een wijziging worden je andere sessies uitgelogd.</p>
-          </div>
-          <div class="dialog-actions">
-            <button type="submit" class="primary">Profiel opslaan</button>
-          </div>
-        </form>
+            <p class="profile-note">Jouw profiel is alleen zichtbaar voor ingelogde leden van Cassiopeia.</p>
+          </aside>
+          <form id="profileForm" class="profile-card">
+            <div class="form-section-heading"><span>Persoonlijke gegevens</span><p>Werk alleen bij wat is veranderd.</p></div>
+            <div class="form-grid">
+              <label class="wide">Adres<input name="address" autocomplete="street-address" placeholder="Straat, huisnummer en woonplaats" /></label>
+              <label class="wide">Profielfoto wijzigen<input id="profilePhoto" name="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+            </div>
+            <div class="form-section-heading"><span>Wachtwoord wijzigen</span><p>Laat leeg als je alleen je profiel bijwerkt.</p></div>
+            <div class="form-grid">
+              <label>Huidig wachtwoord<input name="currentPassword" type="password" autocomplete="current-password" /></label>
+              <label>Nieuw wachtwoord<input name="newPassword" type="password" autocomplete="new-password" minlength="12" /></label>
+              <p class="profile-help wide">Minimaal 12 tekens. Na een wijziging worden je andere sessies automatisch uitgelogd.</p>
+            </div>
+            <div class="dialog-actions">
+              <button type="submit" class="primary">Wijzigingen opslaan</button>
+            </div>
+          </form>
+        </div>
       </section>
 
       <section id="beheer" class="section page-view admin-only hidden">
-        <div class="section-head">
-          <div>
+        <div class="page-banner admin-banner">
+          <div class="page-banner-copy">
             <p class="eyebrow">Adminomgeving</p>
-            <h1>Accounts beheren</h1>
+            <h1>Beheer</h1>
+            <p>Nodig leden uit, bewaak toegang en houd het ledenbestand actueel.</p>
           </div>
           <button class="primary" data-new-member>Nieuw lid uitnodigen</button>
         </div>
-        <div class="admin-summary">
-          <p>Nieuwe leden krijgen een eenmalige link en kiezen zelf hun wachtwoord. Wachtwoorden zijn nooit zichtbaar voor beheerders.</p>
+        <div class="admin-stat-grid" aria-label="Accountoverzicht">
+          <article><span>Actief</span><strong id="adminActiveCount">0</strong></article>
+          <article><span>Uitnodiging open</span><strong id="adminPendingCount">0</strong></article>
+          <article><span>Uitgeschakeld</span><strong id="adminDisabledCount">0</strong></article>
         </div>
-        <div id="adminAccountList" class="admin-account-list"></div>
+        <div class="admin-summary">
+          <div><strong>Veilig uitnodigen</strong><p>Leden kiezen altijd zelf hun wachtwoord via een eenmalige link. Beheerders kunnen wachtwoorden nooit bekijken.</p></div>
+          <span aria-hidden="true">✓</span>
+        </div>
+        <div class="admin-list-head">
+          <div><p class="eyebrow">Accounts</p><h2>Ledenbeheer</h2></div>
+          <label class="search-field"><span>Zoeken</span><input id="adminSearch" type="search" placeholder="Zoek op naam of e-mail" /></label>
+        </div>
+        <div id="adminAccountList" class="admin-account-list" aria-live="polite"></div>
       </section>
     </main>
 
@@ -296,6 +380,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260829-secure-accounts"></script>
+    <script src="app.js?v=20260829-lustrum-portal"></script>
   </body>
 </html>

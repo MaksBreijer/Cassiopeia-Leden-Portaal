@@ -64,6 +64,9 @@ test("the login form does not publish credentials", () => {
   const loginForm = html.match(/<form id="loginForm"[\s\S]*?<\/form>/)?.[0] || "";
   assert.doesNotMatch(html, /admin@cassiopeia\.local/);
   assert.doesNotMatch(loginForm, /value=["'][^"']+["']/);
+  assert.doesNotMatch(html, /top-marquee/);
+  assert.match(loginForm, /LUSTRUM|Cassiopeia/);
+  assert.match(html, /assets\/og\.png/);
 });
 
 test("an empty non-production database does not get demo users", (t) => {
