@@ -1278,6 +1278,14 @@ label {
   font-weight: 750;
 }
 
+.label-hint {
+  color: var(--orange-strong);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .member-filterbar {
   display: flex;
   flex-wrap: wrap;

@@ -241,7 +241,7 @@
           <form id="profileForm" class="profile-card">
             <div class="form-section-heading"><span>Persoonlijke gegevens</span><p>Werk alleen bij wat is veranderd.</p></div>
             <div class="form-grid">
-              <label class="wide">Adres<input name="address" autocomplete="street-address" placeholder="Straat, huisnummer en woonplaats" /></label>
+              <label class="wide">Adres <span class="label-hint">voor de plattegrond</span><input name="address" autocomplete="street-address" placeholder="Straat 12, 1234 AB Plaats" /><span class="form-help">Vul straat, huisnummer, postcode en woonplaats in voor een betrouwbare kaartpositie.</span></label>
               <label class="wide">Profielfoto wijzigen<input id="profilePhoto" name="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp" /></label>
             </div>
             <div class="form-section-heading"><span>Wachtwoord wijzigen</span><p>Laat leeg als je alleen je profiel bijwerkt.</p></div>
@@ -372,7 +372,7 @@
         </div>
         <div class="import-guide">
           <strong>Benodigde gegevens</strong>
-          <p>Naam, e-mail en lichting zijn verplicht. Optioneel: functie, status, commissie, telefoon, adres en bio.</p>
+          <p>Naam, e-mail en lichting zijn verplicht. Optioneel: functie, status, commissie, telefoon, adres en bio. Gebruik voor de kaart een volledig adres: straat, huisnummer, postcode en woonplaats.</p>
         </div>
         <div class="form-grid">
           <label class="wide import-file-field">CSV- of PDF-bestand
@@ -458,7 +458,7 @@
           <label>Commissie<input name="committee" /></label>
           <label>Telefoon<input name="phone" /></label>
           <label>Initialen zonder profielfoto<input name="avatar" maxlength="2" placeholder="Alleen als er geen foto is" /></label>
-          <label class="wide">Adres<input name="address" autocomplete="street-address" /></label>
+          <label class="wide">Adres <span class="label-hint">voor de plattegrond</span><input name="address" autocomplete="street-address" placeholder="Straat 12, 1234 AB Plaats" /><span class="form-help">Straat, huisnummer, postcode en woonplaats zorgen voor de juiste marker.</span></label>
           <label class="wide">Bio<textarea name="bio" rows="4"></textarea></label>
           <label>Accountstatus
             <select name="accountStatus">
