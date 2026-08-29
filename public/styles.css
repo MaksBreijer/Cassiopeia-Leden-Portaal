@@ -426,8 +426,17 @@ main {
 
 /* Dashboard hero */
 .page-intro {
+  position: relative;
+  isolation: isolate;
   display: grid;
   gap: 24px;
+  padding: clamp(10px, 2vw, 22px);
+  border-radius: 42px;
+  background:
+    linear-gradient(rgba(250, 248, 252, 0.84), rgba(250, 248, 252, 0.84)),
+    url("assets/lustrum-patroon.png") center;
+  background-size: cover, 420px auto;
+  background-repeat: no-repeat, repeat;
 }
 
 .portal-hero {
@@ -2615,8 +2624,10 @@ dialog::backdrop {
   overflow: hidden;
   padding: clamp(28px, 5vw, 56px);
   background:
-    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.72), transparent 30rem),
-    linear-gradient(135deg, #f4f2f6 0%, #d8c5ec 100%);
+    linear-gradient(rgba(250, 248, 252, 0.76), rgba(250, 248, 252, 0.76)),
+    url("assets/lustrum-patroon.png") center;
+  background-size: cover, 430px auto;
+  background-repeat: no-repeat, repeat;
 }
 
 .login-word {
