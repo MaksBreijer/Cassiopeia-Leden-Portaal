@@ -1565,6 +1565,110 @@ label {
   background: #fbecef;
 }
 
+.document-list,
+.confession-list {
+  display: grid;
+  gap: 10px;
+}
+
+.document-row,
+.confession-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  background: #fff;
+}
+
+.document-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.document-row strong {
+  display: block;
+  margin: 4px 0;
+  font-family: var(--serif);
+  font-size: 20px;
+}
+
+.document-category {
+  color: var(--orange-strong);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.confession-layout {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+
+.confession-card p {
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.confession-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.danger-text,
+.late-registration-label,
+.late-cancelled-note {
+  color: var(--danger);
+}
+
+.activity-files {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.activity-files .module-label {
+  width: 100%;
+}
+
+.file-link {
+  border: 1px solid rgba(128, 104, 146, 0.2);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--plum);
+  background: var(--lavender-50);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.file-delete {
+  margin-left: -4px;
+  border: 0;
+  color: var(--danger);
+  background: transparent;
+  font-size: 18px;
+}
+
+.late-cancelled-note,
+.late-registration-label {
+  display: inline-block;
+  margin-top: 7px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.late-registration-row {
+  border-color: rgba(169, 53, 68, 0.3);
+  background: #fff8f8;
+}
+
 /* Forms and dialogs */
 .form-grid {
   display: grid;
@@ -2191,6 +2295,19 @@ dialog::backdrop {
 
   .profile-layout {
     grid-template-columns: 1fr;
+  }
+
+  .confession-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .document-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .document-row .row-actions {
+    width: 100%;
   }
 
   .admin-stat-grid {

@@ -52,6 +52,8 @@ function initializeDatabase() {
       activity_id INTEGER NOT NULL,
       user_id INTEGER NOT NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      cancelled_at TEXT,
+      late_cancelled INTEGER NOT NULL DEFAULT 0,
       UNIQUE(activity_id, user_id),
       FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -93,6 +95,46 @@ function initializeDatabase() {
       FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
     );
 
+    CREATE TABLE IF NOT EXISTS documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'overig',
+      file_name TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      data TEXT NOT NULL,
+      uploaded_by INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS activity_files (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      activity_id INTEGER NOT NULL,
+      file_name TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      data TEXT NOT NULL,
+      uploaded_by INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
+      FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS confessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      body TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS site_assets (
+      key TEXT PRIMARY KEY,
+      file_name TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      data TEXT NOT NULL,
+      updated_by INTEGER,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+
     CREATE INDEX IF NOT EXISTS account_tokens_lookup
     ON account_tokens(token_hash, expires_at, used_at);
   `);
@@ -103,6 +145,8 @@ function initializeDatabase() {
   ensureColumn("users", "account_status", "TEXT NOT NULL DEFAULT 'active'");
   ensureColumn("users", "password_changed_at", "TEXT");
   ensureColumn("users", "last_login_at", "TEXT");
+  ensureColumn("registrations", "cancelled_at", "TEXT");
+  ensureColumn("registrations", "late_cancelled", "INTEGER NOT NULL DEFAULT 0");
   revokeExposedCredentials();
   bootstrapAdmin();
   purgeExistingNonAdminMembers();

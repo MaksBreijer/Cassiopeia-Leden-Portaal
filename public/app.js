@@ -2,6 +2,9 @@ const state = {
   user: null,
   members: [],
   activities: [],
+  documents: [],
+  confessions: [],
+  siteAssets: {},
   yearAgendaItems: [],
   yearAgendaSummaryText: "",
   yearAgendaUsesLocalData: false,
@@ -125,6 +128,12 @@ const els = {
   yearAgendaMonthSelect: document.querySelector("#yearAgendaMonthSelect"),
   yearAgendaGrid: document.querySelector("#yearAgendaGrid"),
   publicActivityList: document.querySelector("#publicActivityList"),
+  documentList: document.querySelector("#documentList"),
+  confessionList: document.querySelector("#confessionList"),
+  confessionForm: document.querySelector("#confessionForm"),
+  confessionBody: document.querySelector("#confessionBody"),
+  documentUploadForm: document.querySelector("#documentUploadForm"),
+  siteImagesForm: document.querySelector("#siteImagesForm"),
   profileForm: document.querySelector("#profileForm"),
   profileAvatar: document.querySelector("#profileAvatar"),
   headerProfileAvatar: document.querySelector("#headerProfileAvatar"),
@@ -317,6 +326,18 @@ function downloadCsv(filename, rows, delimiter = ",") {
   URL.revokeObjectURL(url);
 }
 
+function downloadExcel(filename, headers, rows) {
+  const tableRows = rows.map((row) => `<tr>${row.map((value) => `<td class="${String(value) === "TE LAAT" ? "late" : ""}">${escapeHtml(value)}</td>`).join("")}</tr>`).join("");
+  const html = `<html><head><meta charset="utf-8"><style>table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:6px}.late{color:#a93544;font-weight:700}</style></head><body><table><thead><tr>${headers.map((value) => `<th>${escapeHtml(value)}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table></body></html>`;
+  const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function fileAsBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -438,7 +459,7 @@ function closeMobileMenu() {
 }
 
 function showPage(page = location.hash.slice(1) || "home") {
-  const allowedPages = ["home", "leden", "profiel", ...(state.user?.isAdmin ? ["beheer"] : [])];
+  const allowedPages = ["home", "leden", "profiel", "documenten", "biechten", ...(state.user?.isAdmin ? ["beheer"] : [])];
   const activePage = allowedPages.includes(page) ? page : "home";
   document.querySelectorAll(".page-view").forEach((section) => {
     section.classList.toggle("hidden", section.id !== activePage);
@@ -471,6 +492,9 @@ function setLoggedOut() {
   document.body.classList.remove("is-authenticated");
   state.members = [];
   state.activities = [];
+  state.documents = [];
+  state.confessions = [];
+  state.siteAssets = {};
   state.yearAgendaItems = [];
   state.openMemberId = null;
   state.selectedMemberIds.clear();
@@ -492,7 +516,7 @@ function setLoggedOut() {
 }
 
 async function refreshPortal() {
-  await Promise.all([loadMembers(), loadActivities(), loadYearAgenda()]);
+  await Promise.all([loadMembers(), loadActivities(), loadYearAgenda(), loadDocuments(), loadConfessions(), loadSiteAssets()]);
   focusSharedActivity();
 }
 
@@ -708,6 +732,24 @@ async function loadActivities() {
   renderPortalOverview();
 }
 
+async function loadDocuments() {
+  const data = await api("/api/documents");
+  state.documents = data.documents || [];
+  renderDocuments();
+}
+
+async function loadConfessions() {
+  const data = await api("/api/confessions");
+  state.confessions = data.confessions || [];
+  renderConfessions();
+}
+
+async function loadSiteAssets() {
+  const data = await api("/api/site-assets");
+  state.siteAssets = data.assets || {};
+  applySiteAssets();
+}
+
 async function loadYearAgenda() {
   try {
     const data = await api("/api/year-agenda");
@@ -844,16 +886,19 @@ function renderPublicActivities() {
             <h3>${escapeHtml(activity.title)}</h3>
             <p>${escapeHtml(activity.description || "Geen beschrijving ingevuld.")}</p>
             <p class="meta">${escapeHtml(activity.location || "Locatie volgt")} · ${activity.registrationCount}${activity.capacity ? `/${activity.capacity}` : ""} ingeschreven</p>
+            ${activity.wasCancelled ? `<p class="late-cancelled-note">${activity.lateCancelled ? "Afmelding te laat geregistreerd." : "Je bent afgemeld."}</p>` : ""}
+            ${activity.files?.length ? `<div class="activity-files"><span class="module-label">Bestanden</span>${activity.files.map((file) => `<button class="file-link" type="button" data-download-activity-file="${file.id}" data-activity-id="${activity.id}" data-file-name="${escapeHtml(file.fileName)}" data-file-type="${escapeHtml(file.mimeType)}">${escapeHtml(file.fileName)}</button>${state.user?.isAdmin ? `<button class="file-delete" type="button" data-delete-activity-file="${file.id}" data-activity-id="${activity.id}" aria-label="Verwijder ${escapeHtml(file.fileName)}">×</button>` : ""}`).join("")}</div>` : ""}
             ${renderActivityParticipants(activity)}
           </div>
           <div class="activity-actions">
             <button class="secondary" data-register="${activity.id}" ${full && !activity.isRegistered ? "disabled" : ""}>
-              ${!state.user ? "Inloggen om in te schrijven" : activity.isRegistered ? "Uitschrijven" : full ? "Vol" : "Inschrijven"}
+              ${!state.user ? "Inloggen om in te schrijven" : activity.isRegistered ? "Afmelden" : full ? "Vol" : "Inschrijven"}
             </button>
             ${
               state.user?.isAdmin
                 ? `<button class="secondary" data-registrations="${activity.id}">Inschrijvingen</button>
                   <button class="secondary" data-export-activity="${activity.id}">Export</button>
+                  <button class="secondary" data-google-calendar="${activity.id}">Google Agenda</button>
                   <button class="secondary" data-whatsapp-activity="${activity.id}">WhatsApp</button>
                   <button class="secondary" data-edit-activity="${activity.id}">Bewerk</button>
                   <button class="danger" data-delete-activity="${activity.id}">Verwijder</button>`
@@ -864,6 +909,58 @@ function renderPublicActivities() {
       `;
     })
     .join("");
+}
+
+function applySiteAssets() {
+  Object.entries(state.siteAssets).forEach(([key, src]) => {
+    document.querySelectorAll(`[data-site-asset="${key}"]`).forEach((image) => {
+      image.src = src;
+    });
+  });
+}
+
+function renderDocuments() {
+  if (!els.documentList) return;
+  if (!state.documents.length) {
+    els.documentList.innerHTML = '<p class="meta">Er zijn nog geen documenten gedeeld.</p>';
+    return;
+  }
+  els.documentList.innerHTML = state.documents.map((document) => `
+    <article class="document-row">
+      <div><span class="document-category">${escapeHtml(document.category.toUpperCase())}</span><strong>${escapeHtml(document.title)}</strong><p class="meta">${escapeHtml(document.fileName)} · ${formatDate(document.createdAt)}</p></div>
+      <div class="row-actions"><button class="secondary" data-download-document="${document.id}">Openen</button>${state.user?.isAdmin ? `<button class="danger" data-delete-document="${document.id}">Verwijderen</button>` : ""}</div>
+    </article>
+  `).join("");
+}
+
+function renderConfessions() {
+  if (!els.confessionList) return;
+  if (!state.confessions.length) {
+    els.confessionList.innerHTML = '<p class="meta">Nog geen biechten geplaatst.</p>';
+    return;
+  }
+  els.confessionList.innerHTML = state.confessions.map((confession) => `
+    <article class="confession-card">
+      <p>${escapeHtml(confession.body)}</p>
+      <div class="confession-meta"><span>${formatDate(confession.createdAt)}</span>${state.user?.isAdmin ? `<button class="text-button danger-text" data-delete-confession="${confession.id}">Verwijderen</button>` : ""}</div>
+    </article>
+  `).join("");
+}
+
+async function downloadProtectedFile(path, fileName, mimeType) {
+  const response = await api(path);
+  const link = document.createElement("a");
+  link.href = `data:${mimeType};base64,${response.data}`;
+  link.download = fileName;
+  link.click();
+}
+
+function googleCalendarUrl(activity) {
+  const start = new Date(activity.startsAt);
+  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  const stamp = (date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  const params = new URLSearchParams({ action: "TEMPLATE", text: activity.title, dates: `${stamp(start)}/${stamp(end)}`, details: activity.description || "", location: activity.location || "" });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 function renderAdmin() {
@@ -913,6 +1010,7 @@ function openActivityDialog(activity = null) {
   fields.capacity.value = activity?.capacity || "";
   fields.location.value = activity?.location || "";
   fields.description.value = activity?.description || "";
+  if (fields.activityFiles) fields.activityFiles.value = "";
   els.activityDialog.showModal();
 }
 
@@ -997,10 +1095,11 @@ async function showRegistrations(activityId) {
     ? registrations
         .map(
           (member) => `
-            <div class="table-row">
+            <div class="table-row ${member.lateCancelled ? "late-registration-row" : ""}">
               <div>
                 <strong>${escapeHtml(member.name)}</strong>
                 <p class="meta">${escapeHtml(member.email)} · ${escapeHtml(member.yearLayer)} · ${escapeHtml(member.roleTitle || "Actief")}</p>
+                ${member.cancelledAt ? `<span class="late-registration-label">${member.lateCancelled ? "Te laat afgemeld" : "Afgemeld"}</span>` : ""}
               </div>
             </div>
           `
@@ -1014,21 +1113,23 @@ async function exportRegistrations(activityId) {
   const activity = state.activities.find((item) => item.id === Number(activityId));
   const { registrations } = await api(`/api/activities/${activityId}/registrations`);
   const rows = [
-    ["Naam", "E-mail", "Lichting", "Functie", "Ingeschreven op"],
+    ["Naam", "E-mail", "Lichting", "Functie", "Ingeschreven op", "Afmelding", "Status"],
     ...registrations.map((member) => [
       member.name,
       member.email,
       formatLichting(member.yearLayer),
       member.roleTitle || "Actief",
-      member.registeredAt ? formatDate(member.registeredAt) : ""
+      member.registeredAt ? formatDate(member.registeredAt) : "",
+      member.cancelledAt ? formatDate(member.cancelledAt) : "",
+      member.lateCancelled ? "TE LAAT" : member.cancelledAt ? "Afgemeld" : "Ingeschreven"
     ])
   ];
   const safeTitle = String(activity?.title || "activiteit")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-  downloadCsv(`inschrijvingen-${safeTitle || "activiteit"}.csv`, rows);
-  showToast("Inschrijvingen geëxporteerd.");
+  downloadExcel(`inschrijvingen-${safeTitle || "activiteit"}.xls`, rows[0], rows.slice(1));
+  showToast("Inschrijvingen geëxporteerd naar Excel.");
 }
 
 function openLogin() {
@@ -1382,6 +1483,48 @@ els.profileForm.addEventListener("submit", async (event) => {
   }
 });
 
+els.documentUploadForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const file = els.documentUploadForm.elements.documentFile.files[0];
+  if (!file) return showToast("Kies eerst een PDF.");
+  try {
+    await api("/api/documents", { method: "POST", body: JSON.stringify({ title: els.documentUploadForm.elements.title.value, category: els.documentUploadForm.elements.category.value, fileName: file.name, mimeType: file.type || "application/pdf", data: await fileAsBase64(file) }) });
+    els.documentUploadForm.reset();
+    await loadDocuments();
+    showToast("Document opgeslagen.");
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+els.siteImagesForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    const uploads = ["logo", "hero"].map((key) => ({ key, file: els.siteImagesForm.elements[key].files[0] })).filter((item) => item.file);
+    if (!uploads.length) return showToast("Kies minimaal één afbeelding.");
+    for (const { key, file } of uploads) {
+      await api(`/api/site-assets/${key}`, { method: "PUT", body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: await fileAsBase64(file) }) });
+    }
+    els.siteImagesForm.reset();
+    await loadSiteAssets();
+    showToast("Afbeeldingen opgeslagen.");
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+els.confessionForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    await api("/api/confessions", { method: "POST", body: JSON.stringify({ body: els.confessionBody.value }) });
+    els.confessionForm.reset();
+    await loadConfessions();
+    showToast("Je biecht is anoniem geplaatst.");
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
 els.bulkDeleteForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const ids = [...state.selectedMemberIds];
@@ -1449,14 +1592,56 @@ document.body.addEventListener("click", async (event) => {
   if (registerBtn) {
     if (!state.user) return openLogin();
     const activity = state.activities.find((item) => item.id === Number(registerBtn.dataset.register));
-    await api(`/api/activities/${activity.id}/register`, { method: activity.isRegistered ? "DELETE" : "POST" });
+    const wasRegistered = activity.isRegistered;
+    const result = await api(`/api/activities/${activity.id}/register`, { method: wasRegistered ? "DELETE" : "POST" });
     await loadActivities();
     renderAdmin();
-    return showToast(activity.isRegistered ? `Je bent uitgeschreven voor ${activity.title}.` : `Je bent ingeschreven voor ${activity.title}.`);
+    return showToast(wasRegistered ? (result.lateCancelled ? `Je bent afgemeld voor ${activity.title}; dit is na de deadline.` : `Je bent afgemeld voor ${activity.title}.`) : `Je bent ingeschreven voor ${activity.title}.`);
   }
 
   const registrationsBtn = event.target.closest("[data-registrations]");
   if (registrationsBtn) return showRegistrations(registrationsBtn.dataset.registrations);
+
+  const googleCalendarBtn = event.target.closest("[data-google-calendar]");
+  if (googleCalendarBtn) {
+    const activity = state.activities.find((item) => item.id === Number(googleCalendarBtn.dataset.googleCalendar));
+    if (activity) window.open(googleCalendarUrl(activity), "_blank", "noopener");
+    return;
+  }
+
+  const downloadDocumentBtn = event.target.closest("[data-download-document]");
+  if (downloadDocumentBtn) {
+    const document = state.documents.find((item) => item.id === Number(downloadDocumentBtn.dataset.downloadDocument));
+    if (document) downloadProtectedFile(`/api/documents/${document.id}/download`, document.fileName, document.mimeType).catch((error) => showToast(error.message));
+    return;
+  }
+
+  const deleteDocumentBtn = event.target.closest("[data-delete-document]");
+  if (deleteDocumentBtn && confirm("Weet je zeker dat je dit document wilt verwijderen?")) {
+    await api(`/api/documents/${deleteDocumentBtn.dataset.deleteDocument}`, { method: "DELETE" });
+    await loadDocuments();
+    return showToast("Document verwijderd.");
+  }
+
+  const downloadActivityFileBtn = event.target.closest("[data-download-activity-file]");
+  if (downloadActivityFileBtn) {
+    downloadProtectedFile(`/api/activities/${downloadActivityFileBtn.dataset.activityId}/files/${downloadActivityFileBtn.dataset.downloadActivityFile}/download`, downloadActivityFileBtn.dataset.fileName, downloadActivityFileBtn.dataset.fileType).catch((error) => showToast(error.message));
+    return;
+  }
+
+  const deleteActivityFileBtn = event.target.closest("[data-delete-activity-file]");
+  if (deleteActivityFileBtn && confirm("Weet je zeker dat je dit bestand wilt verwijderen?")) {
+    await api(`/api/activities/${deleteActivityFileBtn.dataset.activityId}/files/${deleteActivityFileBtn.dataset.deleteActivityFile}`, { method: "DELETE" });
+    await refreshPortal();
+    return showToast("Bestand verwijderd.");
+  }
+
+  const deleteConfessionBtn = event.target.closest("[data-delete-confession]");
+  if (deleteConfessionBtn && confirm("Weet je zeker dat je deze biecht wilt verwijderen?")) {
+    await api(`/api/confessions/${deleteConfessionBtn.dataset.deleteConfession}`, { method: "DELETE" });
+    await loadConfessions();
+    return showToast("Biecht verwijderd.");
+  }
 
   const editYearAgendaSummaryBtn = event.target.closest("[data-edit-year-agenda-summary]");
   if (editYearAgendaSummaryBtn) return openYearAgendaSummaryDialog();
@@ -1637,16 +1822,23 @@ els.activityForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = formJson(els.activityForm);
   const id = data.id;
-  await api(id ? `/api/activities/${id}` : "/api/activities", {
+  const files = [...(els.activityForm.elements.activityFiles?.files || [])];
+  delete data.activityFiles;
+  const response = await api(id ? `/api/activities/${id}` : "/api/activities", {
     method: id ? "PUT" : "POST",
     body: JSON.stringify(data)
   });
+  const activityId = id || response.activity.id;
+  for (const file of files) {
+    await api(`/api/activities/${activityId}/files`, { method: "POST", body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: await fileAsBase64(file) }) });
+  }
   els.activityDialog.close();
   await refreshPortal();
   showToast("Activiteit opgeslagen.");
 });
 
 const initialActivationToken = activationTokenFromHash();
+loadSiteAssets().catch(() => {});
 if (initialActivationToken) {
   openActivation(initialActivationToken);
 } else {

@@ -20,7 +20,9 @@ const ACCOUNT_TOKEN_LIFETIME_MS = 1000 * 60 * 60 * 48;
 const LOGIN_WINDOW_MS = 1000 * 60 * 15;
 const LOGIN_MAX_ATTEMPTS = 5;
 const MEMBER_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
+const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const loginAttempts = new Map();
+const confessionAttempts = new Map();
 
 if (!SESSION_SECRET) {
   throw new Error("SESSION_SECRET is verplicht in productie.");
@@ -298,6 +300,36 @@ function profileAvatarFromBody(value, existingAvatar) {
   if (/^https?:\/\/.+/i.test(avatar) && avatar.length <= 500) return avatar;
   if (avatar.length <= 2) return avatar.toUpperCase();
   throw new Error("Gebruik een afbeelding van maximaal 5 MB.");
+}
+
+function uploadedFileFromBody(body, { required = true, allowedMime = [] } = {}) {
+  const fileName = path.basename(String(body.fileName || body.name || "").trim());
+  const mimeType = String(body.mimeType || body.type || "").trim().toLowerCase();
+  const encoded = String(body.data || "").trim();
+  if (!fileName || !mimeType || !encoded) {
+    if (!required) return null;
+    throw new Error("Kies een bestand.");
+  }
+  if (allowedMime.length && !allowedMime.includes(mimeType)) throw new Error("Dit bestandstype wordt niet ondersteund.");
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) throw new Error("Het bestand kon niet worden gelezen.");
+  const size = Buffer.byteLength(encoded, "base64");
+  if (!size || size > UPLOAD_MAX_BYTES) throw new Error("Een bestand mag maximaal 5 MB zijn.");
+  return { fileName, mimeType, data: encoded };
+}
+
+function publicDocument(row) {
+  return { id: row.id, title: row.title, category: row.category, fileName: row.file_name, mimeType: row.mime_type, createdAt: row.created_at };
+}
+
+function publicActivityFile(row) {
+  return { id: row.id, activityId: row.activity_id, fileName: row.file_name, mimeType: row.mime_type, createdAt: row.created_at };
+}
+
+function isLateCancellation(startsAt) {
+  const start = new Date(startsAt);
+  if (Number.isNaN(start.getTime())) return false;
+  const deadline = new Date(start.getFullYear(), start.getMonth(), 1);
+  return Date.now() > deadline.getTime();
 }
 
 app.get("/api/session", (req, res) => {
@@ -682,20 +714,24 @@ function activityRows(userId) {
   const rows = db
     .prepare(`
       SELECT a.*,
-        COUNT(r.id) AS registration_count,
-        EXISTS(SELECT 1 FROM registrations mine WHERE mine.activity_id = a.id AND mine.user_id = ?) AS is_registered
+        COUNT(CASE WHEN r.cancelled_at IS NULL THEN r.id END) AS registration_count,
+        EXISTS(SELECT 1 FROM registrations mine WHERE mine.activity_id = a.id AND mine.user_id = ? AND mine.cancelled_at IS NULL) AS is_registered,
+        EXISTS(SELECT 1 FROM registrations cancelled WHERE cancelled.activity_id = a.id AND cancelled.user_id = ? AND cancelled.cancelled_at IS NOT NULL) AS was_cancelled,
+        COALESCE((SELECT late_cancelled FROM registrations latest WHERE latest.activity_id = a.id AND latest.user_id = ?), 0) AS late_cancelled
       FROM activities a
       LEFT JOIN registrations r ON r.activity_id = a.id
       GROUP BY a.id
       ORDER BY datetime(a.starts_at) ASC
     `)
-    .all(userId);
+    .all(userId, userId, userId);
   const participantsByActivity = new Map();
+  const filesByActivity = new Map();
   const participants = db
     .prepare(`
       SELECT r.activity_id, u.id, u.name, u.avatar
       FROM registrations r
       JOIN users u ON u.id = r.user_id
+      WHERE r.cancelled_at IS NULL
       ORDER BY r.created_at ASC
     `)
     .all();
@@ -704,6 +740,12 @@ function activityRows(userId) {
     const activityParticipants = participantsByActivity.get(participant.activity_id) || [];
     activityParticipants.push(publicUser(participant));
     participantsByActivity.set(participant.activity_id, activityParticipants);
+  });
+
+  db.prepare("SELECT * FROM activity_files ORDER BY created_at ASC, id ASC").all().forEach((file) => {
+    const files = filesByActivity.get(file.activity_id) || [];
+    files.push(publicActivityFile(file));
+    filesByActivity.set(file.activity_id, files);
   });
 
   return rows.map((row) => ({
@@ -715,6 +757,9 @@ function activityRows(userId) {
       capacity: row.capacity,
       registrationCount: row.registration_count,
       isRegistered: Boolean(row.is_registered),
+      wasCancelled: Boolean(row.was_cancelled),
+      lateCancelled: Boolean(row.late_cancelled),
+      files: filesByActivity.get(row.id) || [],
       participants: participantsByActivity.get(row.id) || []
     }));
 }
@@ -756,6 +801,103 @@ app.get("/api/year-agenda", requireAuth, (req, res) => {
     .all();
   const summary = db.prepare("SELECT value FROM app_settings WHERE key = ?").get("year_agenda_summary")?.value || "";
   res.json({ items: rows.map(yearAgendaItemFromRow), summary });
+});
+
+app.get("/api/documents", requireAuth, (req, res) => {
+  const rows = db.prepare("SELECT * FROM documents ORDER BY category ASC, title ASC, id DESC").all();
+  res.json({ documents: rows.map(publicDocument) });
+});
+
+app.get("/api/documents/:id/download", requireAuth, (req, res) => {
+  const row = db.prepare("SELECT * FROM documents WHERE id = ?").get(req.params.id);
+  if (!row) return res.status(404).json({ error: "Document niet gevonden." });
+  res.json({ document: publicDocument(row), data: row.data });
+});
+
+app.get("/api/site-assets", (req, res) => {
+  const assets = {};
+  db.prepare("SELECT key, mime_type, data FROM site_assets").all().forEach((asset) => {
+    assets[asset.key] = `data:${asset.mime_type};base64,${asset.data}`;
+  });
+  res.json({ assets });
+});
+
+app.put("/api/site-assets/:key", requireAuth, requireAdmin, (req, res) => {
+  const key = String(req.params.key || "").trim().toLowerCase();
+  if (!["logo", "hero"].includes(key)) return res.status(400).json({ error: "Onbekend websitebeeld." });
+  try {
+    const file = uploadedFileFromBody(req.body, { allowedMime: ["image/png", "image/jpeg", "image/webp"] });
+    db.prepare(`
+      INSERT INTO site_assets (key, file_name, mime_type, data, updated_by, updated_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET file_name = excluded.file_name, mime_type = excluded.mime_type,
+        data = excluded.data, updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP
+    `).run(key, file.fileName, file.mimeType, file.data, req.session.userId);
+    res.json({ key, src: `data:${file.mimeType};base64,${file.data}` });
+  } catch (error) {
+    res.status(400).json({ error: error.message || "De afbeelding kon niet worden opgeslagen." });
+  }
+});
+
+app.delete("/api/site-assets/:key", requireAuth, requireAdmin, (req, res) => {
+  const key = String(req.params.key || "").trim().toLowerCase();
+  const result = db.prepare("DELETE FROM site_assets WHERE key = ?").run(key);
+  if (!result.changes) return res.status(404).json({ error: "Afbeelding niet gevonden." });
+  res.json({ ok: true });
+});
+
+app.get("/api/confessions", requireAuth, (req, res) => {
+  const rows = db.prepare("SELECT id, body, created_at FROM confessions ORDER BY created_at DESC, id DESC").all();
+  res.json({ confessions: rows.map((row) => ({ id: row.id, body: row.body, createdAt: row.created_at })) });
+});
+
+app.post("/api/confessions", requireAuth, (req, res) => {
+  const body = String(req.body.body || "").trim();
+  if (!body) return res.status(400).json({ error: "Schrijf eerst een bericht." });
+  if (body.length > 2000) return res.status(400).json({ error: "Een bericht mag maximaal 2000 tekens zijn." });
+  const key = String(req.ip || "unknown");
+  const current = confessionAttempts.get(key) || { count: 0, resetAt: Date.now() + 15 * 60 * 1000 };
+  if (current.resetAt <= Date.now()) {
+    current.count = 0;
+    current.resetAt = Date.now() + 15 * 60 * 1000;
+  }
+  if (current.count >= 5) return res.status(429).json({ error: "Je kunt tijdelijk geen nieuwe biecht plaatsen." });
+  current.count += 1;
+  confessionAttempts.set(key, current);
+  const result = db.prepare("INSERT INTO confessions (body) VALUES (?)").run(body);
+  const row = db.prepare("SELECT id, body, created_at FROM confessions WHERE id = ?").get(result.lastInsertRowid);
+  res.status(201).json({ confession: { id: row.id, body: row.body, createdAt: row.created_at } });
+});
+
+app.delete("/api/confessions/:id", requireAuth, requireAdmin, (req, res) => {
+  const result = db.prepare("DELETE FROM confessions WHERE id = ?").run(req.params.id);
+  if (!result.changes) return res.status(404).json({ error: "Biecht niet gevonden." });
+  res.json({ ok: true });
+});
+
+app.post("/api/documents", requireAuth, requireAdmin, (req, res) => {
+  const title = String(req.body.title || "").trim();
+  const category = ["statuten", "hr", "overig"].includes(String(req.body.category || "").trim().toLowerCase())
+    ? String(req.body.category).trim().toLowerCase()
+    : "overig";
+  if (!title) return res.status(400).json({ error: "Geef het document een naam." });
+  try {
+    const file = uploadedFileFromBody(req.body, { allowedMime: ["application/pdf"] });
+    const result = db.prepare(`
+      INSERT INTO documents (title, category, file_name, mime_type, data, uploaded_by)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(title, category, file.fileName, file.mimeType, file.data, req.session.userId);
+    const row = db.prepare("SELECT * FROM documents WHERE id = ?").get(result.lastInsertRowid);
+    res.status(201).json({ document: publicDocument(row) });
+  } catch (error) {
+    res.status(400).json({ error: error.message || "Het document kon niet worden opgeslagen." });
+  }
+});
+
+app.delete("/api/documents/:id", requireAuth, requireAdmin, (req, res) => {
+  const result = db.prepare("DELETE FROM documents WHERE id = ?").run(req.params.id);
+  if (!result.changes) return res.status(404).json({ error: "Document niet gevonden." });
+  res.json({ ok: true });
 });
 
 app.put("/api/year-agenda-summary", requireAuth, requireAdmin, (req, res) => {
@@ -848,35 +990,76 @@ app.delete("/api/activities/:id", requireAuth, requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+app.get("/api/activities/:id/files/:fileId/download", requireAuth, (req, res) => {
+  const file = db.prepare("SELECT * FROM activity_files WHERE id = ? AND activity_id = ?").get(req.params.fileId, req.params.id);
+  if (!file) return res.status(404).json({ error: "Bestand niet gevonden." });
+  res.json({ file: publicActivityFile(file), data: file.data });
+});
+
+app.post("/api/activities/:id/files", requireAuth, requireAdmin, (req, res) => {
+  const activity = db.prepare("SELECT id FROM activities WHERE id = ?").get(req.params.id);
+  if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
+  try {
+    const file = uploadedFileFromBody(req.body, {
+      allowedMime: ["application/pdf", "image/png", "image/jpeg", "image/webp", "text/plain", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]
+    });
+    const result = db.prepare(`
+      INSERT INTO activity_files (activity_id, file_name, mime_type, data, uploaded_by)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(req.params.id, file.fileName, file.mimeType, file.data, req.session.userId);
+    const row = db.prepare("SELECT * FROM activity_files WHERE id = ?").get(result.lastInsertRowid);
+    res.status(201).json({ file: publicActivityFile(row) });
+  } catch (error) {
+    res.status(400).json({ error: error.message || "Het bestand kon niet worden opgeslagen." });
+  }
+});
+
+app.delete("/api/activities/:id/files/:fileId", requireAuth, requireAdmin, (req, res) => {
+  const result = db.prepare("DELETE FROM activity_files WHERE id = ? AND activity_id = ?").run(req.params.fileId, req.params.id);
+  if (!result.changes) return res.status(404).json({ error: "Bestand niet gevonden." });
+  res.json({ ok: true });
+});
+
 app.post("/api/activities/:id/register", requireAuth, (req, res) => {
   const activity = db.prepare("SELECT * FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
 
   if (activity.capacity) {
-    const count = db.prepare("SELECT COUNT(*) AS count FROM registrations WHERE activity_id = ?").get(req.params.id).count;
+    const count = db.prepare("SELECT COUNT(*) AS count FROM registrations WHERE activity_id = ? AND cancelled_at IS NULL").get(req.params.id).count;
     if (count >= activity.capacity) return res.status(400).json({ error: "Deze activiteit is vol." });
   }
 
-  db.prepare("INSERT OR IGNORE INTO registrations (activity_id, user_id) VALUES (?, ?)").run(req.params.id, req.session.userId);
+  db.prepare(`
+    INSERT INTO registrations (activity_id, user_id, cancelled_at, late_cancelled)
+    VALUES (?, ?, NULL, 0)
+    ON CONFLICT(activity_id, user_id) DO UPDATE SET cancelled_at = NULL, late_cancelled = 0
+  `).run(req.params.id, req.session.userId);
   res.json({ ok: true });
 });
 
 app.delete("/api/activities/:id/register", requireAuth, (req, res) => {
-  db.prepare("DELETE FROM registrations WHERE activity_id = ? AND user_id = ?").run(req.params.id, req.session.userId);
-  res.json({ ok: true });
+  const activity = db.prepare("SELECT starts_at FROM activities WHERE id = ?").get(req.params.id);
+  if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
+  const lateCancelled = isLateCancellation(activity.starts_at);
+  const result = db.prepare(`
+    UPDATE registrations
+    SET cancelled_at = CURRENT_TIMESTAMP, late_cancelled = ?
+    WHERE activity_id = ? AND user_id = ? AND cancelled_at IS NULL
+  `).run(lateCancelled ? 1 : 0, req.params.id, req.session.userId);
+  res.json({ ok: true, lateCancelled, changed: result.changes });
 });
 
 app.get("/api/activities/:id/registrations", requireAuth, requireAdmin, (req, res) => {
   const rows = db
     .prepare(`
-      SELECT u.id, u.name, u.email, u.year_layer, u.role_title, r.created_at
+      SELECT u.id, u.name, u.email, u.year_layer, u.role_title, r.created_at, r.cancelled_at, r.late_cancelled
       FROM registrations r
       JOIN users u ON u.id = r.user_id
       WHERE r.activity_id = ?
       ORDER BY r.created_at ASC
     `)
     .all(req.params.id);
-  res.json({ registrations: rows.map((row) => ({ ...publicUser(row), registeredAt: row.created_at })) });
+  res.json({ registrations: rows.map((row) => ({ ...publicUser(row), registeredAt: row.created_at, cancelledAt: row.cancelled_at, lateCancelled: Boolean(row.late_cancelled) })) });
 });
 
 app.get(/.*/, (req, res) => {

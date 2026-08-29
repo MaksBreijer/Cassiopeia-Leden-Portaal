@@ -18,14 +18,14 @@
     <meta name="twitter:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />
     <meta name="twitter:image" content="https://www.dispuutcassiopeia.nl/assets/og.png" />
     <link rel="icon" type="image/png" href="assets/cassiopeia-embleem.png" />
-    <link rel="stylesheet" href="styles.css?v=20260829-responsive" />
+    <link rel="stylesheet" href="styles.css?v=20260829-features" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
       <div class="login-word login-word-lef" aria-hidden="true">LEF</div>
       <div class="login-word login-word-lustrum" aria-hidden="true">LUSTRUM III</div>
       <form id="loginForm" class="login-card">
-        <img class="login-crest" src="assets/cassiopeia-embleem.png" alt="Embleem van Dameschdispuut Cassiopeia" />
+        <img class="login-crest" data-site-asset="logo" src="assets/cassiopeia-embleem.png" alt="Embleem van Dameschdispuut Cassiopeia" />
         <h1>Login Dameschdispuut Cassiopeia</h1>
         <input name="email" type="email" autocomplete="email" placeholder="E-mailadres" aria-label="E-mail" required />
         <input name="password" type="password" autocomplete="current-password" placeholder="Wachtwoord" aria-label="Wachtwoord" required />
@@ -34,7 +34,7 @@
         <p id="loginError" class="login-error" role="alert"></p>
       </form>
       <form id="activationForm" class="login-card hidden">
-        <img class="login-crest" src="assets/cassiopeia-embleem.png" alt="Embleem van Dameschdispuut Cassiopeia" />
+        <img class="login-crest" data-site-asset="logo" src="assets/cassiopeia-embleem.png" alt="Embleem van Dameschdispuut Cassiopeia" />
         <p class="eyebrow">Persoonlijke uitnodiging</p>
         <h1 id="activationTitle">Account activeren</h1>
         <p id="activationIntro" class="login-help">Uitnodiging controleren...</p>
@@ -48,7 +48,7 @@
 
     <header class="site-header hidden">
       <a class="brand" href="#home" aria-label="Cassiopeia home">
-        <span class="brand-mark brand-mark-crest"><img src="assets/cassiopeia-embleem.png" alt="" /></span>
+        <span class="brand-mark brand-mark-crest"><img data-site-asset="logo" src="assets/cassiopeia-embleem.png" alt="" /></span>
         <span class="brand-copy"><strong>Dameschdispuut Cassiopeia</strong><span>Lustrum III · Ledenportaal</span></span>
       </a>
       <button id="menuToggle" class="menu-toggle" type="button" aria-label="Menu openen" aria-expanded="false">
@@ -59,6 +59,8 @@
       <nav class="site-nav" aria-label="Hoofdnavigatie">
         <a href="#home">Home</a>
         <a href="#leden">Leden</a>
+        <a href="#documenten">Documenten</a>
+        <a href="#biechten">Biechten</a>
         <a class="admin-only hidden" href="#beheer">Beheer</a>
         <a class="header-profile-link" href="#profiel" aria-label="Mijn profiel">
           <span id="headerProfileAvatar" class="header-profile-avatar avatar">C</span>
@@ -88,7 +90,7 @@
           </div>
           <div class="portal-hero-media" aria-label="Groepsfoto van Cassiopeia">
             <div class="hero-crest-card">
-              <img src="assets/cassiopeia-embleem.png" alt="Embleem van Cassiopeia" />
+              <img data-site-asset="hero" src="assets/cassiopeia-embleem.png" alt="Embleem van Cassiopeia" />
               <span>R.S.V.U. Okeanos</span>
             </div>
           </div>
@@ -248,6 +250,37 @@
         </div>
       </section>
 
+      <section id="documenten" class="section page-view hidden">
+        <div class="page-banner page-banner-compact">
+          <div class="page-banner-copy"><p class="eyebrow">Naslagwerk</p><h1>Documenten</h1><p>Statuten, HR en andere afspraken op één vertrouwde plek.</p></div>
+          <span class="page-number" aria-hidden="true">04</span>
+        </div>
+        <div class="content-module">
+          <div class="section-head"><div><p class="eyebrow">Alle leden</p><h2>Statuten &amp; HR</h2><p class="section-intro">Open of download de meest recente versie.</p></div></div>
+          <div id="documentList" class="document-list" aria-live="polite"></div>
+        </div>
+        <form id="documentUploadForm" class="content-module admin-only hidden">
+          <div class="section-head"><div><p class="eyebrow">Admin</p><h2>Document toevoegen</h2></div></div>
+          <div class="form-grid"><label>Titel<input name="title" required placeholder="Bijv. Statuten 2026" /></label><label>Categorie<select name="category"><option value="statuten">Statuten</option><option value="hr">HR</option><option value="overig">Overig</option></select></label><label class="wide">PDF-bestand<input name="documentFile" type="file" accept="application/pdf,.pdf" required /></label></div>
+          <div class="dialog-actions"><button type="submit" class="primary">PDF uploaden</button></div>
+        </form>
+      </section>
+
+      <section id="biechten" class="section page-view hidden">
+        <div class="page-banner page-banner-compact">
+          <div class="page-banner-copy"><p class="eyebrow">Anoniem portaal</p><h1>Biechten</h1><p>Laat iets achter zonder naam. De datum blijft zichtbaar, de schrijver niet.</p></div>
+          <span class="page-number" aria-hidden="true">05</span>
+        </div>
+        <div class="confession-layout">
+          <form id="confessionForm" class="content-module confession-form">
+            <div class="section-head"><div><p class="eyebrow">Jouw bericht</p><h2>Anoniem delen</h2><p class="section-intro">Plaats geen namen, adressen of andere gevoelige gegevens.</p></div></div>
+            <label class="wide">Biecht<textarea id="confessionBody" name="body" rows="6" maxlength="2000" placeholder="Schrijf je biecht…" required></textarea></label>
+            <div class="dialog-actions"><span class="form-help">Maximaal 2000 tekens</span><button type="submit" class="primary">Anoniem plaatsen</button></div>
+          </form>
+          <div class="content-module"><div class="section-head"><div><p class="eyebrow">Deelgenootschap</p><h2>Recente biechten</h2></div></div><div id="confessionList" class="confession-list" aria-live="polite"></div></div>
+        </div>
+      </section>
+
       <section id="beheer" class="section page-view admin-only hidden">
         <div class="page-banner admin-banner">
           <div class="page-banner-copy">
@@ -269,6 +302,11 @@
           <div><strong>Veilig uitnodigen</strong><p>Leden kiezen altijd zelf hun wachtwoord via een eenmalige link. Beheerders kunnen wachtwoorden nooit bekijken.</p></div>
           <span aria-hidden="true">✓</span>
         </div>
+        <form id="siteImagesForm" class="admin-images-panel content-module">
+          <div class="section-head"><div><p class="eyebrow">Vormgeving</p><h2>Website-afbeeldingen</h2><p class="section-intro">Vervang het logo of de lustrumafbeelding. PNG, JPG of WebP tot 5 MB.</p></div></div>
+          <div class="form-grid"><label>Logo<input name="logo" type="file" accept="image/png,image/jpeg,image/webp" /></label><label>Lustrumbeeld<input name="hero" type="file" accept="image/png,image/jpeg,image/webp" /></label></div>
+          <div class="dialog-actions"><button type="submit" class="primary">Afbeeldingen opslaan</button></div>
+        </form>
         <div class="admin-list-head">
           <div><p class="eyebrow">Accounts</p><h2>Ledenbeheer</h2></div>
           <label class="search-field"><span>Zoeken</span><input id="adminSearch" type="search" placeholder="Zoek op naam of e-mail" /></label>
@@ -451,6 +489,7 @@
           <label>Capaciteit<input name="capacity" type="number" min="1" /></label>
           <label class="wide">Locatie<input name="location" /></label>
           <label class="wide">Beschrijving<textarea name="description" rows="4"></textarea></label>
+          <label class="wide">Bestanden bij activiteit<input name="activityFiles" type="file" multiple accept="application/pdf,image/png,image/jpeg,image/webp,text/plain,.docx,.xlsx" /><span class="form-help">Optioneel, maximaal 5 MB per bestand.</span></label>
         </div>
         <div class="dialog-actions">
           <button type="button" class="ghost" data-close>Sluiten</button>
@@ -470,6 +509,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260829-bulk-delete"></script>
+    <script src="app.js?v=20260829-features"></script>
   </body>
 </html>

@@ -306,6 +306,40 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.match(adminLogin.cookie, /^cassiopeia\.sid=/);
   assert.equal(adminLogin.response.headers.get("x-frame-options"), "DENY");
 
+  const activity = await jsonRequest(baseUrl, "/api/activities", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { title: "Testactiviteit", startsAt: "2026-08-20T19:00", location: "Utrecht" }
+  });
+  assert.equal(activity.response.status, 201);
+  const registration = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
+    method: "POST",
+    cookie: adminLogin.cookie
+  });
+  assert.equal(registration.response.status, 200);
+  const cancellation = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
+    method: "DELETE",
+    cookie: adminLogin.cookie
+  });
+  assert.equal(cancellation.response.status, 200);
+  assert.equal(cancellation.data.lateCancelled, true);
+  const registrations = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/registrations`, { cookie: adminLogin.cookie });
+  assert.equal(registrations.response.status, 200);
+  assert.equal(registrations.data.registrations[0].lateCancelled, true);
+
+  const document = await jsonRequest(baseUrl, "/api/documents", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { title: "Statuten test", category: "statuten", fileName: "statuten.pdf", mimeType: "application/pdf", data: Buffer.from("pdf-test").toString("base64") }
+  });
+  assert.equal(document.response.status, 201);
+  const confession = await jsonRequest(baseUrl, "/api/confessions", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { body: "Anonieme testbiecht" }
+  });
+  assert.equal(confession.response.status, 201);
+
   const forgedRequest = await jsonRequest(baseUrl, "/api/members", {
     method: "POST",
     cookie: adminLogin.cookie,
