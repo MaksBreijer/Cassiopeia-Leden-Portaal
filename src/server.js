@@ -122,6 +122,9 @@ function publicUser(user) {
     roleTitle: user.role_title,
     phone: user.phone,
     address: user.address,
+    // Round positions before returning them so the map never exposes an exact home address.
+    latitude: Number.isFinite(Number(user.latitude)) ? Number(Number(user.latitude).toFixed(3)) : null,
+    longitude: Number.isFinite(Number(user.longitude)) ? Number(Number(user.longitude).toFixed(3)) : null,
     bio: user.bio,
     avatar: user.avatar || user.name.charAt(0).toUpperCase(),
     memberStatus: user.member_status || "actief",
@@ -155,6 +158,43 @@ function getCurrentUser(req) {
 
 function valueFromBody(body, key, existingValue = "") {
   return Object.prototype.hasOwnProperty.call(body, key) ? String(body[key] || "").trim() : existingValue || "";
+}
+
+async function geocodeAddress(address) {
+  const query = String(address || "").trim();
+  if (!query || typeof fetch !== "function") return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4500);
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=nl&q=${encodeURIComponent(`${query}, Nederland`)}`, {
+      headers: { "User-Agent": "Cassiopeia-Leden-Portaal/1.0 (contact@dispuutcassiopeia.nl)" },
+      signal: controller.signal
+    });
+    if (!response.ok) return null;
+    const results = await response.json();
+    const result = Array.isArray(results) ? results[0] : null;
+    const latitude = Number(result?.lat);
+    const longitude = Number(result?.lon);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    return { latitude, longitude };
+  } catch (error) {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function coordinatesForAddress(address, existing = {}) {
+  const cleanAddress = String(address || "").trim();
+  if (!cleanAddress) return { latitude: null, longitude: null, location_updated_at: null };
+  const existingAddress = String(existing.address || "").trim();
+  if (cleanAddress === existingAddress && Number.isFinite(Number(existing.latitude)) && Number.isFinite(Number(existing.longitude))) {
+    return { latitude: existing.latitude, longitude: existing.longitude, location_updated_at: existing.location_updated_at || null };
+  }
+  const coordinates = await geocodeAddress(cleanAddress);
+  return coordinates
+    ? { ...coordinates, location_updated_at: new Date().toISOString() }
+    : { latitude: null, longitude: null, location_updated_at: null };
 }
 
 function memberFromBody(body, existing = {}) {
@@ -451,6 +491,7 @@ app.put("/api/me", requireAuth, async (req, res) => {
   const currentPassword = String(req.body.currentPassword || "");
   const newPassword = String(req.body.newPassword || "");
   const address = req.body.address === undefined ? existing.address || "" : String(req.body.address || "").trim();
+  const coordinates = await coordinatesForAddress(address, existing);
 
   if (newPassword) {
     const validationError = passwordError(newPassword, existing.email);
@@ -459,10 +500,10 @@ app.put("/api/me", requireAuth, async (req, res) => {
       return res.status(401).json({ error: "Je huidige wachtwoord klopt niet." });
     }
     const password_hash = await bcrypt.hash(newPassword, 12);
-    db.prepare("UPDATE users SET address = ?, avatar = ?, password_hash = ?, password_changed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(address, avatar, password_hash, req.session.userId);
+    db.prepare("UPDATE users SET address = ?, latitude = ?, longitude = ?, location_updated_at = ?, avatar = ?, password_hash = ?, password_changed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(address, coordinates.latitude, coordinates.longitude, coordinates.location_updated_at, avatar, password_hash, req.session.userId);
     destroyUserSessions(req.session.userId, req.sessionID);
   } else {
-    db.prepare("UPDATE users SET address = ?, avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(address, avatar, req.session.userId);
+    db.prepare("UPDATE users SET address = ?, latitude = ?, longitude = ?, location_updated_at = ?, avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(address, coordinates.latitude, coordinates.longitude, coordinates.location_updated_at, avatar, req.session.userId);
   }
 
   res.json({ user: publicUser(db.prepare("SELECT * FROM users WHERE id = ?").get(req.session.userId)) });
@@ -583,14 +624,15 @@ app.post("/api/members", requireAuth, requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "Naam, e-mail en jaarlaag zijn verplicht." });
   }
 
+  const coordinates = await coordinatesForAddress(member.address);
   const password_hash = await bcrypt.hash(crypto.randomBytes(48).toString("base64url"), 12);
   try {
     const result = db
       .prepare(`
-        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, address, bio, avatar, member_status, committee, is_admin, account_status)
-        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @address, @bio, @avatar, @member_status, @committee, @is_admin, @account_status)
+        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, address, latitude, longitude, location_updated_at, bio, avatar, member_status, committee, is_admin, account_status)
+        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @address, @latitude, @longitude, @location_updated_at, @bio, @avatar, @member_status, @committee, @is_admin, @account_status)
       `)
-      .run({ ...member, password_hash, account_status: "pending" });
+      .run({ ...member, ...coordinates, password_hash, account_status: "pending" });
     const created = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid);
     const invitation = createAccountToken(created.id, "invite", req.session.userId);
     res.status(201).json({ member: publicUser(created), invitation });
@@ -654,15 +696,17 @@ app.put("/api/members/:id", requireAuth, requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "Activeer dit account via de persoonlijke uitnodigingslink." });
   }
 
+  const coordinates = await coordinatesForAddress(member.address, existing);
   try {
     db.prepare(`
       UPDATE users
       SET name = @name, email = @email, year_layer = @year_layer, role_title = @role_title,
-          phone = @phone, address = @address, bio = @bio, avatar = @avatar,
+          phone = @phone, address = @address, latitude = @latitude, longitude = @longitude,
+          location_updated_at = @location_updated_at, bio = @bio, avatar = @avatar,
           member_status = @member_status, committee = @committee, is_admin = @is_admin,
           account_status = @account_status, updated_at = CURRENT_TIMESTAMP
       WHERE id = @id
-    `).run({ ...member, id: req.params.id });
+    `).run({ ...member, ...coordinates, id: req.params.id });
 
     if (member.account_status !== "active" || member.email !== existing.email) {
       db.prepare("UPDATE account_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL").run(targetId);

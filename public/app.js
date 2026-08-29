@@ -146,6 +146,9 @@ const els = {
   overviewAgendaCount: document.querySelector("#overviewAgendaCount"),
   overviewNextActivity: document.querySelector("#overviewNextActivity"),
   overviewNextDate: document.querySelector("#overviewNextDate"),
+  cribMap: document.querySelector("#cribMap"),
+  mapMemberCount: document.querySelector("#mapMemberCount"),
+  mapUnmapped: document.querySelector("#mapUnmapped"),
   newMemberBtn: document.querySelector("#newMemberBtn"),
   newYearAgendaItemBtn: document.querySelector("#newYearAgendaItemBtn"),
   newActivityBtn: document.querySelector("#newActivityBtn"),
@@ -459,7 +462,7 @@ function closeMobileMenu() {
 }
 
 function showPage(page = location.hash.slice(1) || "home") {
-  const allowedPages = ["home", "leden", "profiel", "documenten", "biechten", ...(state.user?.isAdmin ? ["beheer"] : [])];
+  const allowedPages = ["home", "leden", "plattegrond", "profiel", "documenten", "biechten", ...(state.user?.isAdmin ? ["beheer"] : [])];
   const activePage = allowedPages.includes(page) ? page : "home";
   document.querySelectorAll(".page-view").forEach((section) => {
     section.classList.toggle("hidden", section.id !== activePage);
@@ -512,6 +515,7 @@ function setLoggedOut() {
   renderYearAgenda();
   renderPublicActivities();
   renderMembers();
+  renderCribMap();
   renderAdminAccounts();
 }
 
@@ -526,6 +530,7 @@ async function loadMembers() {
   state.members = data.members;
   renderMemberFilters();
   renderMembers();
+  renderCribMap();
   renderAdminAccounts();
   renderPortalOverview();
 }
@@ -600,6 +605,71 @@ function renderMembers() {
       `
     )
     .join("");
+}
+
+function projectMapPoint(latitude, longitude, zoom) {
+  const scale = 256 * 2 ** zoom;
+  const safeLatitude = Math.max(-85.0511, Math.min(85.0511, latitude));
+  const radians = (safeLatitude * Math.PI) / 180;
+  return {
+    x: ((longitude + 180) / 360) * scale,
+    y: ((1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2) * scale
+  };
+}
+
+function mapZoomForMembers(members) {
+  if (members.length < 2) return 14;
+  const lats = members.map((member) => Number(member.latitude));
+  const lons = members.map((member) => Number(member.longitude));
+  const span = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lons) - Math.min(...lons));
+  if (span > 0.5) return 10;
+  if (span > 0.2) return 11;
+  if (span > 0.08) return 12;
+  if (span > 0.03) return 13;
+  return 14;
+}
+
+function renderCribMap() {
+  if (!els.cribMap) return;
+  const mappedMembers = state.members.filter((member) => Number.isFinite(Number(member.latitude)) && Number.isFinite(Number(member.longitude)) && member.accountStatus === "active");
+  const unmappedMembers = state.members.filter((member) => member.accountStatus === "active" && (!Number.isFinite(Number(member.latitude)) || !Number.isFinite(Number(member.longitude))));
+  if (els.mapMemberCount) els.mapMemberCount.textContent = `${mappedMembers.length} van ${mappedMembers.length + unmappedMembers.length} op de kaart`;
+  if (els.mapUnmapped) {
+    els.mapUnmapped.innerHTML = unmappedMembers.length
+      ? `<p class="map-unmapped-title">Nog niet op de kaart</p><p>${unmappedMembers.map((member) => escapeHtml(member.name)).join(", ")}</p>`
+      : `<p class="map-ready">Alle actieve leden staan op de kaart.</p>`;
+  }
+  if (!mappedMembers.length) {
+    els.cribMap.innerHTML = `<div class="map-empty"><span class="map-empty-icon">⌖</span><strong>Nog geen adressen op de kaart</strong><p>Vul je adres in via je profiel. Daarna verschijnt je Cassio Crib hier automatisch.</p><a class="secondary" href="#profiel">Naar mijn profiel</a></div>`;
+    return;
+  }
+
+  const zoom = mapZoomForMembers(mappedMembers);
+  const projected = mappedMembers.map((member) => ({ member, point: projectMapPoint(Number(member.latitude), Number(member.longitude), zoom) }));
+  const centerX = projected.reduce((sum, item) => sum + item.point.x, 0) / projected.length;
+  const centerY = projected.reduce((sum, item) => sum + item.point.y, 0) / projected.length;
+  const left = centerX - 450;
+  const top = centerY - 250;
+  const tileXStart = Math.floor(left / 256) - 1;
+  const tileXEnd = Math.ceil((left + 900) / 256) + 1;
+  const tileYStart = Math.floor(top / 256) - 1;
+  const tileYEnd = Math.ceil((top + 500) / 256) + 1;
+  const worldTiles = 2 ** zoom;
+  const tiles = [];
+  for (let tileX = tileXStart; tileX <= tileXEnd; tileX += 1) {
+    for (let tileY = tileYStart; tileY <= tileYEnd; tileY += 1) {
+      if (tileY < 0 || tileY >= worldTiles) continue;
+      const wrappedX = ((tileX % worldTiles) + worldTiles) % worldTiles;
+      tiles.push(`<image class="map-tile" x="${tileX * 256 - left}" y="${tileY * 256 - top}" width="256" height="256" href="https://tile.openstreetmap.org/${zoom}/${wrappedX}/${tileY}.png" />`);
+    }
+  }
+  const markers = projected.map(({ member, point }) => {
+    const x = point.x - left;
+    const y = point.y - top;
+    const initials = escapeHtml((member.name || "C").split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase());
+    return `<g class="crib-marker" tabindex="0" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})"><title>${escapeHtml(member.name)} · Cassio Crib</title><circle r="16"></circle><circle class="crib-marker-core" r="11"></circle><text y="4" text-anchor="middle">${initials}</text></g>`;
+  }).join("");
+  els.cribMap.innerHTML = `<svg class="crib-map-svg" viewBox="0 0 900 500" preserveAspectRatio="xMidYMid slice" aria-label="Cassio Cribs kaart">${tiles.join("")}${markers}</svg>`;
 }
 
 function accountStatusLabel(status) {

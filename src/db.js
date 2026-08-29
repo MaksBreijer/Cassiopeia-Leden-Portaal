@@ -22,6 +22,9 @@ function initializeDatabase() {
       role_title TEXT DEFAULT '',
       phone TEXT DEFAULT '',
       address TEXT DEFAULT '',
+      latitude REAL,
+      longitude REAL,
+      location_updated_at TEXT,
       bio TEXT DEFAULT '',
       avatar TEXT DEFAULT '',
       member_status TEXT DEFAULT 'actief',
@@ -140,6 +143,9 @@ function initializeDatabase() {
   `);
 
   ensureColumn("users", "address", "TEXT DEFAULT ''");
+  ensureColumn("users", "latitude", "REAL");
+  ensureColumn("users", "longitude", "REAL");
+  ensureColumn("users", "location_updated_at", "TEXT");
   ensureColumn("users", "member_status", "TEXT DEFAULT 'actief'");
   ensureColumn("users", "committee", "TEXT DEFAULT ''");
   ensureColumn("users", "account_status", "TEXT NOT NULL DEFAULT 'active'");

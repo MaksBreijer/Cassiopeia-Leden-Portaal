@@ -659,6 +659,181 @@ main {
   box-shadow: var(--shadow-sm);
 }
 
+/* Cassio Cribs map */
+.map-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.45fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.map-module,
+.map-sidebar {
+  margin-top: 0;
+}
+
+.map-section-head {
+  align-items: flex-start;
+}
+
+.crib-map {
+  position: relative;
+  min-height: 440px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #e8e1d8;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.48);
+}
+
+.crib-map-svg {
+  width: 100%;
+  height: 100%;
+  min-height: 440px;
+  display: block;
+  background: #e8e1d8;
+}
+
+.map-tile {
+  opacity: 0.86;
+}
+
+.crib-marker {
+  cursor: pointer;
+  outline: none;
+}
+
+.crib-marker > circle:first-child {
+  fill: rgba(57, 50, 62, 0.15);
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 4;
+}
+
+.crib-marker-core {
+  fill: var(--orange);
+  stroke: var(--plum);
+  stroke-width: 2;
+}
+
+.crib-marker text {
+  fill: var(--plum);
+  font-family: var(--sans);
+  font-size: 8px;
+  font-weight: 850;
+  pointer-events: none;
+}
+
+.crib-marker:focus > circle:first-child,
+.crib-marker:hover > circle:first-child {
+  fill: rgba(57, 50, 62, 0.3);
+}
+
+.map-attribution {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.map-attribution a {
+  color: var(--lavender-700);
+  text-decoration: underline;
+}
+
+.map-sidebar {
+  align-self: start;
+}
+
+.map-sidebar h3 {
+  margin: 7px 0 12px;
+}
+
+.map-sidebar p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.map-sidebar a:not(.secondary) {
+  color: var(--orange-strong);
+  text-decoration: underline;
+}
+
+.map-legend {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  color: var(--plum-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.map-legend-dot {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--plum);
+  border-radius: 50%;
+  background: var(--orange);
+}
+
+.map-unmapped {
+  margin-top: 20px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.map-unmapped p {
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.map-unmapped-title {
+  color: var(--orange-strong) !important;
+  font-size: 11px !important;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.map-ready {
+  color: var(--success) !important;
+}
+
+.map-empty {
+  min-height: 440px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 32px;
+  color: var(--plum);
+  text-align: center;
+  background:
+    linear-gradient(90deg, rgba(187, 165, 212, 0.16) 1px, transparent 1px),
+    linear-gradient(rgba(187, 165, 212, 0.16) 1px, transparent 1px),
+    #f4efe8;
+  background-size: 34px 34px;
+}
+
+.map-empty strong {
+  font-family: var(--serif);
+  font-size: 26px;
+}
+
+.map-empty p {
+  max-width: 360px;
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.map-empty-icon {
+  color: var(--orange-strong);
+  font-size: 44px;
+  line-height: 1;
+}
+
 /* Activities */
 .activity-list,
 .table-list,
@@ -2372,6 +2547,16 @@ dialog::backdrop {
 
   .profile-layout {
     grid-template-columns: 1fr;
+  }
+
+  .map-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .crib-map,
+  .crib-map-svg,
+  .map-empty {
+    min-height: 340px;
   }
 
   .confession-layout {

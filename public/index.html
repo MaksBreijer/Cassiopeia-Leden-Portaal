@@ -59,6 +59,7 @@
       <nav class="site-nav" aria-label="Hoofdnavigatie">
         <a href="#home">Home</a>
         <a href="#leden">Leden</a>
+        <a href="#plattegrond">Cassio Cribs</a>
         <a href="#documenten">Documenten</a>
         <a href="#biechten">Biechten</a>
         <a class="admin-only hidden" href="#beheer">Beheer</a>
@@ -114,6 +115,12 @@
             <span class="overview-label">Smoelenboek</span>
             <strong id="overviewMemberCount">— leden</strong>
             <span class="overview-meta">Van actief tot reünist</span>
+          </a>
+          <a class="overview-card" href="#plattegrond">
+            <span class="overview-index">04</span>
+            <span class="overview-label">Cassio Cribs</span>
+            <strong>Plattegrond</strong>
+            <span class="overview-meta">Bekijk waar iedereen woont</span>
           </a>
         </div>
 
@@ -247,6 +254,38 @@
               <button type="submit" class="primary">Wijzigingen opslaan</button>
             </div>
           </form>
+        </div>
+      </section>
+
+      <section id="plattegrond" class="section page-view hidden">
+        <div class="page-banner page-banner-compact map-banner">
+          <div class="page-banner-copy">
+            <p class="eyebrow">Cassio Cribs</p>
+            <h1>De plattegrond</h1>
+            <p>Zie waar onze huizen liggen. Je marker verhuist automatisch mee zodra je je adres bijwerkt.</p>
+          </div>
+          <span class="page-number" aria-hidden="true">06</span>
+        </div>
+        <div class="map-layout">
+          <div class="content-module map-module">
+            <div class="section-head map-section-head">
+              <div>
+                <p class="eyebrow">Ledenkaart</p>
+                <h2>Cassio Cribs</h2>
+                <p class="section-intro">Een globale kaartweergave voor leden. Exacte adressen staan niet op de kaart.</p>
+              </div>
+              <span id="mapMemberCount" class="count-pill">Kaart laden…</span>
+            </div>
+            <div id="cribMap" class="crib-map" role="img" aria-label="Kaart met Cassio Cribs"></div>
+            <p class="map-attribution">Kaartlagen © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>-bijdragers.</p>
+          </div>
+          <aside class="content-module map-sidebar">
+            <span class="module-label">Jouw marker</span>
+            <h3>Adres wijzigen</h3>
+            <p>Werk je adres bij via <a href="#profiel">Mijn profiel</a>. Na opslaan wordt je positie opnieuw opgezocht.</p>
+            <div class="map-legend"><span class="map-legend-dot"></span><span>Actieve Cassio</span></div>
+            <div id="mapUnmapped" class="map-unmapped"></div>
+          </aside>
         </div>
       </section>
 
