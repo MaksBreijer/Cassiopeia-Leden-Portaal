@@ -896,7 +896,7 @@ app.get("/api/site-assets", (req, res) => {
 
 app.put("/api/site-assets/:key", requireAuth, requireAdmin, (req, res) => {
   const key = String(req.params.key || "").trim().toLowerCase();
-  if (!["logo", "hero"].includes(key)) return res.status(400).json({ error: "Onbekend websitebeeld." });
+  if (!["logo", "hero", "herobackground"].includes(key)) return res.status(400).json({ error: "Onbekend websitebeeld." });
   try {
     const file = uploadedFileFromBody(req.body, { allowedMime: ["image/png", "image/jpeg", "image/webp"] });
     db.prepare(`

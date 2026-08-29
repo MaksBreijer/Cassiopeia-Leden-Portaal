@@ -1620,7 +1620,7 @@ els.documentUploadForm?.addEventListener("submit", async (event) => {
 els.siteImagesForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
-    const uploads = ["logo", "hero"].map((key) => ({ key, file: els.siteImagesForm.elements[key].files[0] })).filter((item) => item.file);
+    const uploads = ["logo", "hero", "herobackground"].map((key) => ({ key, file: els.siteImagesForm.elements[key].files[0] })).filter((item) => item.file);
     if (!uploads.length) return showToast("Kies minimaal één afbeelding.");
     for (const { key, file } of uploads) {
       await api(`/api/site-assets/${key}`, { method: "PUT", body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: await fileAsBase64(file) }) });
@@ -1633,7 +1633,11 @@ els.siteImagesForm?.addEventListener("submit", async (event) => {
   }
 });
 
-["logo", "hero"].forEach((key) => {
+[
+  "logo",
+  "hero",
+  "herobackground"
+].forEach((key) => {
   const input = els.siteImagesForm?.elements[key];
   input?.addEventListener("change", () => {
     const file = input.files[0];
