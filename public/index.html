@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dameschdispuut Cassiopeia</title>
     <meta name="description" content="Het besloten ledenportaal van Dameschdispuut Cassiopeia — activiteiten, jaarplanning, leden en lustrum." />
-    <meta name="theme-color" content="#b79ad9" />
+    <meta name="theme-color" content="#c7b0dc" />
     <meta property="og:title" content="Dameschdispuut Cassiopeia · Lustrum III" />
     <meta property="og:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />
     <meta property="og:image" content="https://www.dispuutcassiopeia.nl/assets/og.png" />
@@ -17,15 +17,15 @@
     <meta name="twitter:title" content="Dameschdispuut Cassiopeia · Lustrum III" />
     <meta name="twitter:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />
     <meta name="twitter:image" content="https://www.dispuutcassiopeia.nl/assets/og.png" />
-    <link rel="icon" type="image/jpeg" href="assets/cassiopeia-embleem.jpeg" />
-    <link rel="stylesheet" href="styles.css?v=20260829-member-import" />
+    <link rel="icon" type="image/png" href="assets/cassiopeia-embleem.png" />
+    <link rel="stylesheet" href="styles.css?v=20260829-home-refresh" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
       <div class="login-word login-word-lef" aria-hidden="true">LEF</div>
       <div class="login-word login-word-lustrum" aria-hidden="true">LUSTRUM III</div>
       <form id="loginForm" class="login-card">
-        <img class="login-crest" src="assets/cassiopeia-embleem.jpeg" alt="Embleem van Dameschdispuut Cassiopeia" />
+        <img class="login-crest" src="assets/cassiopeia-embleem.png" alt="Embleem van Dameschdispuut Cassiopeia" />
         <h1>Login Dameschdispuut Cassiopeia</h1>
         <input name="email" type="email" autocomplete="email" placeholder="E-mailadres" aria-label="E-mail" required />
         <input name="password" type="password" autocomplete="current-password" placeholder="Wachtwoord" aria-label="Wachtwoord" required />
@@ -34,7 +34,7 @@
         <p id="loginError" class="login-error" role="alert"></p>
       </form>
       <form id="activationForm" class="login-card hidden">
-        <img class="login-crest" src="assets/cassiopeia-embleem.jpeg" alt="Embleem van Dameschdispuut Cassiopeia" />
+        <img class="login-crest" src="assets/cassiopeia-embleem.png" alt="Embleem van Dameschdispuut Cassiopeia" />
         <p class="eyebrow">Persoonlijke uitnodiging</p>
         <h1 id="activationTitle">Account activeren</h1>
         <p id="activationIntro" class="login-help">Uitnodiging controleren...</p>
@@ -48,7 +48,7 @@
 
     <header class="site-header hidden">
       <a class="brand" href="#home" aria-label="Cassiopeia home">
-        <span class="brand-mark brand-mark-crest"><img src="assets/cassiopeia-embleem.jpeg" alt="" /></span>
+        <span class="brand-mark brand-mark-crest"><img src="assets/cassiopeia-embleem.png" alt="" /></span>
         <span class="brand-copy"><strong>Dameschdispuut Cassiopeia</strong><span>Lustrum III · Ledenportaal</span></span>
       </a>
       <button id="menuToggle" class="menu-toggle" type="button" aria-label="Menu openen" aria-expanded="false">
@@ -73,17 +73,22 @@
         <div class="portal-hero">
           <div class="portal-hero-copy">
             <span class="lustrum-label"><strong>XV</strong> Lustrum III · 2025—2026</span>
-            <p class="eyebrow">Jouw Cassiopeia</p>
-            <h1>Welkom terug,<br /><span id="welcomeName">Cassiopeia</span>.</h1>
-            <p class="hero-intro">Alles voor het lustrumjaar op één plek: schrijf je in, bekijk de jaarplanning en blijf verbonden met alle generaties.</p>
+            <p class="eyebrow">Ledenportaal</p>
+            <h1>Goed je te zien,<br /><span id="welcomeName">Cassiopeia</span>.</h1>
+            <p class="hero-intro">Je agenda, inschrijvingen en ledenbestand overzichtelijk bij elkaar.</p>
+            <div class="hero-next-card" aria-label="Eerstvolgende activiteit">
+              <span class="hero-next-label">Eerstvolgende activiteit</span>
+              <strong id="overviewNextActivity">Agenda laden…</strong>
+              <span id="overviewNextDate">Even geduld</span>
+            </div>
             <div class="hero-actions">
-              <button class="primary" type="button" data-scroll-target="activitiesOverview">Bekijk activiteiten</button>
-              <a class="secondary" href="#leden">Open het smoelenboek</a>
+              <button class="primary" type="button" data-scroll-target="activitiesOverview">Naar activiteiten</button>
+              <a class="secondary" href="#leden">Leden bekijken</a>
             </div>
           </div>
           <div class="portal-hero-media" aria-label="Groepsfoto van Cassiopeia">
             <div class="hero-crest-card">
-              <img src="assets/cassiopeia-embleem.jpeg" alt="Embleem van Cassiopeia" />
+              <img src="assets/cassiopeia-embleem.png" alt="Embleem van Cassiopeia" />
               <span>R.S.V.U. Okeanos</span>
             </div>
           </div>
@@ -92,9 +97,9 @@
         <div class="overview-grid" aria-label="Jouw overzicht">
           <button class="overview-card overview-card-featured" type="button" data-scroll-target="activitiesOverview">
             <span class="overview-index">01</span>
-            <span class="overview-label">Eerstvolgend</span>
-            <strong id="overviewNextActivity">Agenda laden…</strong>
-            <span id="overviewNextDate" class="overview-meta">Even geduld</span>
+            <span class="overview-label">Activiteiten</span>
+            <strong><span id="overviewActivityCount">0</span> gepland</strong>
+            <span class="overview-meta">Bekijk en schrijf je direct in</span>
           </button>
           <button class="overview-card" type="button" data-scroll-target="yearAgendaOverview">
             <span class="overview-index">02</span>
@@ -105,7 +110,7 @@
           <a class="overview-card" href="#leden">
             <span class="overview-index">03</span>
             <span class="overview-label">Smoelenboek</span>
-            <strong><span id="overviewMemberCount">—</span> leden</strong>
+            <strong id="overviewMemberCount">— leden</strong>
             <span class="overview-meta">Van actief tot reünist</span>
           </a>
         </div>
@@ -118,7 +123,7 @@
               <p class="section-intro">Bekijk wat eraan komt en laat meteen weten of je erbij bent.</p>
             </div>
             <div class="section-actions">
-              <span class="count-pill"><span id="overviewActivityCount">0</span> gepland</span>
+              <span class="count-pill">Agenda</span>
               <button id="newActivityBtn" class="primary admin-only hidden">Nieuwe activiteit</button>
             </div>
           </div>
@@ -445,6 +450,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260829-member-import"></script>
+    <script src="app.js?v=20260829-home-refresh"></script>
   </body>
 </html>

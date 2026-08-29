@@ -416,7 +416,9 @@ function renderPortalOverview() {
     .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
   const nextActivity = upcomingActivities[0];
 
-  if (els.overviewMemberCount) els.overviewMemberCount.textContent = String(activeMembers.length);
+  if (els.overviewMemberCount) {
+    els.overviewMemberCount.textContent = `${activeMembers.length} ${activeMembers.length === 1 ? "lid" : "leden"}`;
+  }
   if (els.overviewActivityCount) els.overviewActivityCount.textContent = String(upcomingActivities.length || state.activities.length);
   if (els.overviewAgendaCount) els.overviewAgendaCount.textContent = String(state.yearAgendaItems.length);
   if (els.overviewNextActivity) els.overviewNextActivity.textContent = nextActivity?.title || "Nog niets gepland";

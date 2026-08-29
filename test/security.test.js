@@ -229,6 +229,46 @@ test("previously exposed passwords and sessions are revoked once", (t) => {
   });
 });
 
+test("the production cleanup removes members but preserves admin access", (t) => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "cassiopeia-member-cleanup-"));
+  t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
+
+  runDatabaseScript(
+    dataDir,
+    `
+      const bcrypt = require("bcryptjs");
+      const { db, initializeDatabase } = require("./src/db");
+      initializeDatabase();
+      const insert = db.prepare("INSERT INTO users (name, email, password_hash, year_layer, is_admin) VALUES (?, ?, ?, '2026', ?)");
+      const admin = insert.run("Beheerder", "beheerder@example.nl", bcrypt.hashSync("veilig-admin-wachtwoord", 4), 1);
+      const member = insert.run("Oud lid", "oud-lid@example.nl", bcrypt.hashSync("veilig-leden-wachtwoord", 4), 0);
+      db.prepare("INSERT INTO sessions (sid, sess, expires) VALUES (?, ?, ?)").run("admin-session", JSON.stringify({ userId: admin.lastInsertRowid }), Date.now() + 60000);
+      db.prepare("INSERT INTO sessions (sid, sess, expires) VALUES (?, ?, ?)").run("member-session", JSON.stringify({ userId: member.lastInsertRowid }), Date.now() + 60000);
+    `,
+    { NODE_ENV: "test" }
+  );
+
+  const output = runDatabaseScript(
+    dataDir,
+    `
+      const { db, initializeDatabase } = require("./src/db");
+      initializeDatabase();
+      process.stdout.write(JSON.stringify({
+        users: db.prepare("SELECT email, is_admin FROM users ORDER BY id").all(),
+        sessions: db.prepare("SELECT sid FROM sessions ORDER BY sid").all(),
+        cleanup: JSON.parse(db.prepare("SELECT value FROM app_settings WHERE key = 'purge_existing_non_admin_members_2026_08_29_v1'").get().value)
+      }));
+    `,
+    { NODE_ENV: "production", SESSION_SECRET: "een-lange-productie-test-session-secret" }
+  );
+
+  assert.deepEqual(JSON.parse(output), {
+    users: [{ email: "beheerder@example.nl", is_admin: 1 }],
+    sessions: [{ sid: "admin-session" }],
+    cleanup: { removedMembers: 1 }
+  });
+});
+
 test("admins invite members who set and reset their own password", async (t) => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "cassiopeia-http-test-"));
   const port = await freePort();

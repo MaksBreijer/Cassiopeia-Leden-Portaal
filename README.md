@@ -60,3 +60,5 @@ In productie zijn daarnaast `NODE_ENV=production` en een sterke, willekeurige `S
 ## Beveiligingsmigratie
 
 Bij de eerste start van deze versie worden de eerder gepubliceerde standaardaccounts automatisch geblokkeerd, adminrechten van die accounts ingetrokken en bestaande sessies eenmalig verwijderd. Een beheerder moet voor getroffen echte leden daarna een nieuw wachtwoord instellen.
+
+De productie-update van 29 augustus 2026 verwijdert daarnaast eenmalig alle bestaande niet-adminleden en hun sessies. Adminaccounts blijven behouden, zodat het ledenbestand daarna schoon via de PDF/CSV-import kan worden opgebouwd.

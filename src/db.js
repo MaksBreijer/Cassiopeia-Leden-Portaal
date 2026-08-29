@@ -105,6 +105,7 @@ function initializeDatabase() {
   ensureColumn("users", "last_login_at", "TEXT");
   revokeExposedCredentials();
   bootstrapAdmin();
+  purgeExistingNonAdminMembers();
   seedYearAgenda();
   syncCsvYearAgendaData();
 }
@@ -187,6 +188,30 @@ function revokeExposedCredentials() {
       INSERT INTO app_settings (key, value, updated_at)
       VALUES (?, ?, CURRENT_TIMESTAMP)
     `).run(migrationKey, JSON.stringify({ revokedUsers: compromisedUsers.length }));
+  })();
+}
+
+function purgeExistingNonAdminMembers() {
+  if (process.env.NODE_ENV !== "production") return;
+  const migrationKey = "purge_existing_non_admin_members_2026_08_29_v1";
+  if (db.prepare("SELECT 1 FROM app_settings WHERE key = ?").get(migrationKey)) return;
+
+  const memberIds = new Set(db.prepare("SELECT id FROM users WHERE is_admin = 0").all().map((row) => Number(row.id)));
+  db.transaction(() => {
+    const deleteSession = db.prepare("DELETE FROM sessions WHERE sid = ?");
+    db.prepare("SELECT sid, sess FROM sessions").all().forEach((row) => {
+      try {
+        if (memberIds.has(Number(JSON.parse(row.sess).userId))) deleteSession.run(row.sid);
+      } catch (error) {
+        deleteSession.run(row.sid);
+      }
+    });
+
+    const result = db.prepare("DELETE FROM users WHERE is_admin = 0").run();
+    db.prepare(`
+      INSERT INTO app_settings (key, value, updated_at)
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+    `).run(migrationKey, JSON.stringify({ removedMembers: result.changes }));
   })();
 }
 
