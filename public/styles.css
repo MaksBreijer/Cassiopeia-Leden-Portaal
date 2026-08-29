@@ -838,6 +838,30 @@ main {
   background-size: 34px 34px;
 }
 
+.map-empty-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 24px;
+  background: rgba(250, 248, 252, 0.72);
+  text-align: center;
+}
+
+.map-empty-overlay strong {
+  font-family: var(--serif);
+  font-size: 24px;
+}
+
+.map-empty-overlay p {
+  max-width: 360px;
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .map-empty strong {
   font-family: var(--serif);
   font-size: 26px;

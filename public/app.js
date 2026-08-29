@@ -689,15 +689,12 @@ function renderCribMap() {
       ? `<p class="map-unmapped-title">Nog niet op de kaart</p><p>${unmappedMembers.map((member) => escapeHtml(member.name)).join(", ")}</p>`
       : `<p class="map-ready">Alle actieve leden staan op de kaart.</p>`;
   }
-  if (!mappedMembers.length) {
-    els.cribMap.innerHTML = `<div class="map-empty"><span class="map-empty-icon">⌖</span><strong>Nog geen adressen op de kaart</strong><p>Vul je adres in via je profiel. Daarna verschijnt je Cassio Crib hier automatisch.</p><a class="secondary" href="#profiel">Naar mijn profiel</a></div>`;
-    return;
-  }
-
-  const zoom = mapZoomForMembers(mappedMembers);
+  const hasMappedMembers = mappedMembers.length > 0;
+  const zoom = hasMappedMembers ? mapZoomForMembers(mappedMembers) : 7;
   const projected = mappedMembers.map((member) => ({ member, point: projectMapPoint(Number(member.latitude), Number(member.longitude), zoom) }));
-  const centerX = projected.reduce((sum, item) => sum + item.point.x, 0) / projected.length;
-  const centerY = projected.reduce((sum, item) => sum + item.point.y, 0) / projected.length;
+  const defaultCenter = projectMapPoint(52.2, 5.3, zoom);
+  const centerX = hasMappedMembers ? projected.reduce((sum, item) => sum + item.point.x, 0) / projected.length : defaultCenter.x;
+  const centerY = hasMappedMembers ? projected.reduce((sum, item) => sum + item.point.y, 0) / projected.length : defaultCenter.y;
   const left = centerX - 450;
   const top = centerY - 250;
   const tileXStart = Math.floor(left / 256) - 1;
@@ -719,7 +716,8 @@ function renderCribMap() {
     const initials = escapeHtml((member.name || "C").split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase());
     return `<g class="crib-marker" tabindex="0" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})"><title>${escapeHtml(member.name)} · Cassio Crib</title><circle r="16"></circle><circle class="crib-marker-core" r="11"></circle><text y="4" text-anchor="middle">${initials}</text></g>`;
   }).join("");
-  els.cribMap.innerHTML = `<svg class="crib-map-svg" viewBox="0 0 900 500" preserveAspectRatio="xMidYMid slice" aria-label="Cassio Cribs kaart">${tiles.join("")}${markers}</svg>`;
+  const emptyOverlay = hasMappedMembers ? "" : `<div class="map-empty-overlay"><span class="map-empty-icon">⌖</span><strong>Nog geen adressen op de kaart</strong><p>Vul je adres in via je profiel. Daarna verschijnt je Cassio Crib hier automatisch.</p><a class="secondary" href="#profiel">Naar mijn profiel</a></div>`;
+  els.cribMap.innerHTML = `<svg class="crib-map-svg" viewBox="0 0 900 500" preserveAspectRatio="xMidYMid slice" aria-label="Cassio Cribs kaart">${tiles.join("")}${markers}</svg>${emptyOverlay}`;
 }
 
 function accountStatusLabel(status) {
