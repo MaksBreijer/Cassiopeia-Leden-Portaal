@@ -678,11 +678,17 @@ function mapZoomForMembers(members) {
   return 14;
 }
 
+function hasMapCoordinates(member) {
+  return member.latitude !== null && member.latitude !== undefined && member.latitude !== "" &&
+    member.longitude !== null && member.longitude !== undefined && member.longitude !== "" &&
+    Number.isFinite(Number(member.latitude)) && Number.isFinite(Number(member.longitude));
+}
+
 function renderCribMap() {
   if (!els.cribMap) return;
   const sourceMembers = state.mapMembers.length ? state.mapMembers : state.members;
-  const mappedMembers = sourceMembers.filter((member) => Number.isFinite(Number(member.latitude)) && Number.isFinite(Number(member.longitude)) && member.accountStatus === "active");
-  const unmappedMembers = sourceMembers.filter((member) => member.accountStatus === "active" && (!Number.isFinite(Number(member.latitude)) || !Number.isFinite(Number(member.longitude))));
+  const mappedMembers = sourceMembers.filter((member) => hasMapCoordinates(member) && member.accountStatus === "active");
+  const unmappedMembers = sourceMembers.filter((member) => member.accountStatus === "active" && !hasMapCoordinates(member));
   if (els.mapMemberCount) els.mapMemberCount.textContent = `${mappedMembers.length} van ${mappedMembers.length + unmappedMembers.length} op de kaart`;
   if (els.mapUnmapped) {
     els.mapUnmapped.innerHTML = unmappedMembers.length

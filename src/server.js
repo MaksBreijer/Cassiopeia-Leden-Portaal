@@ -112,6 +112,12 @@ app.use((error, req, res, next) => {
   next(error);
 });
 
+function hasCoordinates(latitude, longitude) {
+  return latitude !== null && latitude !== undefined && latitude !== "" &&
+    longitude !== null && longitude !== undefined && longitude !== "" &&
+    Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
+}
+
 function publicUser(user) {
   if (!user) return null;
   return {
@@ -123,8 +129,8 @@ function publicUser(user) {
     phone: user.phone,
     address: user.address,
     // Round positions before returning them so the map never exposes an exact home address.
-    latitude: Number.isFinite(Number(user.latitude)) ? Number(Number(user.latitude).toFixed(3)) : null,
-    longitude: Number.isFinite(Number(user.longitude)) ? Number(Number(user.longitude).toFixed(3)) : null,
+    latitude: hasCoordinates(user.latitude, user.longitude) ? Number(Number(user.latitude).toFixed(3)) : null,
+    longitude: hasCoordinates(user.latitude, user.longitude) ? Number(Number(user.longitude).toFixed(3)) : null,
     bio: user.bio,
     avatar: user.avatar || user.name.charAt(0).toUpperCase(),
     memberStatus: user.member_status || "actief",
@@ -188,7 +194,7 @@ async function coordinatesForAddress(address, existing = {}) {
   const cleanAddress = String(address || "").trim();
   if (!cleanAddress) return { latitude: null, longitude: null, location_updated_at: null };
   const existingAddress = String(existing.address || "").trim();
-  if (cleanAddress === existingAddress && Number.isFinite(Number(existing.latitude)) && Number.isFinite(Number(existing.longitude))) {
+  if (cleanAddress === existingAddress && hasCoordinates(existing.latitude, existing.longitude)) {
     return { latitude: existing.latitude, longitude: existing.longitude, location_updated_at: existing.location_updated_at || null };
   }
   const coordinates = await geocodeAddress(cleanAddress);
@@ -529,7 +535,7 @@ app.get("/api/map-members", requireAuth, async (req, res) => {
     WHERE account_status = 'active' AND TRIM(address) <> ''
     ORDER BY name ASC
   `).all();
-  const missing = rows.filter((row) => !Number.isFinite(Number(row.latitude)) || !Number.isFinite(Number(row.longitude))).slice(0, 12);
+  const missing = rows.filter((row) => !hasCoordinates(row.latitude, row.longitude)).slice(0, 12);
 
   // Existing addresses are geocoded lazily the first time the map is opened.
   // New or changed addresses are geocoded when the profile is saved.
