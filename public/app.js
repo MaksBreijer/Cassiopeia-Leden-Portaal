@@ -27,7 +27,8 @@ const mapView = {
   pointerId: null,
   startClientX: 0,
   startClientY: 0,
-  startCenterPoint: null
+  startCenterPoint: null,
+  lastWheelAt: 0
 };
 
 const API_BASE = location.protocol === "file:" || location.port === "5500" ? "http://127.0.0.1:3000" : "";
@@ -829,6 +830,9 @@ if (els.cribMap) {
 
   els.cribMap.addEventListener("wheel", (event) => {
     event.preventDefault();
+    const now = Date.now();
+    if (now - mapView.lastWheelAt < 220) return;
+    mapView.lastWheelAt = now;
     mapView.zoom = Math.max(6, Math.min(17, mapView.zoom + (event.deltaY < 0 ? 1 : -1)));
     hideMapTooltip();
     renderCribMap();
@@ -847,9 +851,10 @@ if (els.cribMap) {
   els.cribMap.addEventListener("pointermove", (event) => {
     if (!mapView.dragging || event.pointerId !== mapView.pointerId) return;
     const rect = els.cribMap.getBoundingClientRect();
+    const dragSensitivity = 0.55;
     const nextCenter = unprojectMapPoint(
-      mapView.startCenterPoint.x - (event.clientX - mapView.startClientX) * (900 / rect.width),
-      mapView.startCenterPoint.y - (event.clientY - mapView.startClientY) * (500 / rect.height),
+      mapView.startCenterPoint.x - (event.clientX - mapView.startClientX) * (900 / rect.width) * dragSensitivity,
+      mapView.startCenterPoint.y - (event.clientY - mapView.startClientY) * (500 / rect.height) * dragSensitivity,
       mapView.zoom
     );
     mapView.centerLatitude = nextCenter.latitude;
