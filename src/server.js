@@ -169,25 +169,32 @@ function valueFromBody(body, key, existingValue = "") {
 async function geocodeAddress(address) {
   const query = String(address || "").trim();
   if (!query || typeof fetch !== "function") return null;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4500);
-  try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=nl&q=${encodeURIComponent(`${query}, Nederland`)}`, {
-      headers: { "User-Agent": "Cassiopeia-Leden-Portaal/1.0 (contact@dispuutcassiopeia.nl)" },
-      signal: controller.signal
-    });
-    if (!response.ok) return null;
-    const results = await response.json();
-    const result = Array.isArray(results) ? results[0] : null;
-    const latitude = Number(result?.lat);
-    const longitude = Number(result?.lon);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-    return { latitude, longitude };
-  } catch (error) {
-    return null;
-  } finally {
-    clearTimeout(timeout);
+  const postalCode = query.match(/\b\d{4}\s?[A-Za-z]{2}\b/)?.[0];
+  const fallbackQuery = postalCode ? postalCode.toUpperCase().replace(/(\d{4})([A-Z]{2})/, "$1 $2") : "";
+  const queries = [...new Set([query, fallbackQuery].filter(Boolean))];
+
+  for (const [index, candidate] of queries.entries()) {
+    if (index) await new Promise((resolve) => setTimeout(resolve, 1100));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4500);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=nl&q=${encodeURIComponent(`${candidate}, Nederland`)}`, {
+        headers: { "User-Agent": "Cassiopeia-Leden-Portaal/1.0 (contact@dispuutcassiopeia.nl)" },
+        signal: controller.signal
+      });
+      if (!response.ok) continue;
+      const results = await response.json();
+      const result = Array.isArray(results) ? results[0] : null;
+      const latitude = Number(result?.lat);
+      const longitude = Number(result?.lon);
+      if (Number.isFinite(latitude) && Number.isFinite(longitude)) return { latitude, longitude };
+    } catch (error) {
+      // Probeer bij een onbekend volledig adres nog de postcode als globale locatie.
+    } finally {
+      clearTimeout(timeout);
+    }
   }
+  return null;
 }
 
 async function coordinatesForAddress(address, existing = {}) {
