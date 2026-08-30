@@ -297,6 +297,25 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function activityRegistrationDeadline(activity) {
+  if (activity.registrationDeadline) return new Date(activity.registrationDeadline);
+  const start = new Date(activity.startsAt);
+  if (Number.isNaN(start.getTime())) return null;
+  return new Date(start.getFullYear(), start.getMonth(), 1);
+}
+
+function activityRegistrationIsOpen(activity) {
+  if (typeof activity.registrationOpen === "boolean") return activity.registrationOpen;
+  const deadline = activityRegistrationDeadline(activity);
+  return Boolean(deadline && Date.now() < deadline.getTime());
+}
+
+function formatActivityDeadline(activity) {
+  const deadline = activityRegistrationDeadline(activity);
+  if (!deadline || Number.isNaN(deadline.getTime())) return "deadline onbekend";
+  return new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "long", year: "numeric" }).format(deadline);
+}
+
 function formatLichting(value) {
   const year = String(value || "").trim();
   if (!year) return "Lichting onbekend";
@@ -380,7 +399,7 @@ function downloadCsv(filename, rows, delimiter = ",") {
 }
 
 function downloadExcel(filename, headers, rows) {
-  const tableRows = rows.map((row) => `<tr>${row.map((value) => `<td class="${String(value) === "TE LAAT" ? "late" : ""}">${escapeHtml(value)}</td>`).join("")}</tr>`).join("");
+  const tableRows = rows.map((row) => `<tr>${row.map((value) => `<td class="${String(value).includes("TE LAAT") ? "late" : ""}">${escapeHtml(value)}</td>`).join("")}</tr>`).join("");
   const html = `<html><head><meta charset="utf-8"><style>table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:6px}.late{color:#a93544;font-weight:700}</style></head><body><table><thead><tr>${headers.map((value) => `<th>${escapeHtml(value)}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: "application/vnd.ms-excel" });
   const url = URL.createObjectURL(blob);
@@ -1151,29 +1170,56 @@ function renderPublicActivities() {
   els.publicActivityList.innerHTML = state.activities
     .map((activity) => {
       const full = activity.capacity && activity.registrationCount >= activity.capacity;
+      const registrationOpen = activityRegistrationIsOpen(activity);
+      const canRegister = Boolean(state.user && !activity.isRegistered && registrationOpen && !full);
+      const canCancel = Boolean(state.user && activity.isRegistered);
+      const registrationState = activity.isRegistered
+        ? "Je bent ingeschreven"
+        : activity.lateCancelled
+          ? "Te laat afgemeld"
+          : activity.wasCancelled
+            ? "Je bent afgemeld"
+            : registrationOpen
+              ? "Inschrijving open"
+              : "Inschrijving gesloten";
       return `
         <article id="activiteit-${activity.id}" class="activity-card" data-activity-card="${activity.id}">
-          <div>
-            <p class="eyebrow">${formatDate(activity.startsAt)}</p>
+          <div class="activity-card-content">
+            <div class="activity-card-heading">
+              <p class="eyebrow">${formatDate(activity.startsAt)}</p>
+              <span class="activity-state ${activity.lateCancelled ? "activity-state-late" : activity.isRegistered ? "activity-state-registered" : ""}">${registrationState}</span>
+            </div>
             <h3>${escapeHtml(activity.title)}</h3>
             <p>${escapeHtml(activity.description || "Geen beschrijving ingevuld.")}</p>
-            <p class="meta">${escapeHtml(activity.location || "Locatie volgt")} · ${activity.registrationCount}${activity.capacity ? `/${activity.capacity}` : ""} ingeschreven</p>
+            <div class="activity-facts">
+              <span><strong>Locatie</strong>${escapeHtml(activity.location || "Volgt")}</span>
+              <span><strong>Aanmeldingen</strong>${activity.registrationCount}${activity.capacity ? ` van ${activity.capacity}` : ""}</span>
+              <span><strong>Inschrijfdeadline</strong>${formatActivityDeadline(activity)}</span>
+            </div>
             ${activity.wasCancelled ? `<p class="late-cancelled-note">${activity.lateCancelled ? "Afmelding te laat geregistreerd." : "Je bent afgemeld."}</p>` : ""}
             ${activity.files?.length ? `<div class="activity-files"><span class="module-label">Bestanden</span>${activity.files.map((file) => `<button class="file-link" type="button" data-download-activity-file="${file.id}" data-activity-id="${activity.id}" data-file-name="${escapeHtml(file.fileName)}" data-file-type="${escapeHtml(file.mimeType)}">${escapeHtml(file.fileName)}</button>${state.user?.isAdmin ? `<button class="file-delete" type="button" data-delete-activity-file="${file.id}" data-activity-id="${activity.id}" aria-label="Verwijder ${escapeHtml(file.fileName)}">×</button>` : ""}`).join("")}</div>` : ""}
             ${renderActivityParticipants(activity)}
           </div>
           <div class="activity-actions">
-            <button class="secondary" data-register="${activity.id}" ${full && !activity.isRegistered ? "disabled" : ""}>
-              ${!state.user ? "Inloggen om in te schrijven" : activity.isRegistered ? "Afmelden" : full ? "Vol" : "Inschrijven"}
-            </button>
+            <div class="activity-member-actions">
+              <span class="module-label">Jouw deelname</span>
+              <button class="primary" data-register="${activity.id}" data-registration-action="join" ${canRegister ? "" : "disabled"}>Inschrijven</button>
+              <button class="secondary" data-register="${activity.id}" data-registration-action="cancel" ${canCancel ? "" : "disabled"}>Afmelden</button>
+              <p>${registrationOpen ? `Inschrijven kan tot ${formatActivityDeadline(activity)}.` : `De inschrijving sloot op ${formatActivityDeadline(activity)}.`}${canCancel && !registrationOpen ? " Afmelden kan nog, maar wordt als te laat gemarkeerd." : ""}</p>
+            </div>
             ${
               state.user?.isAdmin
-                ? `<button class="secondary" data-registrations="${activity.id}">Inschrijvingen</button>
-                  <button class="secondary" data-export-activity="${activity.id}">Export</button>
-                  <button class="secondary" data-google-calendar="${activity.id}">Google Agenda</button>
-                  <button class="secondary" data-whatsapp-activity="${activity.id}">WhatsApp</button>
-                  <button class="secondary" data-edit-activity="${activity.id}">Bewerk</button>
-                  <button class="danger" data-delete-activity="${activity.id}">Verwijder</button>`
+                ? `<div class="activity-admin-actions">
+                    <span class="module-label">Beheer</span>
+                    <button class="activity-excel-button" data-export-activity="${activity.id}">Excel downloaden</button>
+                    <button class="secondary" data-registrations="${activity.id}">Deelnemers bekijken</button>
+                    <div class="activity-admin-utilities">
+                      <button class="secondary" data-google-calendar="${activity.id}">Google Agenda</button>
+                      <button class="secondary" data-whatsapp-activity="${activity.id}">WhatsApp</button>
+                      <button class="secondary" data-edit-activity="${activity.id}">Bewerk</button>
+                      <button class="danger" data-delete-activity="${activity.id}">Verwijder</button>
+                    </div>
+                  </div>`
                 : ""
             }
           </div>
@@ -1371,7 +1417,7 @@ async function showRegistrations(activityId) {
               <div>
                 <strong>${escapeHtml(member.name)}</strong>
                 <p class="meta">${escapeHtml(member.email)} · ${escapeHtml(member.yearLayer)} · ${escapeHtml(member.roleTitle || "Actief")}</p>
-                ${member.cancelledAt ? `<span class="late-registration-label">${member.lateCancelled ? "Te laat afgemeld" : "Afgemeld"}</span>` : ""}
+                ${member.cancelledAt ? `<span class="late-registration-label">${member.lateCancelled ? "Te laat afgemeld" : "Afgemeld"}</span>` : '<span class="registration-active-label">Ingeschreven</span>'}
               </div>
             </div>
           `
@@ -1387,7 +1433,7 @@ async function exportRegistrations(activityId) {
   const rows = [
     ["Naam", "E-mail", "Lichting", "Functie", "Ingeschreven op", "Afmelding", "Status"],
     ...registrations.map((member) => [
-      member.name,
+      member.lateCancelled ? `${member.name} — TE LAAT` : member.name,
       member.email,
       formatLichting(member.yearLayer),
       member.roleTitle || "Actief",
@@ -1883,11 +1929,14 @@ document.body.addEventListener("click", async (event) => {
   if (registerBtn) {
     if (!state.user) return openLogin();
     const activity = state.activities.find((item) => item.id === Number(registerBtn.dataset.register));
-    const wasRegistered = activity.isRegistered;
-    const result = await api(`/api/activities/${activity.id}/register`, { method: wasRegistered ? "DELETE" : "POST" });
+    const action = registerBtn.dataset.registrationAction;
+    if (action === "join" && activity.isRegistered) return;
+    if (action === "cancel" && !activity.isRegistered) return;
+    const isCancellation = action === "cancel";
+    const result = await api(`/api/activities/${activity.id}/register`, { method: isCancellation ? "DELETE" : "POST" });
     await loadActivities();
     renderAdmin();
-    return showToast(wasRegistered ? (result.lateCancelled ? `Je bent afgemeld voor ${activity.title}; dit is na de deadline.` : `Je bent afgemeld voor ${activity.title}.`) : `Je bent ingeschreven voor ${activity.title}.`);
+    return showToast(isCancellation ? (result.lateCancelled ? `Je bent afgemeld voor ${activity.title}; dit is na de deadline.` : `Je bent afgemeld voor ${activity.title}.`) : `Je bent ingeschreven voor ${activity.title}.`);
   }
 
   const registrationsBtn = event.target.closest("[data-registrations]");

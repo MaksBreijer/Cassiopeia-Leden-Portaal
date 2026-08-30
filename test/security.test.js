@@ -306,12 +306,16 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.match(adminLogin.cookie, /^cassiopeia\.sid=/);
   assert.equal(adminLogin.response.headers.get("x-frame-options"), "DENY");
 
+  const futureStart = new Date();
+  futureStart.setMonth(futureStart.getMonth() + 2, 20);
+  futureStart.setHours(19, 0, 0, 0);
   const activity = await jsonRequest(baseUrl, "/api/activities", {
     method: "POST",
     cookie: adminLogin.cookie,
-    body: { title: "Testactiviteit", startsAt: "2026-08-20T19:00", location: "Utrecht" }
+    body: { title: "Testactiviteit", startsAt: futureStart.toISOString(), location: "Utrecht" }
   });
   assert.equal(activity.response.status, 201);
+  assert.equal(activity.data.activity.registrationOpen, true);
   const registration = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
     method: "POST",
     cookie: adminLogin.cookie
@@ -322,10 +326,27 @@ test("admins invite members who set and reset their own password", async (t) => 
     cookie: adminLogin.cookie
   });
   assert.equal(cancellation.response.status, 200);
-  assert.equal(cancellation.data.lateCancelled, true);
+  assert.equal(cancellation.data.lateCancelled, false);
   const registrations = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/registrations`, { cookie: adminLogin.cookie });
   assert.equal(registrations.response.status, 200);
-  assert.equal(registrations.data.registrations[0].lateCancelled, true);
+  assert.equal(registrations.data.registrations[0].lateCancelled, false);
+
+  const closedStart = new Date();
+  closedStart.setDate(Math.min(28, closedStart.getDate()));
+  closedStart.setHours(19, 0, 0, 0);
+  const closedActivity = await jsonRequest(baseUrl, "/api/activities", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { title: "Gesloten activiteit", startsAt: closedStart.toISOString(), location: "Amsterdam" }
+  });
+  assert.equal(closedActivity.response.status, 201);
+  assert.equal(closedActivity.data.activity.registrationOpen, false);
+  const closedRegistration = await jsonRequest(baseUrl, `/api/activities/${closedActivity.data.activity.id}/register`, {
+    method: "POST",
+    cookie: adminLogin.cookie
+  });
+  assert.equal(closedRegistration.response.status, 400);
+  assert.match(closedRegistration.data.error, /gesloten/i);
 
   const document = await jsonRequest(baseUrl, "/api/documents", {
     method: "POST",

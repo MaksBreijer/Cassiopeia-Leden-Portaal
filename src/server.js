@@ -401,11 +401,20 @@ function publicActivityFile(row) {
   return { id: row.id, activityId: row.activity_id, fileName: row.file_name, mimeType: row.mime_type, createdAt: row.created_at };
 }
 
-function isLateCancellation(startsAt) {
+function registrationDeadline(startsAt) {
   const start = new Date(startsAt);
-  if (Number.isNaN(start.getTime())) return false;
-  const deadline = new Date(start.getFullYear(), start.getMonth(), 1);
-  return Date.now() > deadline.getTime();
+  if (Number.isNaN(start.getTime())) return null;
+  return new Date(start.getFullYear(), start.getMonth(), 1);
+}
+
+function isRegistrationOpen(startsAt) {
+  const deadline = registrationDeadline(startsAt);
+  return Boolean(deadline && Date.now() < deadline.getTime());
+}
+
+function isLateCancellation(startsAt) {
+  const deadline = registrationDeadline(startsAt);
+  return Boolean(deadline && Date.now() >= deadline.getTime());
 }
 
 app.get("/api/session", (req, res) => {
@@ -856,7 +865,9 @@ function activityRows(userId) {
     filesByActivity.set(file.activity_id, files);
   });
 
-  return rows.map((row) => ({
+  return rows.map((row) => {
+    const deadline = registrationDeadline(row.starts_at);
+    return {
       id: row.id,
       title: row.title,
       description: row.description,
@@ -864,12 +875,15 @@ function activityRows(userId) {
       startsAt: row.starts_at,
       capacity: row.capacity,
       registrationCount: row.registration_count,
+      registrationDeadline: deadline?.toISOString() || null,
+      registrationOpen: isRegistrationOpen(row.starts_at),
       isRegistered: Boolean(row.is_registered),
       wasCancelled: Boolean(row.was_cancelled),
       lateCancelled: Boolean(row.late_cancelled),
       files: filesByActivity.get(row.id) || [],
       participants: participantsByActivity.get(row.id) || []
-    }));
+    };
+  });
 }
 
 function yearAgendaItemFromRow(row) {
@@ -1131,6 +1145,9 @@ app.delete("/api/activities/:id/files/:fileId", requireAuth, requireAdmin, (req,
 app.post("/api/activities/:id/register", requireAuth, (req, res) => {
   const activity = db.prepare("SELECT * FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
+  if (!isRegistrationOpen(activity.starts_at)) {
+    return res.status(400).json({ error: "De inschrijving is gesloten. De deadline was de eerste van de maand." });
+  }
 
   if (activity.capacity) {
     const count = db.prepare("SELECT COUNT(*) AS count FROM registrations WHERE activity_id = ? AND cancelled_at IS NULL").get(req.params.id).count;

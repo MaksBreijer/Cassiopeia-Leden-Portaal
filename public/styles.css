@@ -993,7 +993,7 @@ main {
 .activity-card {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(210px, 260px);
+  grid-template-columns: minmax(0, 1fr) minmax(290px, 330px);
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
@@ -1006,8 +1006,39 @@ main {
   box-shadow: var(--shadow-md);
 }
 
-.activity-card > div:first-child {
+.activity-card-content {
   padding: clamp(24px, 4vw, 38px);
+}
+
+.activity-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.activity-state {
+  border: 1px solid rgba(128, 104, 146, 0.18);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--plum-soft);
+  background: var(--lavender-50);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.activity-state-registered {
+  color: #406a54;
+  background: #edf8f1;
+}
+
+.activity-state-late {
+  color: var(--danger);
+  background: #fff1f2;
 }
 
 .activity-card h3 {
@@ -1022,32 +1053,114 @@ main {
   background: var(--orange-soft);
 }
 
+.activity-card-heading .eyebrow {
+  margin: 0;
+}
+
+.activity-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.activity-facts span {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 12px;
+  color: var(--plum-soft);
+  background: var(--lavender-50);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.activity-facts strong {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
 .activity-card-highlight {
   box-shadow: 0 0 0 4px rgba(230, 123, 69, 0.2), var(--shadow-md);
   transform: translateY(-2px);
 }
 
 .activity-actions {
-  align-content: center;
-  justify-content: center;
-  padding: 24px;
-  background:
-    radial-gradient(circle at 100% 0, rgba(255, 255, 255, 0.12), transparent 12rem),
-    var(--lavender-700);
+  display: grid;
+  align-content: start;
+  align-items: stretch;
+  gap: 18px;
+  border-left: 1px solid var(--line);
+  padding: 26px;
+  background: linear-gradient(145deg, #faf7fd, #f1ebf7);
 }
 
+.activity-actions .primary,
 .activity-actions .secondary,
 .activity-actions .danger {
   width: 100%;
-  min-height: 38px;
-  border: 0;
-  padding: 8px 12px;
+  min-height: 42px;
+  padding: 9px 12px;
   font-size: 11px;
 }
 
 .activity-actions .secondary {
   color: var(--plum);
   background: #fff;
+}
+
+.activity-actions button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.activity-member-actions,
+.activity-admin-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.activity-member-actions .module-label,
+.activity-member-actions p,
+.activity-admin-actions .module-label,
+.activity-admin-actions > button,
+.activity-admin-utilities {
+  grid-column: 1 / -1;
+}
+
+.activity-member-actions p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.activity-admin-actions {
+  border-top: 1px solid rgba(128, 104, 146, 0.2);
+  padding-top: 18px;
+}
+
+.activity-excel-button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 11px;
+  color: #fff;
+  background: var(--lavender-700);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.activity-admin-utilities {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
 }
 
 .activity-participants {
@@ -2100,6 +2213,14 @@ label {
   font-weight: 800;
 }
 
+.registration-active-label {
+  display: inline-block;
+  margin-top: 7px;
+  color: #406a54;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .late-registration-row {
   border-color: rgba(169, 53, 68, 0.3);
   background: #fff8f8;
@@ -2508,12 +2629,14 @@ dialog::backdrop {
   }
 
   .activity-actions {
-    justify-content: flex-start;
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
+  .activity-actions .primary,
   .activity-actions .secondary,
   .activity-actions .danger {
-    width: auto;
+    width: 100%;
   }
 }
 
@@ -3277,5 +3400,19 @@ dialog::backdrop {
 
   .login-word {
     display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .activity-facts,
+  .activity-member-actions,
+  .activity-admin-utilities {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-member-actions .module-label,
+  .activity-member-actions p,
+  .activity-admin-utilities > * {
+    grid-column: 1;
   }
 }
