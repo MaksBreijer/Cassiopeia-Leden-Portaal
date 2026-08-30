@@ -681,7 +681,8 @@ function projectMapPoint(latitude, longitude, zoom) {
 
 function unprojectMapPoint(x, y, zoom) {
   const scale = 256 * 2 ** zoom;
-  const longitude = ((x / scale) * 360 + 540) % 360 - 180;
+  const rawLongitude = (x / scale) * 360 - 180;
+  const longitude = ((rawLongitude + 180) % 360 + 360) % 360 - 180;
   const latitude = (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / scale))) * 180) / Math.PI;
   return {
     latitude: Math.max(-85.0511, Math.min(85.0511, latitude)),
