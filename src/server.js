@@ -169,6 +169,29 @@ function valueFromBody(body, key, existingValue = "") {
 async function geocodeAddress(address) {
   const query = String(address || "").trim();
   if (!query || typeof fetch !== "function") return null;
+
+  // PDOK gebruikt de Nederlandse BAG en herkent ook kleine typefouten in straatnamen.
+  const pdokController = new AbortController();
+  const pdokTimeout = setTimeout(() => pdokController.abort(), 4500);
+  try {
+    const params = new URLSearchParams({ q: query, rows: "1", fq: "type:adres" });
+    const response = await fetch(`https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?${params}`, {
+      headers: { "User-Agent": "Cassiopeia-Leden-Portaal/1.0 (contact@dispuutcassiopeia.nl)" },
+      signal: pdokController.signal
+    });
+    if (response.ok) {
+      const result = (await response.json())?.response?.docs?.[0];
+      const point = String(result?.centroide_ll || "").match(/^POINT\(([-\d.]+)\s+([-\d.]+)\)$/);
+      const longitude = Number(point?.[1]);
+      const latitude = Number(point?.[2]);
+      if (Number.isFinite(latitude) && Number.isFinite(longitude)) return { latitude, longitude };
+    }
+  } catch (error) {
+    // OpenStreetMap hieronder blijft beschikbaar als PDOK tijdelijk niet reageert.
+  } finally {
+    clearTimeout(pdokTimeout);
+  }
+
   const postalCode = query.match(/\b\d{4}\s?[A-Za-z]{2}\b/)?.[0];
   const fallbackQuery = postalCode ? postalCode.toUpperCase().replace(/(\d{4})([A-Z]{2})/, "$1 $2") : "";
   const queries = [...new Set([query, fallbackQuery].filter(Boolean))];
