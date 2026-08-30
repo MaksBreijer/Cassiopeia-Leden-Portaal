@@ -722,6 +722,13 @@ main {
   border-radius: 20px;
   background: #e8e1d8;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.48);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.crib-map.is-dragging {
+  cursor: grabbing;
 }
 
 .crib-map-svg {
@@ -742,13 +749,13 @@ main {
 }
 
 .crib-marker > circle:first-child {
-  fill: rgba(57, 50, 62, 0.15);
+  fill: rgba(187, 165, 212, 0.34);
   stroke: rgba(255, 255, 255, 0.9);
   stroke-width: 4;
 }
 
 .crib-marker-core {
-  fill: var(--orange);
+  fill: #bba5d4;
   stroke: var(--plum);
   stroke-width: 2;
 }
@@ -763,7 +770,86 @@ main {
 
 .crib-marker:focus > circle:first-child,
 .crib-marker:hover > circle:first-child {
-  fill: rgba(57, 50, 62, 0.3);
+  fill: rgba(187, 165, 212, 0.7);
+  filter: drop-shadow(0 5px 8px rgba(57, 50, 62, 0.35));
+}
+
+.map-controls {
+  position: absolute;
+  z-index: 4;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  overflow: hidden;
+  border: 1px solid rgba(57, 50, 62, 0.16);
+  border-radius: 13px;
+  box-shadow: 0 8px 24px rgba(57, 50, 62, 0.16);
+}
+
+.map-controls button {
+  width: 40px;
+  height: 38px;
+  border: 0;
+  border-bottom: 1px solid rgba(57, 50, 62, 0.12);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--plum);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.map-controls button:last-child {
+  border-bottom: 0;
+  font-size: 17px;
+}
+
+.map-controls button:hover,
+.map-controls button:focus-visible {
+  background: #bba5d4;
+}
+
+.map-tooltip {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  gap: 3px;
+  width: max-content;
+  max-width: min(280px, calc(100% - 28px));
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  opacity: 0;
+  color: #fff;
+  background: rgba(57, 50, 62, 0.96);
+  box-shadow: 0 12px 28px rgba(57, 50, 62, 0.28);
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 16px));
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.map-tooltip::after {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  content: "";
+  background: rgba(57, 50, 62, 0.96);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.map-tooltip.is-visible {
+  opacity: 1;
+}
+
+.map-tooltip strong {
+  font-size: 13px;
+}
+
+.map-tooltip span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
 }
 
 .map-attribution {
@@ -812,7 +898,7 @@ main {
   height: 14px;
   border: 2px solid var(--plum);
   border-radius: 50%;
-  background: var(--orange);
+  background: #bba5d4;
 }
 
 .map-unmapped {

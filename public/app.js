@@ -18,6 +18,18 @@ const state = {
   selectedMemberIds: new Set()
 };
 
+const mapView = {
+  centerLatitude: 52.2,
+  centerLongitude: 5.3,
+  zoom: 7,
+  signature: "",
+  dragging: false,
+  pointerId: null,
+  startClientX: 0,
+  startClientY: 0,
+  startCenterPoint: null
+};
+
 const API_BASE = location.protocol === "file:" || location.port === "5500" ? "http://127.0.0.1:3000" : "";
 
 const DEFAULT_YEAR_AGENDA_ITEMS = [
@@ -666,6 +678,16 @@ function projectMapPoint(latitude, longitude, zoom) {
   };
 }
 
+function unprojectMapPoint(x, y, zoom) {
+  const scale = 256 * 2 ** zoom;
+  const longitude = ((x / scale) * 360 + 540) % 360 - 180;
+  const latitude = (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / scale))) * 180) / Math.PI;
+  return {
+    latitude: Math.max(-85.0511, Math.min(85.0511, latitude)),
+    longitude
+  };
+}
+
 function mapZoomForMembers(members) {
   if (members.length < 2) return 14;
   const lats = members.map((member) => Number(member.latitude));
@@ -684,6 +706,31 @@ function hasMapCoordinates(member) {
     Number.isFinite(Number(member.latitude)) && Number.isFinite(Number(member.longitude));
 }
 
+function fitMapToMembers(members) {
+  mapView.zoom = members.length ? mapZoomForMembers(members) : 7;
+  mapView.centerLatitude = members.length
+    ? members.reduce((sum, member) => sum + Number(member.latitude), 0) / members.length
+    : 52.2;
+  mapView.centerLongitude = members.length
+    ? members.reduce((sum, member) => sum + Number(member.longitude), 0) / members.length
+    : 5.3;
+}
+
+function showMapTooltip(marker) {
+  const tooltip = els.cribMap?.querySelector(".map-tooltip");
+  if (!tooltip || !marker) return;
+  const x = Math.max(12, Math.min(88, Number(marker.dataset.tooltipX)));
+  const y = Math.max(18, Math.min(90, Number(marker.dataset.tooltipY)));
+  tooltip.style.left = `${x}%`;
+  tooltip.style.top = `${y}%`;
+  tooltip.innerHTML = `<strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.address)}</span>`;
+  tooltip.classList.add("is-visible");
+}
+
+function hideMapTooltip() {
+  els.cribMap?.querySelector(".map-tooltip")?.classList.remove("is-visible");
+}
+
 function renderCribMap() {
   if (!els.cribMap) return;
   const sourceMembers = state.mapMembers.length ? state.mapMembers : state.members;
@@ -696,11 +743,30 @@ function renderCribMap() {
       : `<p class="map-ready">Alle actieve leden staan op de kaart.</p>`;
   }
   const hasMappedMembers = mappedMembers.length > 0;
-  const zoom = hasMappedMembers ? mapZoomForMembers(mappedMembers) : 7;
-  const projected = mappedMembers.map((member) => ({ member, point: projectMapPoint(Number(member.latitude), Number(member.longitude), zoom) }));
-  const defaultCenter = projectMapPoint(52.2, 5.3, zoom);
-  const centerX = hasMappedMembers ? projected.reduce((sum, item) => sum + item.point.x, 0) / projected.length : defaultCenter.x;
-  const centerY = hasMappedMembers ? projected.reduce((sum, item) => sum + item.point.y, 0) / projected.length : defaultCenter.y;
+  const signature = mappedMembers.map((member) => `${member.id}:${member.latitude}:${member.longitude}`).sort().join("|");
+  if (signature !== mapView.signature) {
+    mapView.signature = signature;
+    fitMapToMembers(mappedMembers);
+  }
+  const zoom = mapView.zoom;
+  const projected = mappedMembers.map((member) => ({ member, point: projectMapPoint(Number(member.latitude), Number(member.longitude), zoom), offsetX: 0, offsetY: 0 }));
+  const overlapping = new Map();
+  projected.forEach((item) => {
+    const key = `${Number(item.member.latitude).toFixed(5)}:${Number(item.member.longitude).toFixed(5)}`;
+    if (!overlapping.has(key)) overlapping.set(key, []);
+    overlapping.get(key).push(item);
+  });
+  overlapping.forEach((items) => {
+    if (items.length < 2) return;
+    items.forEach((item, index) => {
+      const angle = (index / items.length) * Math.PI * 2 - Math.PI / 2;
+      item.offsetX = Math.cos(angle) * 24;
+      item.offsetY = Math.sin(angle) * 24;
+    });
+  });
+  const center = projectMapPoint(mapView.centerLatitude, mapView.centerLongitude, zoom);
+  const centerX = center.x;
+  const centerY = center.y;
   const left = centerX - 450;
   const top = centerY - 250;
   const tileXStart = Math.floor(left / 256) - 1;
@@ -716,14 +782,90 @@ function renderCribMap() {
       tiles.push(`<image class="map-tile" x="${tileX * 256 - left}" y="${tileY * 256 - top}" width="256" height="256" href="https://tile.openstreetmap.org/${zoom}/${wrappedX}/${tileY}.png" />`);
     }
   }
-  const markers = projected.map(({ member, point }) => {
-    const x = point.x - left;
-    const y = point.y - top;
+  const markers = projected.map(({ member, point, offsetX, offsetY }) => {
+    const x = point.x - left + offsetX;
+    const y = point.y - top + offsetY;
     const initials = escapeHtml((member.name || "C").split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase());
-    return `<g class="crib-marker" tabindex="0" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})"><title>${escapeHtml(member.name)} · Cassio Crib</title><circle r="16"></circle><circle class="crib-marker-core" r="11"></circle><text y="4" text-anchor="middle">${initials}</text></g>`;
+    const name = escapeHtml(member.name || "Cassio");
+    const address = escapeHtml(member.address || "Adres onbekend");
+    return `<g class="crib-marker" tabindex="0" role="button" aria-label="${name}, ${address}" data-name="${name}" data-address="${address}" data-tooltip-x="${((x / 900) * 100).toFixed(2)}" data-tooltip-y="${((y / 500) * 100).toFixed(2)}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})"><circle r="18"></circle><circle class="crib-marker-core" r="12"></circle><text y="4" text-anchor="middle">${initials}</text></g>`;
   }).join("");
   const emptyOverlay = hasMappedMembers ? "" : `<div class="map-empty-overlay"><span class="map-empty-icon">⌖</span><strong>Nog geen adressen op de kaart</strong><p>Vul je adres in via je profiel. Daarna verschijnt je Cassio Crib hier automatisch.</p><a class="secondary" href="#profiel">Naar mijn profiel</a></div>`;
-  els.cribMap.innerHTML = `<svg class="crib-map-svg" viewBox="0 0 900 500" preserveAspectRatio="xMidYMid slice" aria-label="Cassio Cribs kaart">${tiles.join("")}${markers}</svg>${emptyOverlay}`;
+  els.cribMap.innerHTML = `<svg class="crib-map-svg" viewBox="0 0 900 500" preserveAspectRatio="xMidYMid slice" aria-label="Cassio Cribs kaart">${tiles.join("")}${markers}</svg><div class="map-controls" aria-label="Kaartbediening"><button type="button" data-map-zoom-in aria-label="Inzoomen">+</button><button type="button" data-map-zoom-out aria-label="Uitzoomen">−</button><button type="button" data-map-reset aria-label="Toon alle markers">⌂</button></div><div class="map-tooltip" role="status"></div>${emptyOverlay}`;
+}
+
+if (els.cribMap) {
+  els.cribMap.addEventListener("click", (event) => {
+    const marker = event.target.closest?.(".crib-marker");
+    if (marker) return showMapTooltip(marker);
+    if (event.target.closest?.("[data-map-zoom-in]")) {
+      mapView.zoom = Math.min(17, mapView.zoom + 1);
+      return renderCribMap();
+    }
+    if (event.target.closest?.("[data-map-zoom-out]")) {
+      mapView.zoom = Math.max(6, mapView.zoom - 1);
+      return renderCribMap();
+    }
+    if (event.target.closest?.("[data-map-reset]")) {
+      const sourceMembers = state.mapMembers.length ? state.mapMembers : state.members;
+      fitMapToMembers(sourceMembers.filter((member) => hasMapCoordinates(member) && member.accountStatus === "active"));
+      return renderCribMap();
+    }
+    hideMapTooltip();
+  });
+
+  els.cribMap.addEventListener("mouseover", (event) => {
+    const marker = event.target.closest?.(".crib-marker");
+    if (marker) showMapTooltip(marker);
+  });
+  els.cribMap.addEventListener("mouseout", (event) => {
+    if (event.target.closest?.(".crib-marker")) hideMapTooltip();
+  });
+  els.cribMap.addEventListener("focusin", (event) => {
+    const marker = event.target.closest?.(".crib-marker");
+    if (marker) showMapTooltip(marker);
+  });
+  els.cribMap.addEventListener("focusout", hideMapTooltip);
+
+  els.cribMap.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    mapView.zoom = Math.max(6, Math.min(17, mapView.zoom + (event.deltaY < 0 ? 1 : -1)));
+    hideMapTooltip();
+    renderCribMap();
+  }, { passive: false });
+
+  els.cribMap.addEventListener("pointerdown", (event) => {
+    if (event.target.closest?.("button")) return;
+    mapView.dragging = true;
+    mapView.pointerId = event.pointerId;
+    mapView.startClientX = event.clientX;
+    mapView.startClientY = event.clientY;
+    mapView.startCenterPoint = projectMapPoint(mapView.centerLatitude, mapView.centerLongitude, mapView.zoom);
+    els.cribMap.setPointerCapture?.(event.pointerId);
+    els.cribMap.classList.add("is-dragging");
+  });
+  els.cribMap.addEventListener("pointermove", (event) => {
+    if (!mapView.dragging || event.pointerId !== mapView.pointerId) return;
+    const rect = els.cribMap.getBoundingClientRect();
+    const nextCenter = unprojectMapPoint(
+      mapView.startCenterPoint.x - (event.clientX - mapView.startClientX) * (900 / rect.width),
+      mapView.startCenterPoint.y - (event.clientY - mapView.startClientY) * (500 / rect.height),
+      mapView.zoom
+    );
+    mapView.centerLatitude = nextCenter.latitude;
+    mapView.centerLongitude = nextCenter.longitude;
+    hideMapTooltip();
+    renderCribMap();
+  });
+  const stopMapDrag = (event) => {
+    if (!mapView.dragging || (event.pointerId !== undefined && event.pointerId !== mapView.pointerId)) return;
+    mapView.dragging = false;
+    mapView.pointerId = null;
+    mapView.startCenterPoint = null;
+    els.cribMap.classList.remove("is-dragging");
+  };
+  els.cribMap.addEventListener("pointerup", stopMapDrag);
+  els.cribMap.addEventListener("pointercancel", stopMapDrag);
 }
 
 function accountStatusLabel(status) {

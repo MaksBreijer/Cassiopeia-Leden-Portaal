@@ -18,7 +18,7 @@
     <meta name="twitter:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />
     <meta name="twitter:image" content="https://www.dispuutcassiopeia.nl/assets/og.png" />
     <link rel="icon" type="image/png" href="assets/cassiopeia-embleem.png" />
-    <link rel="stylesheet" href="styles.css?v=20260830-coordinate-fix" />
+    <link rel="stylesheet" href="styles.css?v=20260830-interactive-map" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -278,11 +278,11 @@
               <div>
                 <p class="eyebrow">Ledenkaart</p>
                 <h2>Cassio Cribs</h2>
-                <p class="section-intro">Een globale kaartweergave voor leden. Exacte adressen staan niet op de kaart.</p>
+                <p class="section-intro">Sleep of zoom over de kaart. Ga met je muis over een lila bolletje — of tik erop — voor naam en adres.</p>
               </div>
               <span id="mapMemberCount" class="count-pill">Kaart laden…</span>
             </div>
-            <div id="cribMap" class="crib-map" role="img" aria-label="Kaart met Cassio Cribs"></div>
+            <div id="cribMap" class="crib-map" role="region" aria-label="Interactieve kaart met Cassio Cribs"></div>
             <p class="map-attribution">Kaartlagen © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>-bijdragers.</p>
           </div>
           <aside class="content-module map-sidebar">
@@ -577,6 +577,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260830-coordinate-fix"></script>
+    <script src="app.js?v=20260830-interactive-map"></script>
   </body>
 </html>
