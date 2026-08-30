@@ -549,6 +549,14 @@
           <label class="wide">Titel<input name="title" required /></label>
           <label>Datum en tijd<input name="startsAt" type="datetime-local" required /></label>
           <label>Capaciteit<input name="capacity" type="number" min="1" /></label>
+          <label class="wide">Inschrijving
+            <select name="registrationOverride">
+              <option value="automatic">Automatisch — sluit op de 1e van de maand</option>
+              <option value="open">Handmatig open</option>
+              <option value="closed">Handmatig gesloten</option>
+            </select>
+            <span class="form-help">Met ‘Handmatig open’ kan de beheerder ook na de deadline inschrijvingen toestaan.</span>
+          </label>
           <label class="wide">Locatie<input name="location" /></label>
           <label class="wide">Beschrijving<textarea name="description" rows="4"></textarea></label>
           <label class="wide">Bestanden bij activiteit<input name="activityFiles" type="file" multiple accept="application/pdf,image/png,image/jpeg,image/webp,text/plain,.docx,.xlsx" /><span class="form-help">Optioneel, maximaal 5 MB per bestand.</span></label>
@@ -571,6 +579,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260830-activity-flow"></script>
+    <script src="app.js?v=20260830-admin-registration-override"></script>
   </body>
 </html>

@@ -347,6 +347,19 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(closedRegistration.response.status, 400);
   assert.match(closedRegistration.data.error, /gesloten/i);
+  const reopenedActivity = await jsonRequest(baseUrl, `/api/activities/${closedActivity.data.activity.id}`, {
+    method: "PUT",
+    cookie: adminLogin.cookie,
+    body: { title: "Gesloten activiteit", startsAt: closedStart.toISOString(), location: "Amsterdam", registrationOverride: "open" }
+  });
+  assert.equal(reopenedActivity.response.status, 200);
+  assert.equal(reopenedActivity.data.activity.registrationOverride, "open");
+  assert.equal(reopenedActivity.data.activity.registrationOpen, true);
+  const reopenedRegistration = await jsonRequest(baseUrl, `/api/activities/${closedActivity.data.activity.id}/register`, {
+    method: "POST",
+    cookie: adminLogin.cookie
+  });
+  assert.equal(reopenedRegistration.response.status, 200);
 
   const document = await jsonRequest(baseUrl, "/api/documents", {
     method: "POST",

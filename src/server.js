@@ -407,7 +407,9 @@ function registrationDeadline(startsAt) {
   return new Date(start.getFullYear(), start.getMonth(), 1);
 }
 
-function isRegistrationOpen(startsAt) {
+function isRegistrationOpen(startsAt, registrationOverride = "automatic") {
+  if (registrationOverride === "open") return true;
+  if (registrationOverride === "closed") return false;
   const deadline = registrationDeadline(startsAt);
   return Boolean(deadline && Date.now() < deadline.getTime());
 }
@@ -818,12 +820,15 @@ app.post("/api/members/:id/invitations", requireAuth, requireAdmin, (req, res) =
 
 function activityFromBody(body, existing = {}) {
   const capacity = body.capacity === "" || body.capacity === null || body.capacity === undefined ? null : Number(body.capacity);
+  const requestedOverride = String(body.registrationOverride ?? existing.registration_override ?? "automatic").trim();
+  const registrationOverride = ["automatic", "open", "closed"].includes(requestedOverride) ? requestedOverride : "automatic";
   return {
     title: String(body.title || existing.title || "").trim(),
     description: String(body.description || existing.description || "").trim(),
     location: String(body.location || existing.location || "").trim(),
     starts_at: String(body.startsAt || existing.starts_at || "").trim(),
-    capacity: Number.isFinite(capacity) && capacity > 0 ? capacity : null
+    capacity: Number.isFinite(capacity) && capacity > 0 ? capacity : null,
+    registration_override: registrationOverride
   };
 }
 
@@ -876,7 +881,8 @@ function activityRows(userId) {
       capacity: row.capacity,
       registrationCount: row.registration_count,
       registrationDeadline: deadline?.toISOString() || null,
-      registrationOpen: isRegistrationOpen(row.starts_at),
+      registrationOverride: row.registration_override || "automatic",
+      registrationOpen: isRegistrationOpen(row.starts_at, row.registration_override),
       isRegistered: Boolean(row.is_registered),
       wasCancelled: Boolean(row.was_cancelled),
       lateCancelled: Boolean(row.late_cancelled),
@@ -1082,7 +1088,7 @@ app.post("/api/activities", requireAuth, requireAdmin, (req, res) => {
   }
 
   const result = db
-    .prepare("INSERT INTO activities (title, description, location, starts_at, capacity, created_by) VALUES (@title, @description, @location, @starts_at, @capacity, @created_by)")
+    .prepare("INSERT INTO activities (title, description, location, starts_at, capacity, registration_override, created_by) VALUES (@title, @description, @location, @starts_at, @capacity, @registration_override, @created_by)")
     .run({ ...activity, created_by: req.session.userId });
   res.status(201).json({ activity: activityRows(req.session.userId).find((item) => item.id === result.lastInsertRowid) });
 });
@@ -1099,7 +1105,8 @@ app.put("/api/activities/:id", requireAuth, requireAdmin, (req, res) => {
   db.prepare(`
     UPDATE activities
     SET title = @title, description = @description, location = @location,
-        starts_at = @starts_at, capacity = @capacity, updated_at = CURRENT_TIMESTAMP
+        starts_at = @starts_at, capacity = @capacity, registration_override = @registration_override,
+        updated_at = CURRENT_TIMESTAMP
     WHERE id = @id
   `).run({ ...activity, id: req.params.id });
 
@@ -1145,7 +1152,7 @@ app.delete("/api/activities/:id/files/:fileId", requireAuth, requireAdmin, (req,
 app.post("/api/activities/:id/register", requireAuth, (req, res) => {
   const activity = db.prepare("SELECT * FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
-  if (!isRegistrationOpen(activity.starts_at)) {
+  if (!isRegistrationOpen(activity.starts_at, activity.registration_override)) {
     return res.status(400).json({ error: "De inschrijving is gesloten. De deadline was de eerste van de maand." });
   }
 

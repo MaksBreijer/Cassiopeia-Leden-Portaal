@@ -306,6 +306,8 @@ function activityRegistrationDeadline(activity) {
 
 function activityRegistrationIsOpen(activity) {
   if (typeof activity.registrationOpen === "boolean") return activity.registrationOpen;
+  if (activity.registrationOverride === "open") return true;
+  if (activity.registrationOverride === "closed") return false;
   const deadline = activityRegistrationDeadline(activity);
   return Boolean(deadline && Date.now() < deadline.getTime());
 }
@@ -1179,9 +1181,20 @@ function renderPublicActivities() {
           ? "Te laat afgemeld"
           : activity.wasCancelled
             ? "Je bent afgemeld"
-            : registrationOpen
-              ? "Inschrijving open"
-              : "Inschrijving gesloten";
+            : activity.registrationOverride === "open"
+              ? "Handmatig geopend"
+              : activity.registrationOverride === "closed"
+                ? "Handmatig gesloten"
+                : registrationOpen
+                  ? "Inschrijving open"
+                  : "Inschrijving gesloten";
+      const registrationNote = activity.registrationOverride === "open"
+        ? `Handmatig geopend door de beheerder. De normale deadline is ${formatActivityDeadline(activity)}.`
+        : activity.registrationOverride === "closed"
+          ? "Handmatig gesloten door de beheerder."
+          : registrationOpen
+            ? `Inschrijven kan tot ${formatActivityDeadline(activity)}.`
+            : `De inschrijving sloot op ${formatActivityDeadline(activity)}.`;
       return `
         <article id="activiteit-${activity.id}" class="activity-card" data-activity-card="${activity.id}">
           <div class="activity-card-content">
@@ -1205,12 +1218,13 @@ function renderPublicActivities() {
               <span class="module-label">Jouw deelname</span>
               <button class="primary" data-register="${activity.id}" data-registration-action="join" ${canRegister ? "" : "disabled"}>Inschrijven</button>
               <button class="secondary" data-register="${activity.id}" data-registration-action="cancel" ${canCancel ? "" : "disabled"}>Afmelden</button>
-              <p>${registrationOpen ? `Inschrijven kan tot ${formatActivityDeadline(activity)}.` : `De inschrijving sloot op ${formatActivityDeadline(activity)}.`}${canCancel && !registrationOpen ? " Afmelden kan nog, maar wordt als te laat gemarkeerd." : ""}</p>
+              <p>${registrationNote}${canCancel && Date.now() >= activityRegistrationDeadline(activity)?.getTime() ? " Afmelden kan nog, maar wordt als te laat gemarkeerd." : ""}</p>
             </div>
             ${
               state.user?.isAdmin
                 ? `<div class="activity-admin-actions">
                     <span class="module-label">Beheer</span>
+                    <button class="secondary" data-toggle-activity-registration="${activity.id}" data-registration-override="${registrationOpen ? "closed" : "open"}">${registrationOpen ? "Inschrijving sluiten" : "Inschrijving openen"}</button>
                     <button class="activity-excel-button" data-export-activity="${activity.id}">Excel downloaden</button>
                     <button class="secondary" data-registrations="${activity.id}">Deelnemers bekijken</button>
                     <div class="activity-admin-utilities">
@@ -1326,6 +1340,7 @@ function openActivityDialog(activity = null) {
   fields.title.value = activity?.title || "";
   fields.startsAt.value = activity?.startsAt || "";
   fields.capacity.value = activity?.capacity || "";
+  fields.registrationOverride.value = activity?.registrationOverride || "automatic";
   fields.location.value = activity?.location || "";
   fields.description.value = activity?.description || "";
   if (fields.activityFiles) fields.activityFiles.value = "";
@@ -2006,6 +2021,26 @@ document.body.addEventListener("click", async (event) => {
 
   const exportActivityBtn = event.target.closest("[data-export-activity]");
   if (exportActivityBtn) return exportRegistrations(exportActivityBtn.dataset.exportActivity).catch((error) => showToast(error.message));
+
+  const toggleActivityRegistrationBtn = event.target.closest("[data-toggle-activity-registration]");
+  if (toggleActivityRegistrationBtn) {
+    const activity = state.activities.find((item) => item.id === Number(toggleActivityRegistrationBtn.dataset.toggleActivityRegistration));
+    if (!activity) return;
+    const registrationOverride = toggleActivityRegistrationBtn.dataset.registrationOverride;
+    await api(`/api/activities/${activity.id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        title: activity.title,
+        description: activity.description,
+        location: activity.location,
+        startsAt: activity.startsAt,
+        capacity: activity.capacity,
+        registrationOverride
+      })
+    });
+    await loadActivities();
+    return showToast(registrationOverride === "open" ? "Inschrijving handmatig geopend." : "Inschrijving handmatig gesloten.");
+  }
 
   const whatsappActivityBtn = event.target.closest("[data-whatsapp-activity]");
   if (whatsappActivityBtn) {

@@ -44,6 +44,7 @@ function initializeDatabase() {
       location TEXT DEFAULT '',
       starts_at TEXT NOT NULL,
       capacity INTEGER,
+      registration_override TEXT NOT NULL DEFAULT 'automatic',
       created_by INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -153,6 +154,7 @@ function initializeDatabase() {
   ensureColumn("users", "last_login_at", "TEXT");
   ensureColumn("registrations", "cancelled_at", "TEXT");
   ensureColumn("registrations", "late_cancelled", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn("activities", "registration_override", "TEXT NOT NULL DEFAULT 'automatic'");
   revokeExposedCredentials();
   bootstrapAdmin();
   purgeExistingNonAdminMembers();
