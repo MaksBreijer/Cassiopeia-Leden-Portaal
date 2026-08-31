@@ -24,7 +24,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png" />
-    <link rel="stylesheet" href="styles.css?v=20260831-pwa" />
+    <link rel="stylesheet" href="styles.css?v=20260831-calendar" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -160,6 +160,7 @@
               <p class="section-intro">Van DispuBo tot lustrumgala — blader per maand door het programma.</p>
             </div>
             <div class="section-actions">
+              <button class="ghost" type="button" data-open-calendar-subscription>Abonneer op agenda</button>
               <button id="newYearAgendaItemBtn" class="primary admin-only hidden">Nieuw agendapunt</button>
             </div>
           </div>
@@ -167,7 +168,7 @@
             <div class="year-agenda-titlebar">
               <div>
                 <span class="module-label">Academisch jaar</span>
-                <h3>2025—2026</h3>
+                <h3 id="yearAgendaSourceTitle">2025—2026</h3>
               </div>
               <div id="yearAgendaSummary" class="year-agenda-summary">Jaarplanning laden...</div>
             </div>
@@ -612,7 +613,38 @@
       </div>
     </dialog>
 
+    <dialog id="calendarSubscriptionDialog" class="calendar-subscription-dialog">
+      <div class="dialog-card calendar-subscription-card">
+        <div class="dialog-heading">
+          <p class="eyebrow">Automatisch bijgewerkt</p>
+          <h3>Jaarplanning in je agenda</h3>
+          <p id="calendarSubscriptionIntro">Je persoonlijke abonnementslink wordt klaargezet.</p>
+        </div>
+        <div class="calendar-subscription-actions">
+          <a id="subscribeAppleCalendar" class="primary is-disabled" href="#">Open in Apple Agenda</a>
+          <a id="openGoogleCalendar" class="ghost hidden" href="https://calendar.google.com/calendar/" target="_blank" rel="noopener">Open Cassio Google Agenda</a>
+        </div>
+        <label class="wide">Persoonlijke abonnementslink<input id="calendarSubscriptionUrl" readonly placeholder="Link laden…" /></label>
+        <p class="form-help">Voor Google Agenda op een laptop: kies <strong>Andere agenda's → Via URL</strong> en plak deze link. Deel de persoonlijke link niet met anderen.</p>
+        <section id="calendarIntegrationAdmin" class="calendar-integration-admin admin-only hidden">
+          <div>
+            <span class="module-label">Alleen voor beheerders</span>
+            <h4>Koppel de bestaande Cassio Google Agenda</h4>
+            <p>Plak het <strong>geheime adres in iCal-indeling</strong> uit de instellingen van die agenda. De link blijft op de server.</p>
+          </div>
+          <form id="calendarIntegrationForm">
+            <label class="wide">Google iCal-adres<input name="calendarUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" required /></label>
+            <button type="submit" class="primary">Google Agenda koppelen</button>
+          </form>
+        </section>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" data-close>Sluiten</button>
+          <button id="copyCalendarSubscriptionBtn" type="button" class="primary">Link kopiëren</button>
+        </div>
+      </div>
+    </dialog>
+
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260831-pwa"></script>
+    <script src="app.js?v=20260831-calendar"></script>
   </body>
 </html>

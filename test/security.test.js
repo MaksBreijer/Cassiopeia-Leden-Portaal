@@ -9,6 +9,7 @@ const test = require("node:test");
 
 const projectRoot = path.join(__dirname, "..");
 const { parseCsvText, parseMemberImport } = require(path.join(projectRoot, "src", "member-import"));
+const { createCalendarFeed, parseGoogleCalendarFeed, parseLocalYearAgendaDate } = require(path.join(projectRoot, "src", "calendar-feed"));
 
 function simpleTextPdf(lines) {
   const escapedLines = lines.map((line) => String(line).replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)"));
@@ -113,6 +114,37 @@ test("the portal is installable as a web app without caching private API data", 
   assert.ok(manifest.icons.some((icon) => icon.sizes === "512x512" && icon.purpose === "maskable"));
   assert.match(serviceWorker, /requestUrl\.pathname\.startsWith\("\/api\/"\)/);
   assert.doesNotMatch(serviceWorker, /caches\.put\([^\n]*\/api\//);
+});
+
+test("calendar feeds preserve dates, ranges and escaped titles", () => {
+  const dates = parseLocalYearAgendaDate({ monthLabel: "Oktober 2026", dayLabel: "3-5" });
+  assert.equal(dates.start.toISOString(), "2026-10-03T00:00:00.000Z");
+  assert.equal(dates.end.toISOString(), "2026-10-06T00:00:00.000Z");
+  assert.equal(parseLocalYearAgendaDate({ monthLabel: "Oktober 2026", dayLabel: "?" }), null);
+
+  const feed = createCalendarFeed([
+    { id: 12, monthLabel: "Oktober 2026", dayLabel: "3-5", title: "Weekend, diner & feest", updatedAt: "2026-08-31 12:00:00" },
+    { id: 13, monthLabel: "Oktober 2026", dayLabel: "?", title: "Nog onbekend" }
+  ]);
+  assert.match(feed, /DTSTART;VALUE=DATE:20261003\r\n/);
+  assert.match(feed, /DTEND;VALUE=DATE:20261006\r\n/);
+  assert.match(feed, /SUMMARY:Weekend\\, diner & feest/);
+  assert.doesNotMatch(feed, /Nog onbekend/);
+
+  const googleItems = parseGoogleCalendarFeed([
+    "BEGIN:VCALENDAR",
+    "BEGIN:VEVENT",
+    "UID:cassio-test",
+    "DTSTART;VALUE=DATE:20261112",
+    "DTEND;VALUE=DATE:20261114",
+    "SUMMARY:Lustrum\\, diner",
+    "END:VEVENT",
+    "END:VCALENDAR"
+  ].join("\r\n"));
+  assert.deepEqual(
+    { monthLabel: googleItems[0].monthLabel, dayLabel: googleItems[0].dayLabel, title: googleItems[0].title },
+    { monthLabel: "November 2026", dayLabel: "12-13", title: "Lustrum, diner" }
+  );
 });
 
 test("member import parses Dutch CSV and text PDFs", async () => {
@@ -322,6 +354,32 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.match(adminLogin.cookie, /^cassiopeia\.sid=/);
   assert.equal(adminLogin.response.headers.get("x-frame-options"), "DENY");
 
+  const unauthenticatedSubscription = await jsonRequest(baseUrl, "/api/calendar-subscription", { method: "POST" });
+  assert.equal(unauthenticatedSubscription.response.status, 401);
+  const adminSubscription = await jsonRequest(baseUrl, "/api/calendar-subscription", {
+    method: "POST",
+    cookie: adminLogin.cookie
+  });
+  assert.equal(adminSubscription.response.status, 200);
+  assert.match(adminSubscription.data.httpsUrl, new RegExp(`^${baseUrl.replaceAll(".", "\\.")}\/api\/calendar\/[a-f0-9]{64}\\.ics$`));
+  assert.match(adminSubscription.data.webcalUrl, /^webcal:\/\//);
+  const adminFeed = await fetch(adminSubscription.data.httpsUrl);
+  assert.equal(adminFeed.status, 200);
+  assert.match(adminFeed.headers.get("content-type"), /^text\/calendar/);
+  assert.match(await adminFeed.text(), /BEGIN:VCALENDAR[\s\S]*BEGIN:VEVENT/);
+  const repeatedSubscription = await jsonRequest(baseUrl, "/api/calendar-subscription", {
+    method: "POST",
+    cookie: adminLogin.cookie
+  });
+  assert.equal(repeatedSubscription.data.httpsUrl, adminSubscription.data.httpsUrl);
+  const rejectedCalendarSource = await jsonRequest(baseUrl, "/api/calendar-integration", {
+    method: "PUT",
+    cookie: adminLogin.cookie,
+    body: { calendarUrl: "https://aanvaller.example/calendar.ics" }
+  });
+  assert.equal(rejectedCalendarSource.response.status, 400);
+  assert.match(rejectedCalendarSource.data.error, /Google Agenda/i);
+
   const futureStart = new Date();
   futureStart.setMonth(futureStart.getMonth() + 2, 20);
   futureStart.setHours(19, 0, 0, 0);
@@ -492,6 +550,11 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.equal(activated.response.status, 200);
   assert.equal(activated.data.user.accountStatus, "active");
   assert.match(activated.cookie, /^cassiopeia\.sid=/);
+  const memberSubscription = await jsonRequest(baseUrl, "/api/calendar-subscription", {
+    method: "POST",
+    cookie: activated.cookie
+  });
+  assert.equal(memberSubscription.response.status, 200);
 
   const tokenReuse = await jsonRequest(baseUrl, "/api/account/activate", {
     method: "POST",
@@ -548,6 +611,8 @@ test("admins invite members who set and reset their own password", async (t) => 
     body: { token: disabledToken, password: "dit-wachtwoord-mag-niet-werken" }
   });
   assert.equal(activationAfterDisable.response.status, 400);
+  const disabledCalendarFeed = await fetch(memberSubscription.data.httpsUrl);
+  assert.equal(disabledCalendarFeed.status, 404);
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const failure = await jsonRequest(baseUrl, "/api/login", {

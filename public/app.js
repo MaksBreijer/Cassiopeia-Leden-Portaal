@@ -9,6 +9,7 @@ const state = {
   yearAgendaItems: [],
   yearAgendaSummaryText: "",
   yearAgendaUsesLocalData: false,
+  yearAgendaSource: { type: "local", label: "Cassiopeia" },
   activeYearAgendaMonthIndex: null,
   memberStatusFilter: "",
   openMemberId: null,
@@ -147,6 +148,7 @@ const els = {
   yearAgendaNext: document.querySelector("#yearAgendaNext"),
   yearAgendaMonthSelect: document.querySelector("#yearAgendaMonthSelect"),
   yearAgendaGrid: document.querySelector("#yearAgendaGrid"),
+  yearAgendaSourceTitle: document.querySelector("#yearAgendaSourceTitle"),
   publicActivityList: document.querySelector("#publicActivityList"),
   documentList: document.querySelector("#documentList"),
   confessionList: document.querySelector("#confessionList"),
@@ -190,6 +192,14 @@ const els = {
   invitationDialogText: document.querySelector("#invitationDialogText"),
   invitationUrl: document.querySelector("#invitationUrl"),
   copyInvitationBtn: document.querySelector("#copyInvitationBtn"),
+  calendarSubscriptionDialog: document.querySelector("#calendarSubscriptionDialog"),
+  calendarSubscriptionIntro: document.querySelector("#calendarSubscriptionIntro"),
+  calendarSubscriptionUrl: document.querySelector("#calendarSubscriptionUrl"),
+  subscribeAppleCalendar: document.querySelector("#subscribeAppleCalendar"),
+  openGoogleCalendar: document.querySelector("#openGoogleCalendar"),
+  copyCalendarSubscriptionBtn: document.querySelector("#copyCalendarSubscriptionBtn"),
+  calendarIntegrationAdmin: document.querySelector("#calendarIntegrationAdmin"),
+  calendarIntegrationForm: document.querySelector("#calendarIntegrationForm"),
   adminSearch: document.querySelector("#adminSearch"),
   adminActiveCount: document.querySelector("#adminActiveCount"),
   adminPendingCount: document.querySelector("#adminPendingCount"),
@@ -1109,15 +1119,21 @@ async function loadSiteAssets() {
 async function loadYearAgenda() {
   try {
     const data = await api("/api/year-agenda");
-    state.yearAgendaUsesLocalData = !data.items?.length;
-    state.yearAgendaItems = data.items?.length ? data.items : localYearAgendaItems();
+    state.yearAgendaUsesLocalData = !Array.isArray(data.items);
+    state.yearAgendaItems = Array.isArray(data.items) ? data.items : localYearAgendaItems();
     state.yearAgendaSummaryText = data.summary || localYearAgendaSummary();
+    state.yearAgendaSource = data.source || { type: "local", label: "Cassiopeia" };
+    if (state.yearAgendaSource.warning) showToast(state.yearAgendaSource.warning);
   } catch (error) {
     state.yearAgendaUsesLocalData = true;
     state.yearAgendaItems = localYearAgendaItems();
     state.yearAgendaSummaryText = localYearAgendaSummary();
+    state.yearAgendaSource = { type: "local", label: "Cassiopeia" };
     showToast("Jaarplanning lokaal geladen.");
   }
+  const managedInGoogle = state.yearAgendaSource.type === "google";
+  if (els.yearAgendaSourceTitle) els.yearAgendaSourceTitle.textContent = managedInGoogle ? "Cassio Google Agenda" : "2025—2026";
+  if (els.newYearAgendaItemBtn) els.newYearAgendaItemBtn.classList.toggle("hidden", !state.user?.isAdmin || managedInGoogle);
   renderYearAgenda();
   renderPortalOverview();
 }
@@ -1187,7 +1203,7 @@ function renderYearAgenda() {
     const summary = state.yearAgendaSummaryText || `${state.yearAgendaItems.length} agendapunten · ${months.length} maanden · ${firstMonth} t/m ${lastMonth}`;
     els.yearAgendaSummary.innerHTML = `
       <span>${escapeHtml(summary)}</span>
-      ${state.user?.isAdmin ? '<button type="button" class="summary-edit-action" data-edit-year-agenda-summary>Bewerk</button>' : ""}
+      ${state.user?.isAdmin && state.yearAgendaSource.type !== "google" ? '<button type="button" class="summary-edit-action" data-edit-year-agenda-summary>Bewerk</button>' : ""}
     `;
   }
 
@@ -1202,7 +1218,7 @@ function renderYearAgenda() {
                 <span class="year-agenda-date">${escapeHtml(item.dayLabel)}</span>
                 <span class="year-agenda-title">${escapeHtml(item.title)}</span>
                 ${
-                  state.user?.isAdmin
+                  state.user?.isAdmin && state.yearAgendaSource.type !== "google"
                     ? `<span class="year-agenda-actions">
                         <button type="button" class="icon-action" data-edit-year-agenda="${item.id}" aria-label="Agendapunt bewerken" title="Bewerk">B</button>
                         <button type="button" class="icon-action danger-action" data-delete-year-agenda="${item.id}" aria-label="Agendapunt verwijderen" title="Verwijder">x</button>
@@ -1360,6 +1376,7 @@ function googleCalendarUrl(activity) {
 
 function renderAdmin() {
   document.querySelectorAll(".admin-only").forEach((el) => el.classList.toggle("hidden", !state.user?.isAdmin));
+  if (els.newYearAgendaItemBtn && state.yearAgendaSource.type === "google") els.newYearAgendaItemBtn.classList.add("hidden");
   renderYearAgenda();
   renderAdminAccounts();
 }
@@ -1771,6 +1788,29 @@ els.newMemberBtn.addEventListener("click", () => openMemberDialog());
 els.newYearAgendaItemBtn.addEventListener("click", () => openYearAgendaDialog());
 els.newActivityBtn.addEventListener("click", () => openActivityDialog());
 
+async function openCalendarSubscriptionDialog() {
+  if (!els.calendarSubscriptionDialog.open) els.calendarSubscriptionDialog.showModal();
+  els.calendarSubscriptionIntro.textContent = "Je persoonlijke abonnementslink wordt klaargezet.";
+  els.calendarSubscriptionUrl.value = "";
+  els.subscribeAppleCalendar.href = "#";
+  els.subscribeAppleCalendar.classList.add("is-disabled");
+  try {
+    const [subscription, integration] = await Promise.all([
+      api("/api/calendar-subscription", { method: "POST" }),
+      api("/api/calendar-integration")
+    ]);
+    els.calendarSubscriptionUrl.value = subscription.httpsUrl;
+    els.subscribeAppleCalendar.href = subscription.webcalUrl;
+    els.subscribeAppleCalendar.classList.remove("is-disabled");
+    els.calendarSubscriptionIntro.textContent = `${subscription.sourceLabel} blijft na het koppelen automatisch bijgewerkt.`;
+    els.openGoogleCalendar.classList.toggle("hidden", !subscription.googleCalendarUrl);
+    if (subscription.googleCalendarUrl) els.openGoogleCalendar.href = subscription.googleCalendarUrl;
+    els.calendarIntegrationAdmin.classList.toggle("hidden", !integration.canConfigure);
+  } catch (error) {
+    els.calendarSubscriptionIntro.textContent = error.message;
+  }
+}
+
 els.yearAgendaMonthSelect.addEventListener("change", () => {
   state.activeYearAgendaMonthIndex = Number(els.yearAgendaMonthSelect.value);
   renderYearAgenda();
@@ -1852,6 +1892,35 @@ els.copyInvitationBtn.addEventListener("click", async () => {
     document.execCommand("copy");
   }
   showToast("Persoonlijke link gekopieerd.");
+});
+
+els.copyCalendarSubscriptionBtn.addEventListener("click", async () => {
+  if (!els.calendarSubscriptionUrl.value) return showToast("De abonnementslink is nog niet geladen.");
+  try {
+    await navigator.clipboard.writeText(els.calendarSubscriptionUrl.value);
+  } catch (error) {
+    els.calendarSubscriptionUrl.select();
+    document.execCommand("copy");
+  }
+  showToast("Abonnementslink gekopieerd.");
+});
+
+els.calendarIntegrationForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const submitButton = els.calendarIntegrationForm.querySelector("button[type='submit']");
+  submitButton.disabled = true;
+  try {
+    const calendarUrl = String(els.calendarIntegrationForm.elements.calendarUrl.value || "").trim();
+    const result = await api("/api/calendar-integration", { method: "PUT", body: JSON.stringify({ calendarUrl }) });
+    els.calendarIntegrationForm.reset();
+    await loadYearAgenda();
+    await openCalendarSubscriptionDialog();
+    showToast(`${result.itemCount} afspraken uit Google Agenda gekoppeld.`);
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    submitButton.disabled = false;
+  }
 });
 
 els.logoutBtn.addEventListener("click", async () => {
@@ -1965,6 +2034,9 @@ els.bulkDeleteForm?.addEventListener("submit", async (event) => {
 document.body.addEventListener("click", async (event) => {
   const installAppButton = event.target.closest("[data-install-app]");
   if (installAppButton) return openInstallFlow();
+
+  const calendarSubscriptionButton = event.target.closest("[data-open-calendar-subscription]");
+  if (calendarSubscriptionButton) return openCalendarSubscriptionDialog();
 
   const navLink = event.target.closest(".site-nav a");
   if (navLink) {

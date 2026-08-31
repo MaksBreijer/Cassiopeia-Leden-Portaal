@@ -1299,6 +1299,55 @@ main {
   padding: 0 14px 14px;
 }
 
+.calendar-subscription-card {
+  width: min(620px, calc(100vw - 32px));
+}
+
+.calendar-subscription-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.calendar-subscription-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.calendar-subscription-actions .is-disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.calendar-integration-admin {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(80, 57, 95, 0.14);
+  border-radius: 14px;
+  padding: 18px;
+  background: rgba(187, 165, 212, 0.12);
+}
+
+.calendar-integration-admin h4,
+.calendar-integration-admin p {
+  margin: 4px 0 0;
+}
+
+.calendar-integration-admin form {
+  display: grid;
+  gap: 10px;
+}
+
+@media (max-width: 620px) {
+  .calendar-subscription-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
 .year-month {
   min-height: 300px;
   border-radius: 14px;

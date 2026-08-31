@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const express = require("express");
 const session = require("express-session");
 const { db, initializeDatabase, ensureYearAgendaItems } = require("./db");
+const { createCalendarFeed, googleCalendarLinkFromIcsUrl, parseGoogleCalendarFeed } = require("./calendar-feed");
 const { MAX_IMPORT_ROWS, parseMemberImport, validateRecords } = require("./member-import");
 const { createSqliteSessionStore } = require("./session-store");
 
@@ -23,6 +24,7 @@ const MEMBER_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
 const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const loginAttempts = new Map();
 const confessionAttempts = new Map();
+let googleCalendarCache = { url: "", feed: "", items: [], expiresAt: 0 };
 
 if (!SESSION_SECRET) {
   throw new Error("SESSION_SECRET is verplicht in productie.");
@@ -915,20 +917,162 @@ function yearAgendaItemFromBody(body, existing = {}) {
   };
 }
 
+function googleCalendarIcsUrl() {
+  return db.prepare("SELECT value FROM app_settings WHERE key = ?").get("google_calendar_ical_url")?.value || "";
+}
+
+function validateGoogleCalendarIcsUrl(value) {
+  let url;
+  try {
+    url = new URL(String(value || "").trim());
+  } catch (error) {
+    throw new Error("Vul een geldig Google Agenda iCal-adres in.");
+  }
+  if (url.protocol !== "https:" || url.hostname !== "calendar.google.com" || !url.pathname.endsWith(".ics")) {
+    throw new Error("Gebruik het geheime of openbare iCal-adres uit Google Agenda.");
+  }
+  url.username = "";
+  url.password = "";
+  url.hash = "";
+  return url.toString();
+}
+
+async function loadGoogleCalendar(url, { force = false } = {}) {
+  if (!force && googleCalendarCache.url === url && googleCalendarCache.expiresAt > Date.now()) return googleCalendarCache;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "text/calendar", "User-Agent": "Cassiopeia-Leden-Portaal/1.0" },
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`Google Agenda antwoordde met status ${response.status}.`);
+    const declaredSize = Number(response.headers.get("content-length") || 0);
+    if (declaredSize > 2 * 1024 * 1024) throw new Error("De Google Agenda is te groot om te koppelen.");
+    const feed = await response.text();
+    if (Buffer.byteLength(feed, "utf8") > 2 * 1024 * 1024 || !feed.includes("BEGIN:VCALENDAR")) {
+      throw new Error("Google gaf geen geldig iCal-bestand terug.");
+    }
+    googleCalendarCache = { url, feed, items: parseGoogleCalendarFeed(feed), expiresAt: Date.now() + 5 * 60 * 1000 };
+    return googleCalendarCache;
+  } catch (error) {
+    if (googleCalendarCache.url === url && googleCalendarCache.feed) return googleCalendarCache;
+    if (error.name === "AbortError") throw new Error("Google Agenda reageerde niet op tijd.");
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function calendarSubscriptionUrls(req, token) {
+  const httpsUrl = `${req.protocol}://${req.get("host")}/api/calendar/${token}.ics`;
+  return { httpsUrl, webcalUrl: httpsUrl.replace(/^https?:\/\//, "webcal://") };
+}
+
+function localYearAgendaRows() {
+  ensureYearAgendaItems();
+  return db.prepare(`
+    SELECT * FROM year_agenda_items
+    ORDER BY month_index ASC, sort_order ASC, id ASC
+  `).all();
+}
+
 app.get("/api/activities", requireAuth, (req, res) => {
   res.json({ activities: activityRows(req.session.userId) });
 });
 
-app.get("/api/year-agenda", requireAuth, (req, res) => {
-  ensureYearAgendaItems();
-  const rows = db
-    .prepare(`
-      SELECT * FROM year_agenda_items
-      ORDER BY month_index ASC, sort_order ASC, id ASC
-    `)
-    .all();
+app.get("/api/year-agenda", requireAuth, async (req, res) => {
+  const calendarUrl = googleCalendarIcsUrl();
+  if (calendarUrl) {
+    try {
+      const calendar = await loadGoogleCalendar(calendarUrl);
+      return res.json({
+        items: calendar.items,
+        summary: `${calendar.items.length} agendapunten · rechtstreeks uit de Cassio Google Agenda`,
+        source: { type: "google", label: "Cassio Google Agenda", googleCalendarUrl: googleCalendarLinkFromIcsUrl(calendarUrl) }
+      });
+    } catch (error) {
+      const rows = localYearAgendaRows();
+      return res.json({
+        items: rows.map(yearAgendaItemFromRow),
+        summary: db.prepare("SELECT value FROM app_settings WHERE key = ?").get("year_agenda_summary")?.value || "",
+        source: { type: "local", label: "Cassiopeia", warning: "De Google Agenda is tijdelijk niet bereikbaar." }
+      });
+    }
+  }
+  const rows = localYearAgendaRows();
   const summary = db.prepare("SELECT value FROM app_settings WHERE key = ?").get("year_agenda_summary")?.value || "";
-  res.json({ items: rows.map(yearAgendaItemFromRow), summary });
+  res.json({ items: rows.map(yearAgendaItemFromRow), summary, source: { type: "local", label: "Cassiopeia" } });
+});
+
+app.get("/api/calendar-integration", requireAuth, (req, res) => {
+  const calendarUrl = googleCalendarIcsUrl();
+  res.json({
+    connected: Boolean(calendarUrl),
+    sourceLabel: calendarUrl ? "Cassio Google Agenda" : "Cassiopeia jaarplanning",
+    googleCalendarUrl: calendarUrl ? googleCalendarLinkFromIcsUrl(calendarUrl) : "",
+    canConfigure: Boolean(getCurrentUser(req)?.is_admin)
+  });
+});
+
+app.put("/api/calendar-integration", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const calendarUrl = validateGoogleCalendarIcsUrl(req.body.calendarUrl);
+    const calendar = await loadGoogleCalendar(calendarUrl, { force: true });
+    db.prepare(`
+      INSERT INTO app_settings (key, value, updated_at)
+      VALUES ('google_calendar_ical_url', ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+    `).run(calendarUrl);
+    res.json({
+      connected: true,
+      sourceLabel: "Cassio Google Agenda",
+      googleCalendarUrl: googleCalendarLinkFromIcsUrl(calendarUrl),
+      itemCount: calendar.items.length
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message || "De Google Agenda kon niet worden gekoppeld." });
+  }
+});
+
+app.post("/api/calendar-subscription", requireAuth, (req, res) => {
+  let subscription = db.prepare("SELECT token FROM calendar_subscriptions WHERE user_id = ?").get(req.session.userId);
+  if (!subscription) {
+    const token = crypto.randomBytes(32).toString("hex");
+    db.prepare("INSERT INTO calendar_subscriptions (user_id, token) VALUES (?, ?)").run(req.session.userId, token);
+    subscription = { token };
+  }
+  const calendarUrl = googleCalendarIcsUrl();
+  res.json({
+    ...calendarSubscriptionUrls(req, subscription.token),
+    sourceLabel: calendarUrl ? "Cassio Google Agenda" : "Cassiopeia jaarplanning",
+    googleCalendarUrl: calendarUrl ? googleCalendarLinkFromIcsUrl(calendarUrl) : ""
+  });
+});
+
+app.get("/api/calendar/:token.ics", async (req, res) => {
+  const token = String(req.params.token || "").toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(token)) return res.status(404).send("Agenda niet gevonden.");
+  const subscription = db.prepare(`
+    SELECT calendar_subscriptions.user_id
+    FROM calendar_subscriptions
+    JOIN users ON users.id = calendar_subscriptions.user_id
+    WHERE calendar_subscriptions.token = ? AND users.account_status = 'active'
+  `).get(token);
+  if (!subscription) return res.status(404).send("Agenda niet gevonden.");
+
+  try {
+    const calendarUrl = googleCalendarIcsUrl();
+    const feed = calendarUrl
+      ? (await loadGoogleCalendar(calendarUrl)).feed
+      : createCalendarFeed(localYearAgendaRows(), { sourceUrl: `${req.protocol}://${req.get("host")}/#home` });
+    res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+    res.setHeader("Content-Disposition", 'inline; filename="cassiopeia-jaarplanning.ics"');
+    res.setHeader("Cache-Control", "private, no-cache, max-age=0");
+    res.send(feed);
+  } catch (error) {
+    res.status(502).send("De agenda is tijdelijk niet bereikbaar.");
+  }
 });
 
 app.get("/api/documents", requireAuth, (req, res) => {

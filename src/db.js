@@ -99,6 +99,14 @@ function initializeDatabase() {
       FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
     );
 
+    CREATE TABLE IF NOT EXISTS calendar_subscriptions (
+      user_id INTEGER PRIMARY KEY,
+      token TEXT NOT NULL UNIQUE,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS documents (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
@@ -141,6 +149,9 @@ function initializeDatabase() {
 
     CREATE INDEX IF NOT EXISTS account_tokens_lookup
     ON account_tokens(token_hash, expires_at, used_at);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS calendar_subscriptions_token
+    ON calendar_subscriptions(token);
   `);
 
   ensureColumn("users", "address", "TEXT DEFAULT ''");
