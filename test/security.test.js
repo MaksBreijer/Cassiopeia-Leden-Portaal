@@ -99,6 +99,22 @@ test("the login form does not publish credentials", () => {
   assert.match(html, /assets\/og\.png/);
 });
 
+test("the portal is installable as a web app without caching private API data", () => {
+  const html = fs.readFileSync(path.join(projectRoot, "public", "index.html"), "utf8");
+  const manifest = JSON.parse(fs.readFileSync(path.join(projectRoot, "public", "manifest.webmanifest"), "utf8"));
+  const serviceWorker = fs.readFileSync(path.join(projectRoot, "public", "sw.js"), "utf8");
+
+  assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
+  assert.match(html, /rel="apple-touch-icon"/);
+  assert.match(html, /data-install-app/);
+  assert.equal(manifest.display, "standalone");
+  assert.equal(manifest.start_url, "/#home");
+  assert.ok(manifest.icons.some((icon) => icon.sizes === "192x192"));
+  assert.ok(manifest.icons.some((icon) => icon.sizes === "512x512" && icon.purpose === "maskable"));
+  assert.match(serviceWorker, /requestUrl\.pathname\.startsWith\("\/api\/"\)/);
+  assert.doesNotMatch(serviceWorker, /caches\.put\([^\n]*\/api\//);
+});
+
 test("member import parses Dutch CSV and text PDFs", async () => {
   const csv = [
     "naam;e-mail;lichting;functie;status;commissie",

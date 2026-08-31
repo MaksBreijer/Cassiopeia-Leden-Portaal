@@ -18,6 +18,9 @@ const state = {
   selectedMemberIds: new Set()
 };
 
+let deferredInstallPrompt = null;
+let installCompleted = false;
+
 const mapView = {
   centerLatitude: 52.2,
   centerLongitude: 5.3,
@@ -128,6 +131,9 @@ const els = {
   activationTitle: document.querySelector("#activationTitle"),
   activationIntro: document.querySelector("#activationIntro"),
   activationError: document.querySelector("#activationError"),
+  installAppDialog: document.querySelector("#installAppDialog"),
+  installAppleInstructions: document.querySelector("#installAppleInstructions"),
+  installBrowserInstructions: document.querySelector("#installBrowserInstructions"),
   memberSearch: document.querySelector("#memberSearch"),
   memberYearFilter: document.querySelector("#memberYearFilter"),
   clearMemberFilters: document.querySelector("#clearMemberFilters"),
@@ -279,6 +285,63 @@ function showToast(message) {
   els.toast.textContent = message;
   els.toast.classList.remove("hidden");
   setTimeout(() => els.toast.classList.add("hidden"), 2800);
+}
+
+function isStandaloneApp() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function isAppleMobileDevice() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent) ||
+    (/Macintosh/i.test(window.navigator.userAgent) && window.navigator.maxTouchPoints > 1);
+}
+
+function updateInstallButtons() {
+  const shouldShow = !installCompleted && !isStandaloneApp();
+  document.querySelectorAll("[data-install-app]").forEach((button) => button.classList.toggle("hidden", !shouldShow));
+}
+
+async function openInstallFlow() {
+  if (deferredInstallPrompt) {
+    await deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    if (outcome === "accepted") {
+      installCompleted = true;
+      updateInstallButtons();
+      showToast("Cassiopeia wordt geïnstalleerd.");
+    }
+    return;
+  }
+
+  const isAppleMobile = isAppleMobileDevice();
+  els.installAppleInstructions.classList.toggle("hidden", !isAppleMobile);
+  els.installBrowserInstructions.classList.toggle("hidden", isAppleMobile);
+  els.installAppDialog.showModal();
+}
+
+function initializeWebApp() {
+  updateInstallButtons();
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    updateInstallButtons();
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    installCompleted = true;
+    updateInstallButtons();
+    showToast("Cassiopeia staat nu tussen je apps.");
+  });
+
+  const isSecureContext = location.protocol === "https:" || ["localhost", "127.0.0.1"].includes(location.hostname);
+  if ("serviceWorker" in navigator && isSecureContext) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js", { scope: "/" }).then((registration) => registration.update()).catch(() => {});
+    });
+  }
 }
 
 function escapeHtml(value) {
@@ -1900,6 +1963,9 @@ els.bulkDeleteForm?.addEventListener("submit", async (event) => {
 });
 
 document.body.addEventListener("click", async (event) => {
+  const installAppButton = event.target.closest("[data-install-app]");
+  if (installAppButton) return openInstallFlow();
+
   const navLink = event.target.closest(".site-nav a");
   if (navLink) {
     showPage(navLink.getAttribute("href").replace("#", ""));
@@ -2212,6 +2278,8 @@ els.activityForm.addEventListener("submit", async (event) => {
   await refreshPortal();
   showToast("Activiteit opgeslagen.");
 });
+
+initializeWebApp();
 
 const initialActivationToken = activationTokenFromHash();
 loadSiteAssets().catch(() => {});

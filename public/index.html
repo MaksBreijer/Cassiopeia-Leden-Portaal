@@ -6,6 +6,10 @@
     <title>Dameschdispuut Cassiopeia</title>
     <meta name="description" content="Het besloten ledenportaal van Dameschdispuut Cassiopeia — activiteiten, jaarplanning, leden en lustrum." />
     <meta name="theme-color" content="#bba5d4" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Cassiopeia" />
     <meta property="og:title" content="Dameschdispuut Cassiopeia · Lustrum III" />
     <meta property="og:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />
     <meta property="og:image" content="https://www.dispuutcassiopeia.nl/assets/og.png" />
@@ -17,13 +21,18 @@
     <meta name="twitter:title" content="Dameschdispuut Cassiopeia · Lustrum III" />
     <meta name="twitter:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />
     <meta name="twitter:image" content="https://www.dispuutcassiopeia.nl/assets/og.png" />
-    <link rel="icon" type="image/png" href="assets/cassiopeia-embleem.png" />
-    <link rel="stylesheet" href="styles.css?v=20260830-activity-flow" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png" />
+    <link rel="stylesheet" href="styles.css?v=20260831-pwa" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
       <div class="login-word login-word-lef" aria-hidden="true">LEF</div>
       <div class="login-word login-word-lustrum" aria-hidden="true">LUSTRUM III</div>
+      <button class="install-app-button install-app-login hidden" type="button" data-install-app aria-label="Cassiopeia als app installeren">
+        <span aria-hidden="true">↓</span> Installeer app
+      </button>
       <form id="loginForm" class="login-card">
         <img class="login-crest" data-site-asset="logo" src="assets/cassiopeia-embleem.png" alt="Embleem van Dameschdispuut Cassiopeia" />
         <h1>Login Dameschdispuut Cassiopeia</h1>
@@ -67,6 +76,7 @@
           <span id="headerProfileAvatar" class="header-profile-avatar avatar">C</span>
           <span id="headerUserName">Profiel</span>
         </a>
+        <button class="nav-button install-app-nav hidden" type="button" data-install-app>Installeer app</button>
         <button id="logoutBtn" class="nav-button hidden">Uitloggen</button>
       </nav>
     </header>
@@ -578,7 +588,31 @@
       </div>
     </dialog>
 
+    <dialog id="installAppDialog" class="install-app-dialog">
+      <div class="dialog-card install-app-card">
+        <div class="install-app-icon" aria-hidden="true">
+          <img src="assets/app-icon-192.png" alt="" />
+        </div>
+        <div class="dialog-heading">
+          <p class="eyebrow">Altijd bij de hand</p>
+          <h3>Installeer Cassiopeia</h3>
+          <p>Open het ledenportaal voortaan rechtstreeks vanaf je beginscherm of bureaublad.</p>
+        </div>
+        <div id="installAppleInstructions" class="install-steps hidden">
+          <span>1</span><p>Tik onderin Safari op <strong>Delen</strong>.</p>
+          <span>2</span><p>Kies <strong>Zet op beginscherm</strong> en daarna <strong>Voeg toe</strong>.</p>
+        </div>
+        <div id="installBrowserInstructions" class="install-steps hidden">
+          <span>1</span><p>Open het menu van je browser.</p>
+          <span>2</span><p>Kies <strong>App installeren</strong> of <strong>Toevoegen aan startscherm</strong>.</p>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="primary" data-close>Begrepen</button>
+        </div>
+      </div>
+    </dialog>
+
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260830-admin-registration-override"></script>
+    <script src="app.js?v=20260831-pwa"></script>
   </body>
 </html>

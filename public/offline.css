@@ -1,0 +1,69 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 24px;
+  color: #39323e;
+  background:
+    linear-gradient(rgba(250, 248, 252, 0.82), rgba(250, 248, 252, 0.82)),
+    url("assets/lustrum-patroon.png") center / 430px auto repeat;
+  font-family: Arial, sans-serif;
+}
+
+.offline-card {
+  width: min(100%, 460px);
+  padding: 34px 28px;
+  border: 1px solid rgba(118, 84, 143, 0.14);
+  border-radius: 28px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 28px 70px rgba(52, 43, 61, 0.14);
+}
+
+.offline-card img {
+  width: 130px;
+  height: 105px;
+  object-fit: contain;
+}
+
+.eyebrow {
+  margin: 14px 0 8px;
+  color: #b95a31;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0 0 10px;
+  font: 700 clamp(30px, 8vw, 44px) / 1 Georgia, serif;
+}
+
+.offline-card > p:last-of-type {
+  margin: 0;
+  color: #766b7e;
+  line-height: 1.6;
+}
+
+a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 22px;
+  border-radius: 11px;
+  padding: 11px 18px;
+  color: #39323e;
+  background: #f6a071;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  text-transform: uppercase;
+}
