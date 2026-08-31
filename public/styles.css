@@ -226,14 +226,14 @@ p {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: #fff;
+  padding: 4px;
+  background: transparent;
 }
 
 .brand-mark img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  transform: scale(1.22);
+  object-fit: contain;
 }
 
 .brand-copy {
@@ -582,9 +582,9 @@ main {
 }
 
 .hero-crest-card img {
-  width: 88px;
-  height: 92px;
-  object-fit: cover;
+  width: 92px;
+  height: 108px;
+  object-fit: contain;
 }
 
 .hero-crest-card span {
@@ -2167,7 +2167,8 @@ label {
 }
 
 .admin-image-preview-hero img {
-  object-fit: cover;
+  padding: 6px;
+  object-fit: contain;
 }
 
 .admin-image-preview-background img {
@@ -3308,7 +3309,7 @@ dialog::backdrop {
   width: 118px;
   height: 140px;
   margin: -58px 0 -24px;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .login-card input {
@@ -3543,7 +3544,8 @@ dialog::backdrop {
 .install-app-icon img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  padding: 7px;
+  object-fit: contain;
 }
 
 .install-app-card .dialog-heading p:last-child {

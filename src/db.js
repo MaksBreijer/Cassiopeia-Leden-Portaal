@@ -171,6 +171,7 @@ function initializeDatabase() {
   purgeExistingNonAdminMembers();
   seedYearAgenda();
   syncCsvYearAgendaData();
+  installOfficialLogoAssets();
 }
 
 function ensureColumn(table, column, definition) {
@@ -178,6 +179,25 @@ function ensureColumn(table, column, definition) {
   if (!columns.some((item) => item.name === column)) {
     db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
   }
+}
+
+function installOfficialLogoAssets() {
+  const migrationKey = "official_transparent_logo_2026_08_31_v1";
+  if (db.prepare("SELECT 1 FROM app_settings WHERE key = ?").get(migrationKey)) return;
+
+  const logoPath = path.join(__dirname, "..", "public", "assets", "cassiopeia-embleem.png");
+  const logoData = fs.readFileSync(logoPath).toString("base64");
+  db.transaction(() => {
+    const saveAsset = db.prepare(`
+      INSERT INTO site_assets (key, file_name, mime_type, data, updated_by, updated_at)
+      VALUES (?, 'cassiopeia-embleem.png', 'image/png', ?, NULL, CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET file_name = excluded.file_name, mime_type = excluded.mime_type,
+        data = excluded.data, updated_by = NULL, updated_at = CURRENT_TIMESTAMP
+    `);
+    saveAsset.run("logo", logoData);
+    saveAsset.run("hero", logoData);
+    db.prepare("INSERT INTO app_settings (key, value) VALUES (?, 'complete')").run(migrationKey);
+  })();
 }
 
 function bootstrapAdmin() {

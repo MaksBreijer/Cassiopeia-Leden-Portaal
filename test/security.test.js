@@ -116,6 +116,23 @@ test("the portal is installable as a web app without caching private API data", 
   assert.doesNotMatch(serviceWorker, /caches\.put\([^\n]*\/api\//);
 });
 
+test("the supplied transparent Cassiopeia crest is used for the site and app icons", () => {
+  const html = fs.readFileSync(path.join(projectRoot, "public", "index.html"), "utf8");
+  const manifest = JSON.parse(fs.readFileSync(path.join(projectRoot, "public", "manifest.webmanifest"), "utf8"));
+  const logo = fs.readFileSync(path.join(projectRoot, "public", "assets", "cassiopeia-embleem.png"));
+  const appIcon = fs.readFileSync(path.join(projectRoot, "public", "assets", "app-icon-512.png"));
+
+  assert.equal(logo.subarray(1, 4).toString(), "PNG");
+  assert.equal(logo.readUInt32BE(16), 918);
+  assert.equal(logo.readUInt32BE(20), 1078);
+  assert.equal(logo[25], 6, "the site crest must preserve RGBA transparency");
+  assert.equal(appIcon.readUInt32BE(16), 512);
+  assert.equal(appIcon.readUInt32BE(20), 512);
+  assert.match(html, /cassiopeia-embleem\.png\?v=20260831-logo/);
+  assert.match(html, /app-icon-180\.png\?v=20260831-logo/);
+  assert.ok(manifest.icons.every((icon) => icon.src.includes("v=20260831-logo")));
+});
+
 test("calendar feeds preserve dates, ranges and escaped titles", () => {
   const dates = parseLocalYearAgendaDate({ monthLabel: "Oktober 2026", dayLabel: "3-5" });
   assert.equal(dates.start.toISOString(), "2026-10-03T00:00:00.000Z");
