@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs");
 const express = require("express");
 const session = require("express-session");
 const { db, initializeDatabase, ensureYearAgendaItems } = require("./db");
-const { createCalendarFeed, googleCalendarLinkFromIcsUrl, parseGoogleCalendarFeed } = require("./calendar-feed");
+const { createCalendarFeed, googleCalendarLinkFromIcsUrl, parseGoogleCalendarFeed, visibleCalendarItems } = require("./calendar-feed");
 const { MAX_IMPORT_ROWS, parseMemberImport, validateRecords } = require("./member-import");
 const { createSqliteSessionStore } = require("./session-store");
 
@@ -986,9 +986,10 @@ app.get("/api/year-agenda", requireAuth, async (req, res) => {
   if (calendarUrl) {
     try {
       const calendar = await loadGoogleCalendar(calendarUrl);
+      const items = visibleCalendarItems(calendar.items);
       return res.json({
-        items: calendar.items,
-        summary: `${calendar.items.length} agendapunten · rechtstreeks uit de Cassio Google Agenda`,
+        items,
+        summary: "Automatisch bijgewerkt vanuit de Cassio Google Agenda",
         source: { type: "google", label: "Cassio Google Agenda", googleCalendarUrl: googleCalendarLinkFromIcsUrl(calendarUrl) }
       });
     } catch (error) {
@@ -1019,6 +1020,7 @@ app.put("/api/calendar-integration", requireAuth, requireAdmin, async (req, res)
   try {
     const calendarUrl = validateGoogleCalendarIcsUrl(req.body.calendarUrl);
     const calendar = await loadGoogleCalendar(calendarUrl, { force: true });
+    const visibleItems = visibleCalendarItems(calendar.items);
     db.prepare(`
       INSERT INTO app_settings (key, value, updated_at)
       VALUES ('google_calendar_ical_url', ?, CURRENT_TIMESTAMP)
@@ -1028,7 +1030,7 @@ app.put("/api/calendar-integration", requireAuth, requireAdmin, async (req, res)
       connected: true,
       sourceLabel: "Cassio Google Agenda",
       googleCalendarUrl: googleCalendarLinkFromIcsUrl(calendarUrl),
-      itemCount: calendar.items.length
+      itemCount: visibleItems.length
     });
   } catch (error) {
     res.status(400).json({ error: error.message || "De Google Agenda kon niet worden gekoppeld." });

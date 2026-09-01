@@ -172,6 +172,7 @@ function initializeDatabase() {
   seedYearAgenda();
   syncCsvYearAgendaData();
   installOfficialLogoAssets();
+  connectOfficialGoogleCalendar();
 }
 
 function ensureColumn(table, column, definition) {
@@ -196,6 +197,21 @@ function installOfficialLogoAssets() {
     `);
     saveAsset.run("logo", logoData);
     saveAsset.run("hero", logoData);
+    db.prepare("INSERT INTO app_settings (key, value) VALUES (?, 'complete')").run(migrationKey);
+  })();
+}
+
+function connectOfficialGoogleCalendar() {
+  if (process.env.NODE_ENV !== "production") return;
+  const migrationKey = "connect_public_cassio_google_calendar_2026_09_01_v1";
+  if (db.prepare("SELECT 1 FROM app_settings WHERE key = ?").get(migrationKey)) return;
+  const calendarUrl = "https://calendar.google.com/calendar/ical/abactis%40dispuutcassiopeia.nl/public/basic.ics";
+  db.transaction(() => {
+    db.prepare(`
+      INSERT INTO app_settings (key, value, updated_at)
+      VALUES ('google_calendar_ical_url', ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+    `).run(calendarUrl);
     db.prepare("INSERT INTO app_settings (key, value) VALUES (?, 'complete')").run(migrationKey);
   })();
 }

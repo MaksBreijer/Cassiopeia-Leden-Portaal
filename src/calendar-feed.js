@@ -155,10 +155,21 @@ function googleCalendarLinkFromIcsUrl(value) {
   }
 }
 
+function visibleCalendarItems(items, now = new Date()) {
+  const reference = Number.isFinite(now?.getTime?.()) ? now : new Date();
+  const start = Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth() - 1, 1);
+  const end = Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth() + 13, 1);
+  return (items || []).filter((item) => {
+    const timestamp = new Date(item.startsAt).getTime();
+    return Number.isFinite(timestamp) && timestamp >= start && timestamp < end;
+  });
+}
+
 module.exports = {
   createCalendarFeed,
   escapeIcsText,
   googleCalendarLinkFromIcsUrl,
   parseGoogleCalendarFeed,
-  parseLocalYearAgendaDate
+  parseLocalYearAgendaDate,
+  visibleCalendarItems
 };

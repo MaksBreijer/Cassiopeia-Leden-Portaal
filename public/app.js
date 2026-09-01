@@ -149,6 +149,7 @@ const els = {
   yearAgendaMonthSelect: document.querySelector("#yearAgendaMonthSelect"),
   yearAgendaGrid: document.querySelector("#yearAgendaGrid"),
   yearAgendaSourceTitle: document.querySelector("#yearAgendaSourceTitle"),
+  yearAgendaSourceLabel: document.querySelector("#yearAgendaSourceLabel"),
   publicActivityList: document.querySelector("#publicActivityList"),
   documentList: document.querySelector("#documentList"),
   confessionList: document.querySelector("#confessionList"),
@@ -1132,7 +1133,6 @@ async function loadYearAgenda() {
     showToast("Jaarplanning lokaal geladen.");
   }
   const managedInGoogle = state.yearAgendaSource.type === "google";
-  if (els.yearAgendaSourceTitle) els.yearAgendaSourceTitle.textContent = managedInGoogle ? "Cassio Google Agenda" : "2025—2026";
   if (els.newYearAgendaItemBtn) els.newYearAgendaItemBtn.classList.toggle("hidden", !state.user?.isAdmin || managedInGoogle);
   renderYearAgenda();
   renderPortalOverview();
@@ -1168,16 +1168,54 @@ function activeYearAgendaMonth(months) {
   return initialMonth;
 }
 
+const DUTCH_MONTH_INDEX = {
+  januari: 0, februari: 1, maart: 2, april: 3, mei: 4, juni: 5,
+  juli: 6, augustus: 7, september: 8, oktober: 9, november: 10, december: 11
+};
+
+function yearAgendaRange(months) {
+  const first = String(months[0]?.monthLabel || "").toLocaleLowerCase("nl").match(/([a-z]+)\s+(\d{4})/);
+  if (!first) return "Jaaroverzicht";
+  const month = DUTCH_MONTH_INDEX[first[1]];
+  const year = Number(first[2]);
+  const startYear = Number.isFinite(month) && month >= 7 ? year : year - 1;
+  return `${startYear}—${startYear + 1}`;
+}
+
+function yearAgendaItemTimestamp(item) {
+  if (item.startsAt) {
+    const timestamp = new Date(item.startsAt).getTime();
+    if (Number.isFinite(timestamp)) return timestamp;
+  }
+  const month = String(item.monthLabel || "").toLocaleLowerCase("nl").match(/([a-z]+)\s+(\d{4})/);
+  const day = String(item.dayLabel || "").match(/\d{1,2}/);
+  const monthIndex = DUTCH_MONTH_INDEX[month?.[1]];
+  if (!month || !day || !Number.isFinite(monthIndex)) return null;
+  return new Date(Number(month[2]), monthIndex, Number(day[0])).getTime();
+}
+
 function renderYearAgendaToolbar(months, activeMonth) {
   if (!els.yearAgendaMonthSelect) return;
   els.yearAgendaMonthSelect.innerHTML = months
-    .map((month) => `<option value="${month.monthIndex}">${escapeHtml(month.monthLabel)}</option>`)
+    .map((month) => `<option value="${month.monthIndex}">${escapeHtml(month.monthLabel)} · ${month.items.length}</option>`)
     .join("");
   els.yearAgendaMonthSelect.value = String(activeMonth?.monthIndex || "");
 
   const activeIndex = months.findIndex((month) => month.monthIndex === activeMonth?.monthIndex);
   if (els.yearAgendaPrev) els.yearAgendaPrev.disabled = activeIndex <= 0;
   if (els.yearAgendaNext) els.yearAgendaNext.disabled = activeIndex === -1 || activeIndex >= months.length - 1;
+}
+
+function focusYearAgendaMonth(monthIndex) {
+  const months = groupedYearAgendaItems();
+  const activeMonth = months.find((month) => month.monthIndex === Number(monthIndex));
+  if (!activeMonth) return;
+  state.activeYearAgendaMonthIndex = activeMonth.monthIndex;
+  renderYearAgendaToolbar(months, activeMonth);
+  document.querySelectorAll("[data-year-agenda-month]").forEach((card) => {
+    card.classList.toggle("year-month-active", Number(card.dataset.yearAgendaMonth) === activeMonth.monthIndex);
+  });
+  document.querySelector(`[data-year-agenda-month="${activeMonth.monthIndex}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderYearAgenda() {
@@ -1196,41 +1234,65 @@ function renderYearAgenda() {
   }
   const activeMonth = activeYearAgendaMonth(months);
   renderYearAgendaToolbar(months, activeMonth);
+  if (els.yearAgendaSourceTitle) els.yearAgendaSourceTitle.textContent = yearAgendaRange(months);
+  if (els.yearAgendaSourceLabel) {
+    els.yearAgendaSourceLabel.innerHTML = state.yearAgendaSource.type === "google"
+      ? '<span class="agenda-live-dot" aria-hidden="true"></span> Live uit Google Agenda'
+      : "Academisch jaar";
+  }
 
   if (els.yearAgendaSummary) {
     const firstMonth = months[0].monthLabel;
     const lastMonth = months[months.length - 1].monthLabel;
-    const summary = state.yearAgendaSummaryText || `${state.yearAgendaItems.length} agendapunten · ${months.length} maanden · ${firstMonth} t/m ${lastMonth}`;
+    const summary = state.yearAgendaSummaryText || `${firstMonth} t/m ${lastMonth}`;
     els.yearAgendaSummary.innerHTML = `
-      <span>${escapeHtml(summary)}</span>
+      <div class="year-agenda-metrics">
+        <span><strong>${state.yearAgendaItems.length}</strong> activiteiten</span>
+        <span><strong>${months.length}</strong> maanden</span>
+      </div>
+      <span class="year-agenda-summary-line">${escapeHtml(summary)}</span>
       ${state.user?.isAdmin && state.yearAgendaSource.type !== "google" ? '<button type="button" class="summary-edit-action" data-edit-year-agenda-summary>Bewerk</button>' : ""}
     `;
   }
 
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const nextItem = state.yearAgendaItems
+    .map((item) => ({ item, timestamp: yearAgendaItemTimestamp(item) }))
+    .filter(({ timestamp }) => timestamp !== null && timestamp >= startOfToday.getTime())
+    .sort((a, b) => a.timestamp - b.timestamp)[0]?.item;
+
   els.yearAgendaGrid.innerHTML = `
-    <article class="year-month year-month-active">
-      <h3>${escapeHtml(activeMonth.monthLabel)}</h3>
-      <div class="year-month-items">
-        ${activeMonth.items
-          .map(
-            (item) => `
-              <div class="year-agenda-item">
-                <span class="year-agenda-date">${escapeHtml(item.dayLabel)}</span>
-                <span class="year-agenda-title">${escapeHtml(item.title)}</span>
-                ${
-                  state.user?.isAdmin && state.yearAgendaSource.type !== "google"
-                    ? `<span class="year-agenda-actions">
-                        <button type="button" class="icon-action" data-edit-year-agenda="${item.id}" aria-label="Agendapunt bewerken" title="Bewerk">B</button>
-                        <button type="button" class="icon-action danger-action" data-delete-year-agenda="${item.id}" aria-label="Agendapunt verwijderen" title="Verwijder">x</button>
-                      </span>`
-                    : ""
-                }
-              </div>
-            `
-          )
-          .join("")}
-      </div>
-    </article>
+    ${months.map((month) => `
+      <article class="year-month ${month.monthIndex === activeMonth.monthIndex ? "year-month-active" : ""}" data-year-agenda-month="${month.monthIndex}">
+        <header class="year-month-heading">
+          <div><span class="year-month-kicker">Maandplanning</span><h3>${escapeHtml(month.monthLabel)}</h3></div>
+          <span class="year-month-count">${month.items.length} ${month.items.length === 1 ? "activiteit" : "activiteiten"}</span>
+        </header>
+        <div class="year-month-items">
+          ${month.items.map((item) => {
+            const timestamp = yearAgendaItemTimestamp(item);
+            const isPast = timestamp !== null && timestamp < startOfToday.getTime();
+            const isNext = nextItem && String(nextItem.id) === String(item.id);
+            const dateLabel = String(item.dayLabel || "").trim() === "?" ? "N.t.b." : item.dayLabel;
+            return `
+              <div class="year-agenda-item ${isPast ? "is-past" : ""} ${isNext ? "is-next" : ""}">
+                <span class="year-agenda-date"><small>${dateLabel === "N.t.b." ? "Datum" : "Dag"}</small><strong>${escapeHtml(dateLabel)}</strong></span>
+                <span class="year-agenda-copy">
+                  <span class="year-agenda-title">${escapeHtml(item.title)}</span>
+                  ${isNext ? '<span class="year-agenda-next-label">Eerstvolgende</span>' : ""}
+                </span>
+                ${state.user?.isAdmin && state.yearAgendaSource.type !== "google"
+                  ? `<span class="year-agenda-actions">
+                      <button type="button" class="icon-action" data-edit-year-agenda="${item.id}" aria-label="Agendapunt bewerken" title="Bewerk">B</button>
+                      <button type="button" class="icon-action danger-action" data-delete-year-agenda="${item.id}" aria-label="Agendapunt verwijderen" title="Verwijder">x</button>
+                    </span>`
+                  : ""}
+              </div>`;
+          }).join("")}
+        </div>
+      </article>
+    `).join("")}
   `;
 }
 
@@ -1812,16 +1874,14 @@ async function openCalendarSubscriptionDialog() {
 }
 
 els.yearAgendaMonthSelect.addEventListener("change", () => {
-  state.activeYearAgendaMonthIndex = Number(els.yearAgendaMonthSelect.value);
-  renderYearAgenda();
+  focusYearAgendaMonth(Number(els.yearAgendaMonthSelect.value));
 });
 
 els.yearAgendaPrev.addEventListener("click", () => {
   const months = groupedYearAgendaItems();
   const index = months.findIndex((month) => month.monthIndex === state.activeYearAgendaMonthIndex);
   if (index > 0) {
-    state.activeYearAgendaMonthIndex = months[index - 1].monthIndex;
-    renderYearAgenda();
+    focusYearAgendaMonth(months[index - 1].monthIndex);
   }
 });
 
@@ -1829,8 +1889,7 @@ els.yearAgendaNext.addEventListener("click", () => {
   const months = groupedYearAgendaItems();
   const index = months.findIndex((month) => month.monthIndex === state.activeYearAgendaMonthIndex);
   if (index >= 0 && index < months.length - 1) {
-    state.activeYearAgendaMonthIndex = months[index + 1].monthIndex;
-    renderYearAgenda();
+    focusYearAgendaMonth(months[index + 1].monthIndex);
   }
 });
 

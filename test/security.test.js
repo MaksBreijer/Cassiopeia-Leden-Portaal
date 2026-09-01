@@ -9,7 +9,7 @@ const test = require("node:test");
 
 const projectRoot = path.join(__dirname, "..");
 const { parseCsvText, parseMemberImport } = require(path.join(projectRoot, "src", "member-import"));
-const { createCalendarFeed, parseGoogleCalendarFeed, parseLocalYearAgendaDate } = require(path.join(projectRoot, "src", "calendar-feed"));
+const { createCalendarFeed, parseGoogleCalendarFeed, parseLocalYearAgendaDate, visibleCalendarItems } = require(path.join(projectRoot, "src", "calendar-feed"));
 
 function simpleTextPdf(lines) {
   const escapedLines = lines.map((line) => String(line).replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)"));
@@ -162,6 +162,14 @@ test("calendar feeds preserve dates, ranges and escaped titles", () => {
     { monthLabel: googleItems[0].monthLabel, dayLabel: googleItems[0].dayLabel, title: googleItems[0].title },
     { monthLabel: "November 2026", dayLabel: "12-13", title: "Lustrum, diner" }
   );
+
+  const visible = visibleCalendarItems([
+    { startsAt: "2025-09-01T00:00:00.000Z", title: "Oud" },
+    { startsAt: "2026-09-03T00:00:00.000Z", title: "Actueel" },
+    { startsAt: "2027-09-28T00:00:00.000Z", title: "Komend jaar" },
+    { startsAt: "2027-10-02T00:00:00.000Z", title: "Te ver vooruit" }
+  ], new Date("2026-09-01T10:00:00.000Z"));
+  assert.deepEqual(visible.map((item) => item.title), ["Actueel", "Komend jaar"]);
 });
 
 test("member import parses Dutch CSV and text PDFs", async () => {

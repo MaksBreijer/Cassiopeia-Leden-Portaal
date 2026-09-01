@@ -24,7 +24,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20260831-logo" />
+    <link rel="stylesheet" href="styles.css?v=20260901-agenda" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -157,7 +157,7 @@
             <div>
               <p class="eyebrow">Lustrum III</p>
               <h2>Jaarplanning</h2>
-              <p class="section-intro">Van DispuBo tot lustrumgala — blader per maand door het programma.</p>
+              <p class="section-intro">Alle activiteiten van het jaar in één overzicht. Kies een maand om er direct naartoe te gaan.</p>
             </div>
             <div class="section-actions">
               <button class="ghost" type="button" data-open-calendar-subscription>Abonneer op agenda</button>
@@ -167,7 +167,7 @@
           <div class="year-agenda-board">
             <div class="year-agenda-titlebar">
               <div>
-                <span class="module-label">Academisch jaar</span>
+                <span id="yearAgendaSourceLabel" class="module-label">Academisch jaar</span>
                 <h3 id="yearAgendaSourceTitle">2025—2026</h3>
               </div>
               <div id="yearAgendaSummary" class="year-agenda-summary">Jaarplanning laden...</div>
@@ -645,6 +645,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260831-calendar"></script>
+    <script src="app.js?v=20260901-agenda"></script>
   </body>
 </html>

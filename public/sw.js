@@ -1,11 +1,11 @@
-const CACHE_NAME = "cassiopeia-pwa-v3";
+const CACHE_NAME = "cassiopeia-pwa-v4";
 const APP_SHELL = [
   "/",
   "/offline.html",
   "/offline.css?v=20260831-logo",
   "/manifest.webmanifest",
-  "/styles.css?v=20260831-logo",
-  "/app.js?v=20260831-calendar",
+  "/styles.css?v=20260901-agenda",
+  "/app.js?v=20260901-agenda",
   "/assets/app-icon-192.png?v=20260831-logo",
   "/assets/app-icon-512.png?v=20260831-logo",
   "/assets/cassiopeia-embleem.png?v=20260831-logo",
