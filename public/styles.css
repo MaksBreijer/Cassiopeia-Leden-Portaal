@@ -2930,12 +2930,19 @@ dialog::backdrop {
   }
 
   .brand-copy strong {
-    max-width: 190px;
-    font-size: 18px;
+    max-width: none;
+    overflow: visible;
+    font-size: clamp(15px, 4.6vw, 17px);
+    line-height: 0.98;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .brand-copy span {
-    font-size: 8px;
+    margin-top: 3px;
+    font-size: 7px;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
   }
 
   .menu-toggle {
