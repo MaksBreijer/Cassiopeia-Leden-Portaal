@@ -133,6 +133,7 @@ test("members can update their own address from their profile", () => {
   assert.match(profileForm, /name="birthday" type="date"/);
   assert.match(html, /id="birthdayList"/);
   assert.match(html, /Vandaag jarig/);
+  assert.doesNotMatch(html, /Bekijk één maand tegelijk/);
   assert.match(appScript, /isBirthdayToday\(member\.birthday\)/);
   assert.doesNotMatch(appScript, /Morgen wordt dit automatisch opnieuw bekeken/);
   assert.match(appScript, /activity-actions-admin-only/);
