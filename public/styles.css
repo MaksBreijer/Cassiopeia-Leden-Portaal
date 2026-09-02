@@ -1038,6 +1038,15 @@ main {
   gap: 14px;
 }
 
+.admin-account-list {
+  max-height: min(720px, 70vh);
+  max-height: min(720px, 70dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 3px 7px 3px 3px;
+  scrollbar-gutter: stable;
+}
+
 .activity-card {
   position: relative;
   display: grid;
@@ -3857,6 +3866,12 @@ dialog::backdrop {
 
   .site-header {
     width: calc(100% - 16px);
+  }
+
+  .admin-account-list {
+    max-height: 62vh;
+    max-height: 62dvh;
+    gap: 8px;
   }
 
   .portal-hero-copy {

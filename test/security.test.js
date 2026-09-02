@@ -155,6 +155,7 @@ test("members can update their own address from their profile", () => {
   assert.match(server, /committee LIKE \?/);
   assert.match(styles, /\.activity-archive-list[\s\S]*max-height: 560px;[\s\S]*overflow-y: auto;/);
   assert.match(styles, /\.member-grid \{[\s\S]*max-height: 68vh;[\s\S]*overflow-y: auto;/);
+  assert.match(styles, /\.admin-account-list \{[\s\S]*max-height: min\(720px, 70vh\);[\s\S]*overflow-y: auto;[\s\S]*scrollbar-gutter: stable;/);
   assert.match(styles, /\.member-card-main \{[\s\S]*grid-template-columns: 64px minmax\(0, 1fr\);/);
   assert.match(styles, /\.document-viewer-dialog \{[\s\S]*position: fixed;[\s\S]*height: 100dvh;[\s\S]*margin: 0;/);
   assert.match(styles, /\.dialog-card \{[\s\S]*overflow-x: hidden;[\s\S]*overscroll-behavior: contain;/);
