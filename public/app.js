@@ -1403,12 +1403,17 @@ function renderPublicActivities() {
       return `
         <article id="activiteit-${activity.id}" class="activity-card" data-activity-card="${activity.id}">
           <div class="activity-card-content">
-            <div class="activity-card-heading">
-              <p class="eyebrow">${formatDate(activity.startsAt)}</p>
-              <span class="activity-state ${activity.lateCancelled ? "activity-state-late" : activity.isRegistered ? "activity-state-registered" : ""}">${registrationState}</span>
+            <div class="activity-card-intro ${activity.hasImage ? "has-image" : ""}">
+              <div>
+                <div class="activity-card-heading">
+                  <p class="eyebrow">${formatDate(activity.startsAt)}</p>
+                  <span class="activity-state ${activity.lateCancelled ? "activity-state-late" : activity.isRegistered ? "activity-state-registered" : ""}">${registrationState}</span>
+                </div>
+                <h3>${escapeHtml(activity.title)}</h3>
+                <p>${escapeHtml(activity.description || "Geen beschrijving ingevuld.")}</p>
+              </div>
+              ${activity.hasImage ? `<img class="activity-card-image" src="/api/activities/${activity.id}/image" alt="" loading="lazy" />` : ""}
             </div>
-            <h3>${escapeHtml(activity.title)}</h3>
-            <p>${escapeHtml(activity.description || "Geen beschrijving ingevuld.")}</p>
             <div class="activity-facts">
               <span><strong>Locatie</strong>${escapeHtml(activity.location || "Volgt")}</span>
               <span><strong>${optOut ? "Verwacht" : "Aanmeldingen"}</strong>${activity.registrationCount}${!optOut && activity.capacity ? ` van ${activity.capacity}` : ""}</span>
@@ -1548,9 +1553,14 @@ function openActivityDialog(activity = null) {
   fields.startsAt.value = activity?.startsAt || "";
   fields.capacity.value = activity?.capacity || "";
   fields.responseMode.value = activity?.responseMode || "signup";
-  fields.registrationOverride.value = activity?.registrationOverride || "automatic";
+  fields.registrationOverride.value = activity?.registrationOverride || "open";
   fields.location.value = activity?.location || "";
   fields.description.value = activity?.description || "";
+  fields.removeActivityImage.checked = false;
+  const imageEditor = els.activityForm.querySelector("[data-activity-image-editor]");
+  const imagePreview = els.activityForm.querySelector("[data-activity-image-preview]");
+  imageEditor.classList.toggle("hidden", !activity?.hasImage);
+  imagePreview.src = activity?.hasImage ? `/api/activities/${activity.id}/image` : "";
   if (fields.activityFiles) fields.activityFiles.value = "";
   els.activityDialog.showModal();
 }
@@ -1949,6 +1959,27 @@ els.clearMemberFilters.addEventListener("click", () => {
 els.newMemberBtn.addEventListener("click", () => openMemberDialog());
 els.newYearAgendaItemBtn.addEventListener("click", () => openYearAgendaDialog());
 els.newActivityBtn.addEventListener("click", () => openActivityDialog());
+
+els.activityForm.elements.activityImage.addEventListener("change", async () => {
+  const file = els.activityForm.elements.activityImage.files[0];
+  if (!file) return;
+  try {
+    const imageDataUrl = await readProfilePhoto(file);
+    els.activityForm.elements.removeActivityImage.checked = false;
+    els.activityForm.querySelector("[data-activity-image-preview]").src = imageDataUrl;
+    els.activityForm.querySelector("[data-activity-image-editor]").classList.remove("hidden");
+  } catch (error) {
+    els.activityForm.elements.activityImage.value = "";
+    showToast(error.message);
+  }
+});
+
+els.activityForm.querySelector("[data-remove-activity-image]").addEventListener("click", () => {
+  els.activityForm.elements.activityImage.value = "";
+  els.activityForm.elements.removeActivityImage.checked = true;
+  els.activityForm.querySelector("[data-activity-image-preview]").src = "";
+  els.activityForm.querySelector("[data-activity-image-editor]").classList.add("hidden");
+});
 
 async function openCalendarSubscriptionDialog() {
   if (!els.calendarSubscriptionDialog.open) els.calendarSubscriptionDialog.showModal();
@@ -2512,21 +2543,55 @@ els.yearAgendaSummaryForm.addEventListener("submit", async (event) => {
 
 els.activityForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const data = formJson(els.activityForm);
-  const id = data.id;
-  const files = [...(els.activityForm.elements.activityFiles?.files || [])];
-  delete data.activityFiles;
-  const response = await api(id ? `/api/activities/${id}` : "/api/activities", {
-    method: id ? "PUT" : "POST",
-    body: JSON.stringify(data)
-  });
-  const activityId = id || response.activity.id;
-  for (const file of files) {
-    await api(`/api/activities/${activityId}/files`, { method: "POST", body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: await fileAsBase64(file) }) });
+  const submitButton = els.activityForm.querySelector("button[type='submit']");
+  submitButton.disabled = true;
+  try {
+    const data = formJson(els.activityForm);
+    const id = data.id;
+    const files = [...(els.activityForm.elements.activityFiles?.files || [])];
+    const imageFile = els.activityForm.elements.activityImage?.files?.[0];
+    const removeActivityImage = Boolean(data.removeActivityImage);
+    delete data.activityFiles;
+    delete data.activityImage;
+    delete data.removeActivityImage;
+
+    let imageUpload = null;
+    if (imageFile) {
+      const imageDataUrl = await readProfilePhoto(imageFile);
+      const [header, imageData] = imageDataUrl.split(",");
+      imageUpload = {
+        fileName: imageFile.name,
+        mimeType: header.match(/^data:([^;]+);base64$/)?.[1] || "image/jpeg",
+        data: imageData
+      };
+    }
+
+    const response = await api(id ? `/api/activities/${id}` : "/api/activities", {
+      method: id ? "PUT" : "POST",
+      body: JSON.stringify(data)
+    });
+    const activityId = id || response.activity.id;
+
+    if (imageUpload) {
+      await api(`/api/activities/${activityId}/image`, {
+        method: "PUT",
+        body: JSON.stringify(imageUpload)
+      });
+    } else if (id && removeActivityImage && response.activity.hasImage) {
+      await api(`/api/activities/${activityId}/image`, { method: "DELETE" });
+    }
+
+    for (const file of files) {
+      await api(`/api/activities/${activityId}/files`, { method: "POST", body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: await fileAsBase64(file) }) });
+    }
+    els.activityDialog.close();
+    await refreshPortal();
+    showToast("Activiteit opgeslagen.");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    submitButton.disabled = false;
   }
-  els.activityDialog.close();
-  await refreshPortal();
-  showToast("Activiteit opgeslagen.");
 });
 
 initializeWebApp();

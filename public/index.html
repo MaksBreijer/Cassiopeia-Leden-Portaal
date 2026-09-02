@@ -27,7 +27,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20260902-registration-overview" />
+    <link rel="stylesheet" href="styles.css?v=20260902-activity-images" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -590,6 +590,12 @@
           </label>
           <label class="wide">Locatie<input name="location" /></label>
           <label class="wide">Beschrijving<textarea name="description" rows="4"></textarea></label>
+          <label class="wide">Kleine afbeelding<input name="activityImage" type="file" accept="image/png,image/jpeg,image/webp" /><span class="form-help">Optioneel. JPG, PNG of WebP; de website maakt de afbeelding automatisch kleiner.</span></label>
+          <div class="activity-image-editor wide" data-activity-image-editor>
+            <img data-activity-image-preview alt="Voorbeeld activiteitafbeelding" />
+            <button class="text-button danger-text" type="button" data-remove-activity-image>Afbeelding verwijderen</button>
+            <input name="removeActivityImage" type="checkbox" hidden />
+          </div>
           <label class="wide">Bestanden bij activiteit<input name="activityFiles" type="file" multiple accept="application/pdf,image/png,image/jpeg,image/webp,text/plain,.docx,.xlsx" /><span class="form-help">Optioneel, maximaal 5 MB per bestand.</span></label>
         </div>
         <div class="dialog-actions">
@@ -682,6 +688,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260902-registration-overview"></script>
+    <script src="app.js?v=20260902-activity-images"></script>
   </body>
 </html>

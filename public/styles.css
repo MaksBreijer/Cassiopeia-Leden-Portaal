@@ -1057,6 +1057,26 @@ main {
   padding: clamp(24px, 4vw, 38px);
 }
 
+.activity-card-intro {
+  min-width: 0;
+}
+
+.activity-card-intro.has-image {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 128px;
+  align-items: start;
+  gap: 20px;
+}
+
+.activity-card-image {
+  width: 128px;
+  height: 96px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  object-fit: cover;
+  box-shadow: 0 8px 20px rgba(52, 43, 61, 0.1);
+}
+
 .activity-card-heading {
   display: flex;
   align-items: center;
@@ -2660,6 +2680,28 @@ label {
   font-size: 13px;
 }
 
+.activity-image-editor {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--lavender-50);
+}
+
+.activity-image-editor img {
+  width: 96px;
+  height: 72px;
+  border-radius: 11px;
+  object-fit: cover;
+  background: #fff;
+}
+
+.activity-image-editor .text-button {
+  margin-left: auto;
+}
+
 @media (max-width: 620px) {
   .registration-summary-card {
     padding: 11px;
@@ -2681,6 +2723,26 @@ label {
   .registration-status {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .activity-card-intro.has-image {
+    grid-template-columns: minmax(0, 1fr) 92px;
+    gap: 12px;
+  }
+
+  .activity-card-image {
+    width: 92px;
+    height: 76px;
+    border-radius: 11px;
+  }
+
+  .activity-image-editor {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .activity-image-editor .text-button {
+    margin-left: 0;
   }
 }
 

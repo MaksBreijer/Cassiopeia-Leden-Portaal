@@ -443,6 +443,20 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(activity.response.status, 201);
   assert.equal(activity.data.activity.registrationOpen, true);
+  const activityImage = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/image`, {
+    method: "PUT",
+    cookie: adminLogin.cookie,
+    body: { fileName: "activiteit.png", mimeType: "image/png", data: Buffer.from("kleine-afbeelding").toString("base64") }
+  });
+  assert.equal(activityImage.response.status, 200);
+  const activityImageResponse = await fetch(`${baseUrl}/api/activities/${activity.data.activity.id}/image`, {
+    headers: { Cookie: adminLogin.cookie }
+  });
+  assert.equal(activityImageResponse.status, 200);
+  assert.equal(activityImageResponse.headers.get("content-type"), "image/png");
+  assert.equal(await activityImageResponse.text(), "kleine-afbeelding");
+  const activitiesWithImage = await jsonRequest(baseUrl, "/api/activities", { cookie: adminLogin.cookie });
+  assert.equal(activitiesWithImage.data.activities.find((item) => item.id === activity.data.activity.id).hasImage, true);
   const activitySharePage = await fetch(`${baseUrl}/activity/${activity.data.activity.id}`);
   const activityShareHtml = await activitySharePage.text();
   assert.equal(activitySharePage.status, 200);

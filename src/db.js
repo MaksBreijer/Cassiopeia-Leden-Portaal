@@ -134,6 +134,17 @@ function initializeDatabase() {
       FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
     );
 
+    CREATE TABLE IF NOT EXISTS activity_images (
+      activity_id INTEGER PRIMARY KEY,
+      file_name TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      data TEXT NOT NULL,
+      uploaded_by INTEGER,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
+      FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+
     CREATE TABLE IF NOT EXISTS confessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       body TEXT NOT NULL,

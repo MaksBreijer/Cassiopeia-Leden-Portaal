@@ -899,6 +899,7 @@ function activityRows(userId) {
   const rows = db
     .prepare(`
       SELECT a.*,
+        EXISTS(SELECT 1 FROM activity_images cover WHERE cover.activity_id = a.id) AS has_image,
         EXISTS(SELECT 1 FROM registrations mine WHERE mine.activity_id = a.id AND mine.user_id = ? AND mine.cancelled_at IS NULL) AS is_registered,
         EXISTS(SELECT 1 FROM registrations cancelled WHERE cancelled.activity_id = a.id AND cancelled.user_id = ? AND cancelled.cancelled_at IS NOT NULL) AS was_cancelled,
         COALESCE((SELECT late_cancelled FROM registrations latest WHERE latest.activity_id = a.id AND latest.user_id = ?), 0) AS late_cancelled,
@@ -953,6 +954,7 @@ function activityRows(userId) {
       startsAt: row.starts_at,
       capacity: row.capacity,
       responseMode,
+      hasImage: Boolean(row.has_image),
       registrationCount: participants.length,
       registrationDeadline: deadline?.toISOString() || null,
       registrationOverride: row.registration_override || "automatic",
@@ -1366,6 +1368,40 @@ app.post("/api/activities/:id/files", requireAuth, requireAdmin, (req, res) => {
 app.delete("/api/activities/:id/files/:fileId", requireAuth, requireAdmin, (req, res) => {
   const result = db.prepare("DELETE FROM activity_files WHERE id = ? AND activity_id = ?").run(req.params.fileId, req.params.id);
   if (!result.changes) return res.status(404).json({ error: "Bestand niet gevonden." });
+  res.json({ ok: true });
+});
+
+app.get("/api/activities/:id/image", requireAuth, (req, res) => {
+  const image = db.prepare("SELECT mime_type, data FROM activity_images WHERE activity_id = ?").get(req.params.id);
+  if (!image) return res.status(404).json({ error: "Activiteitafbeelding niet gevonden." });
+  const buffer = Buffer.from(image.data, "base64");
+  res.setHeader("Content-Type", image.mime_type);
+  res.setHeader("Content-Length", buffer.length);
+  res.setHeader("Cache-Control", "private, no-store");
+  res.send(buffer);
+});
+
+app.put("/api/activities/:id/image", requireAuth, requireAdmin, (req, res) => {
+  const activity = db.prepare("SELECT id FROM activities WHERE id = ?").get(req.params.id);
+  if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
+  try {
+    const image = uploadedFileFromBody(req.body, { allowedMime: ["image/png", "image/jpeg", "image/webp"] });
+    db.prepare(`
+      INSERT INTO activity_images (activity_id, file_name, mime_type, data, uploaded_by, updated_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(activity_id) DO UPDATE SET file_name = excluded.file_name,
+        mime_type = excluded.mime_type, data = excluded.data,
+        uploaded_by = excluded.uploaded_by, updated_at = CURRENT_TIMESTAMP
+    `).run(req.params.id, image.fileName, image.mimeType, image.data, req.session.userId);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(400).json({ error: error.message || "De afbeelding kon niet worden opgeslagen." });
+  }
+});
+
+app.delete("/api/activities/:id/image", requireAuth, requireAdmin, (req, res) => {
+  const result = db.prepare("DELETE FROM activity_images WHERE activity_id = ?").run(req.params.id);
+  if (!result.changes) return res.status(404).json({ error: "Activiteitafbeelding niet gevonden." });
   res.json({ ok: true });
 });
 
