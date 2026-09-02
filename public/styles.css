@@ -191,20 +191,20 @@ p {
 .site-header {
   position: sticky;
   z-index: 20;
-  top: 12px;
+  top: 10px;
   width: min(1240px, calc(100% - 32px));
-  min-height: 76px;
+  min-height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  margin: 12px auto 0;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 20px;
-  padding: 10px 12px 10px 16px;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(18px);
+  gap: 14px;
+  margin: 10px auto 0;
+  border: 1px solid rgba(128, 104, 146, 0.12);
+  border-radius: 18px;
+  padding: 8px 10px 8px 12px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 26px rgba(52, 43, 61, 0.09);
+  backdrop-filter: blur(20px);
 }
 
 .brand,
@@ -215,17 +215,18 @@ p {
 }
 
 .brand {
+  flex: 1 1 230px;
   min-width: 0;
-  gap: 12px;
+  gap: 10px;
 }
 
 .brand-mark {
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   flex: 0 0 auto;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 4px;
   background: transparent;
 }
@@ -245,7 +246,7 @@ p {
 .brand-copy strong {
   overflow: hidden;
   font-family: var(--serif);
-  font-size: clamp(18px, 2vw, 25px);
+  font-size: clamp(17px, 1.4vw, 20px);
   font-style: normal;
   font-weight: 600;
   line-height: 1;
@@ -255,27 +256,28 @@ p {
 
 .brand-copy span {
   color: var(--lavender-700);
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 850;
   letter-spacing: 0.13em;
   text-transform: uppercase;
 }
 
 .site-nav {
-  gap: 4px;
+  flex: 0 0 auto;
+  gap: 2px;
 }
 
 .site-nav > a:not(.header-profile-link),
 .nav-button {
-  min-height: 42px;
+  min-height: 38px;
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 10px;
-  padding: 0 14px;
+  border-radius: 9px;
+  padding: 0 11px;
   color: var(--plum-soft);
   background: transparent;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -286,24 +288,26 @@ p {
 .site-nav > a[aria-current="page"] {
   color: var(--plum);
   background: var(--lavender-100);
+  box-shadow: inset 0 0 0 1px rgba(128, 104, 146, 0.08);
 }
 
 .header-profile-link {
-  gap: 8px;
-  margin-left: 6px;
+  min-height: 38px;
+  gap: 7px;
+  margin-left: 8px;
   border-left: 1px solid var(--line);
-  border-radius: 0 10px 10px 0;
-  padding: 4px 10px 4px 12px;
+  border-radius: 0 9px 9px 0;
+  padding: 3px 9px 3px 11px;
   color: var(--plum);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
 }
 
 .header-profile-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  font-size: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  font-size: 11px;
 }
 
 .nav-button {
@@ -312,6 +316,10 @@ p {
 
 .nav-button:hover {
   background: var(--orange-soft);
+}
+
+.install-app-nav {
+  border: 1px solid rgba(230, 123, 69, 0.14);
 }
 
 .menu-toggle {
