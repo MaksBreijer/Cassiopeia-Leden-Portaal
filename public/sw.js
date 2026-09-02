@@ -1,11 +1,11 @@
-const CACHE_NAME = "cassiopeia-pwa-v13";
+const CACHE_NAME = "cassiopeia-pwa-v14";
 const APP_SHELL = [
   "/",
   "/offline.html",
   "/offline.css?v=20260831-logo",
   "/manifest.webmanifest",
-  "/styles.css?v=20260902-full-brand",
-  "/app.js?v=20260902-activity-share-v5",
+  "/styles.css?v=20260902-month-view",
+  "/app.js?v=20260902-month-view",
   "/assets/app-icon-192.png?v=20260831-logo",
   "/assets/app-icon-512.png?v=20260831-logo",
   "/assets/cassiopeia-embleem.png?v=20260831-logo",
@@ -38,6 +38,21 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => caches.match("/").then((cached) => cached || caches.match("/offline.html")))
+    );
+    return;
+  }
+
+  if (event.request.destination === "script" || event.request.destination === "style") {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
