@@ -436,13 +436,13 @@ function formatLichting(value) {
 }
 
 function sharedActivityId() {
-  const id = new URLSearchParams(window.location.search).get("activity");
+  const pathId = window.location.pathname.match(/^\/activity\/(\d+)\/?$/)?.[1];
+  const id = pathId || new URLSearchParams(window.location.search).get("activity");
   return id && /^\d+$/.test(id) ? id : "";
 }
 
 function activityShareUrl(activityId) {
-  const url = new URL(window.location.href);
-  url.searchParams.set("activity", activityId);
+  const url = new URL(`/activity/${activityId}`, window.location.origin);
   url.hash = "home";
   return url.toString();
 }

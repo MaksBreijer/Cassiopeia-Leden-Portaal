@@ -100,14 +100,12 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
-app.get("/", (req, res, next) => {
-  const activityId = String(req.query.activity || "").trim();
+function sendActivitySharePage(activityId, res, next) {
   if (!/^\d+$/.test(activityId)) return next();
-
   const activityExists = db.prepare("SELECT 1 FROM activities WHERE id = ?").get(activityId);
   if (!activityExists) return next();
 
-  const shareUrl = `https://www.dispuutcassiopeia.nl/?activity=${activityId}`;
+  const shareUrl = `https://www.dispuutcassiopeia.nl/activity/${activityId}`;
   const html = fs.readFileSync(INDEX_HTML_PATH, "utf8")
     .replace('<meta property="og:title" content="Dameschdispuut Cassiopeia · Lustrum III" />', '<meta property="og:title" content="Activiteit · Dameschdispuut Cassiopeia" />')
     .replace('<meta property="og:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />', '<meta property="og:description" content="Log in en schrijf je in voor deze activiteit." />')
@@ -121,6 +119,14 @@ app.get("/", (req, res, next) => {
 
   res.setHeader("Cache-Control", "no-store");
   res.type("html").send(html);
+}
+
+app.get("/", (req, res, next) => {
+  sendActivitySharePage(String(req.query.activity || "").trim(), res, next);
+});
+
+app.get("/activity/:activityId", (req, res, next) => {
+  sendActivitySharePage(String(req.params.activityId || "").trim(), res, next);
 });
 
 app.use(

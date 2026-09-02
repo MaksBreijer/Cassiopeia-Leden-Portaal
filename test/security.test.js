@@ -443,12 +443,12 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(activity.response.status, 201);
   assert.equal(activity.data.activity.registrationOpen, true);
-  const activitySharePage = await fetch(`${baseUrl}/?activity=${activity.data.activity.id}`);
+  const activitySharePage = await fetch(`${baseUrl}/activity/${activity.data.activity.id}`);
   const activityShareHtml = await activitySharePage.text();
   assert.equal(activitySharePage.status, 200);
   assert.match(activityShareHtml, /Activiteit · Dameschdispuut Cassiopeia/);
   assert.match(activityShareHtml, /cassiopeia-activity-share\.png\?v=20260902-rsvp/);
-  assert.ok(activityShareHtml.includes(`property="og:url" content="https://www.dispuutcassiopeia.nl/?activity=${activity.data.activity.id}"`));
+  assert.ok(activityShareHtml.includes(`property="og:url" content="https://www.dispuutcassiopeia.nl/activity/${activity.data.activity.id}"`));
   const registration = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
     method: "POST",
     cookie: adminLogin.cookie
