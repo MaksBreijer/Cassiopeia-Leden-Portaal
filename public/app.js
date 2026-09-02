@@ -172,6 +172,7 @@ const els = {
   documentViewerDialog: document.querySelector("#documentViewerDialog"),
   documentViewerTitle: document.querySelector("#documentViewerTitle"),
   documentViewerFrame: document.querySelector("#documentViewerFrame"),
+  documentViewerPages: document.querySelector("#documentViewerPages"),
   documentDownloadLink: document.querySelector("#documentDownloadLink"),
   confessionList: document.querySelector("#confessionList"),
   confessionForm: document.querySelector("#confessionForm"),
@@ -1643,19 +1644,67 @@ async function downloadProtectedFile(path, fileName, mimeType) {
 }
 
 let documentViewerUrl = "";
+let documentViewerRenderId = 0;
 
-function base64BlobUrl(data, mimeType) {
+function base64Bytes(data) {
   const binary = atob(data);
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+  return bytes;
+}
+
+function base64BlobUrl(data, mimeType) {
+  return URL.createObjectURL(new Blob([base64Bytes(data)], { type: mimeType }));
 }
 
 function clearDocumentViewer() {
+  documentViewerRenderId += 1;
   els.documentViewerFrame.removeAttribute("src");
+  els.documentViewerFrame.classList.remove("hidden");
+  els.documentViewerPages.classList.add("hidden");
+  els.documentViewerPages.innerHTML = "";
   els.documentDownloadLink.removeAttribute("href");
   if (documentViewerUrl) URL.revokeObjectURL(documentViewerUrl);
   documentViewerUrl = "";
+}
+
+async function renderMobileDocumentPages(data, renderId) {
+  els.documentViewerFrame.classList.add("hidden");
+  els.documentViewerPages.classList.remove("hidden");
+  els.documentViewerPages.innerHTML = '<p class="document-viewer-loading">Document laden…</p>';
+  const pdfjs = await import("/vendor/pdfjs/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/build/pdf.worker.mjs";
+  const pdf = await pdfjs.getDocument({
+    data: base64Bytes(data),
+    cMapUrl: "/vendor/pdfjs/cmaps/",
+    cMapPacked: true,
+    standardFontDataUrl: "/vendor/pdfjs/standard_fonts/",
+    wasmUrl: "/vendor/pdfjs/wasm/",
+    iccUrl: "/vendor/pdfjs/iccs/"
+  }).promise;
+  if (renderId !== documentViewerRenderId) return;
+  els.documentViewerPages.innerHTML = "";
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    if (renderId !== documentViewerRenderId) return;
+    const page = await pdf.getPage(pageNumber);
+    const baseViewport = page.getViewport({ scale: 1 });
+    const availableWidth = Math.max(260, Math.min(900, els.documentViewerPages.clientWidth - 24));
+    const displayScale = availableWidth / baseViewport.width;
+    const outputScale = Math.min(window.devicePixelRatio || 1, 2);
+    const viewport = page.getViewport({ scale: displayScale * outputScale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+    canvas.style.width = `${Math.floor(viewport.width / outputScale)}px`;
+    canvas.style.height = `${Math.floor(viewport.height / outputScale)}px`;
+    canvas.setAttribute("aria-label", `Pagina ${pageNumber} van ${pdf.numPages}`);
+    const pageElement = document.createElement("section");
+    pageElement.className = "document-viewer-page";
+    pageElement.append(canvas);
+    els.documentViewerPages.append(pageElement);
+    await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+  }
 }
 
 async function openProtectedDocument(document) {
@@ -1663,10 +1712,24 @@ async function openProtectedDocument(document) {
   clearDocumentViewer();
   documentViewerUrl = base64BlobUrl(response.data, document.mimeType || "application/pdf");
   els.documentViewerTitle.textContent = document.title;
-  els.documentViewerFrame.src = documentViewerUrl;
   els.documentDownloadLink.href = documentViewerUrl;
   els.documentDownloadLink.download = document.fileName;
   els.documentViewerDialog.showModal();
+  const usePageViewer = window.matchMedia("(max-width: 760px)").matches;
+  if (!usePageViewer) {
+    els.documentViewerFrame.src = documentViewerUrl;
+    return;
+  }
+  const renderId = ++documentViewerRenderId;
+  try {
+    await renderMobileDocumentPages(response.data, renderId);
+  } catch (error) {
+    if (renderId !== documentViewerRenderId) return;
+    els.documentViewerPages.classList.add("hidden");
+    els.documentViewerFrame.classList.remove("hidden");
+    els.documentViewerFrame.src = documentViewerUrl;
+    showToast("De mobiele paginaviewer kon niet laden. De standaardweergave is geopend.");
+  }
 }
 
 els.documentViewerDialog.addEventListener("close", clearDocumentViewer);

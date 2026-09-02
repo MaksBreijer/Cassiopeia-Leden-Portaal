@@ -27,7 +27,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20260902-smooth-map" />
+    <link rel="stylesheet" href="styles.css?v=20260902-mobile-pdf" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -645,7 +645,8 @@
             <button class="primary" type="button" data-close>Sluiten</button>
           </div>
         </header>
-        <iframe id="documentViewerFrame" title="PDF-document" loading="eager"></iframe>
+        <div id="documentViewerPages" class="document-viewer-pages hidden" aria-label="PDF-pagina's" aria-live="polite"></div>
+        <iframe id="documentViewerFrame" title="PDF-document" loading="eager" scrolling="yes"></iframe>
       </div>
     </dialog>
 
@@ -721,6 +722,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260902-smooth-map"></script>
+    <script src="app.js?v=20260902-mobile-pdf"></script>
   </body>
 </html>

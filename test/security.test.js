@@ -145,6 +145,7 @@ test("members can update their own address from their profile", () => {
   assert.match(html, /id="activityArchiveMonthFilter"/);
   assert.match(html, /id="memberCommitteeFilter"/);
   assert.match(html, /name="timeLabel" type="time"/);
+  assert.match(html, /id="documentViewerPages"/);
   assert.match(appScript, /api\("\/api\/activities\/archive"\)/);
   assert.match(appScript, /memberCommittees\(member\)/);
   assert.match(appScript, /function yearAgendaTimeLabel\(item\)/);
@@ -154,6 +155,8 @@ test("members can update their own address from their profile", () => {
   assert.match(appScript, /mapView\.pinchStartZoom \+ Math\.log2\(mapView\.pinchScale\)/);
   assert.match(appScript, /pinchAnchorLatitude/);
   assert.match(appScript, /const tileSize = 256 \* 2 \*\* \(zoom - tileZoom\)/);
+  assert.match(appScript, /renderMobileDocumentPages/);
+  assert.match(appScript, /import\("\/vendor\/pdfjs\/build\/pdf\.mjs"\)/);
   assert.match(server, /ACTIVITY_ARCHIVE_DELAY_MS = 2 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(server, /committee LIKE \?/);
   assert.match(styles, /\.activity-archive-list[\s\S]*max-height: 560px;[\s\S]*overflow-y: auto;/);
@@ -161,6 +164,7 @@ test("members can update their own address from their profile", () => {
   assert.match(styles, /\.admin-account-list \{[\s\S]*max-height: min\(720px, 70vh\);[\s\S]*overflow-y: auto;[\s\S]*scrollbar-gutter: stable;/);
   assert.match(styles, /\.member-card-main \{[\s\S]*grid-template-columns: 64px minmax\(0, 1fr\);/);
   assert.match(styles, /\.document-viewer-dialog \{[\s\S]*position: fixed;[\s\S]*height: 100dvh;[\s\S]*margin: 0;/);
+  assert.match(styles, /\.document-viewer-pages \{[\s\S]*overflow-y: auto;[\s\S]*touch-action: pan-y pinch-zoom;/);
   assert.match(styles, /\.dialog-card \{[\s\S]*overflow-x: hidden;[\s\S]*overscroll-behavior: contain;/);
   assert.match(appScript, /syncAddressFields\(els\.profileForm\)/);
   assert.match(appScript, /api\("\/api\/me",\s*\{\s*method: "PUT"/);

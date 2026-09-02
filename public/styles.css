@@ -2520,6 +2520,45 @@ label {
   background: var(--lavender-50);
 }
 
+.document-viewer-pages {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px;
+  background: var(--lavender-50);
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y pinch-zoom;
+}
+
+.document-viewer-page {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 12px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(52, 43, 61, 0.12);
+}
+
+.document-viewer-page:last-child {
+  margin-bottom: 0;
+}
+
+.document-viewer-page canvas {
+  max-width: 100%;
+  height: auto !important;
+  display: block;
+}
+
+.document-viewer-loading {
+  margin: 32px auto;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+  text-align: center;
+}
+
 @media (max-width: 620px) {
   .document-viewer-dialog {
     position: fixed;
@@ -2572,6 +2611,14 @@ label {
 
   .document-viewer-card iframe {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .document-viewer-pages {
+    padding: 8px 8px max(8px, env(safe-area-inset-bottom));
+  }
+
+  .document-viewer-page {
+    margin-bottom: 8px;
   }
 }
 

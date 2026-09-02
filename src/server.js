@@ -128,6 +128,12 @@ app.get("/activity/:activityId", (req, res, next) => {
   sendActivitySharePage(String(req.params.activityId || "").trim(), res, next);
 });
 
+app.use("/vendor/pdfjs/build", express.static(path.join(__dirname, "..", "node_modules", "pdfjs-dist", "build"), { index: false }));
+app.use("/vendor/pdfjs/cmaps", express.static(path.join(__dirname, "..", "node_modules", "pdfjs-dist", "cmaps"), { index: false }));
+app.use("/vendor/pdfjs/standard_fonts", express.static(path.join(__dirname, "..", "node_modules", "pdfjs-dist", "standard_fonts"), { index: false }));
+app.use("/vendor/pdfjs/wasm", express.static(path.join(__dirname, "..", "node_modules", "pdfjs-dist", "wasm"), { index: false }));
+app.use("/vendor/pdfjs/iccs", express.static(path.join(__dirname, "..", "node_modules", "pdfjs-dist", "iccs"), { index: false }));
+
 app.use(
   express.static(path.join(__dirname, "..", "public"), {
     setHeaders(res, filePath) {
