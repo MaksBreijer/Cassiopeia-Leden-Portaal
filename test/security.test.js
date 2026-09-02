@@ -147,6 +147,8 @@ test("members can update their own address from their profile", () => {
   assert.match(server, /ACTIVITY_ARCHIVE_DELAY_MS = 2 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(server, /committee LIKE \?/);
   assert.match(styles, /\.activity-archive-list[\s\S]*max-height: 560px;[\s\S]*overflow-y: auto;/);
+  assert.match(styles, /\.member-grid \{[\s\S]*max-height: 68vh;[\s\S]*overflow-y: auto;/);
+  assert.match(styles, /\.member-card-main \{[\s\S]*grid-template-columns: 64px minmax\(0, 1fr\);/);
   assert.match(appScript, /syncAddressFields\(els\.profileForm\)/);
   assert.match(appScript, /api\("\/api\/me",\s*\{\s*method: "PUT"/);
   assert.match(server, /app\.put\("\/api\/me", requireAuth/);
