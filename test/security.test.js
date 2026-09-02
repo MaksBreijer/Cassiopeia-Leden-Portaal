@@ -146,6 +146,8 @@ test("members can update their own address from their profile", () => {
   assert.match(html, /id="memberCommitteeFilter"/);
   assert.match(html, /name="timeLabel" type="time"/);
   assert.match(html, /id="documentViewerPages"/);
+  assert.match(html, /href="\/admin">Admin<\/a>/);
+  assert.match(html, /admin-portal-only hidden/);
   assert.match(appScript, /api\("\/api\/activities\/archive"\)/);
   assert.match(appScript, /memberCommittees\(member\)/);
   assert.match(appScript, /function yearAgendaTimeLabel\(item\)/);
@@ -157,6 +159,9 @@ test("members can update their own address from their profile", () => {
   assert.match(appScript, /const tileSize = 256 \* 2 \*\* \(zoom - tileZoom\)/);
   assert.match(appScript, /renderMobileDocumentPages/);
   assert.match(appScript, /import\("\/vendor\/pdfjs\/build\/pdf\.mjs"\)/);
+  assert.match(appScript, /const IS_ADMIN_PORTAL = location\.pathname/);
+  assert.match(appScript, /location\.assign\("\/admin"\)/);
+  assert.match(appScript, /location\.replace\("\/#home"\)/);
   assert.match(server, /ACTIVITY_ARCHIVE_DELAY_MS = 2 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(server, /committee LIKE \?/);
   assert.match(styles, /\.activity-archive-list[\s\S]*max-height: 560px;[\s\S]*overflow-y: auto;/);

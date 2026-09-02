@@ -27,7 +27,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20260902-mobile-pdf" />
+    <link rel="stylesheet" href="styles.css?v=20260902-admin-route" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -38,7 +38,7 @@
       </button>
       <form id="loginForm" class="login-card">
         <img class="login-crest" data-site-asset="logo" src="assets/cassiopeia-embleem.png?v=20260831-logo" alt="Embleem van Dameschdispuut Cassiopeia" />
-        <h1>Login Dameschdispuut Cassiopeia</h1>
+        <h1 id="loginTitle">Login Dameschdispuut Cassiopeia</h1>
         <input name="email" type="email" autocomplete="email" placeholder="E-mailadres" aria-label="E-mail" required />
         <input name="password" type="password" autocomplete="current-password" placeholder="Wachtwoord" aria-label="Wachtwoord" required />
         <button type="submit" class="login-submit">Inloggen</button>
@@ -59,9 +59,9 @@
     </section>
 
     <header class="site-header hidden">
-      <a class="brand" href="#home" aria-label="Cassiopeia home">
+      <a class="brand" href="/#home" aria-label="Cassiopeia home">
         <span class="brand-mark brand-mark-crest"><img data-site-asset="logo" src="assets/cassiopeia-embleem.png?v=20260831-logo" alt="" /></span>
-        <span class="brand-copy"><strong>Dameschdispuut Cassiopeia</strong><span>Lustrum III · Ledenportaal</span></span>
+        <span class="brand-copy"><strong>Dameschdispuut Cassiopeia</strong><span id="portalSubtitle">Lustrum III · Ledenportaal</span></span>
       </a>
       <button id="menuToggle" class="menu-toggle" type="button" aria-label="Menu openen" aria-expanded="false">
         <span></span>
@@ -69,13 +69,14 @@
         <span></span>
       </button>
       <nav class="site-nav" aria-label="Hoofdnavigatie">
-        <a href="#home">Home</a>
-        <a href="#leden">Leden</a>
-        <a href="#plattegrond">Cassio Cribs</a>
-        <a href="#documenten">Documenten</a>
-        <a href="#biechten">Biechten</a>
-        <a class="admin-only hidden" href="#beheer">Beheer</a>
-        <a class="header-profile-link" href="#profiel" aria-label="Mijn profiel">
+        <a class="member-portal-nav" href="#home">Home</a>
+        <a class="member-portal-nav" href="#leden">Leden</a>
+        <a class="member-portal-nav" href="#plattegrond">Cassio Cribs</a>
+        <a class="member-portal-nav" href="#documenten">Documenten</a>
+        <a class="member-portal-nav" href="#biechten">Biechten</a>
+        <a class="admin-only member-portal-nav hidden" href="/admin">Admin</a>
+        <a class="admin-portal-only hidden" href="/#home">Ledenportaal</a>
+        <a class="header-profile-link member-portal-nav" href="#profiel" aria-label="Mijn profiel">
           <span id="headerProfileAvatar" class="header-profile-avatar avatar">C</span>
           <span id="headerUserName">Profiel</span>
         </a>
@@ -722,6 +723,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260902-mobile-pdf"></script>
+    <script src="app.js?v=20260902-admin-route"></script>
   </body>
 </html>

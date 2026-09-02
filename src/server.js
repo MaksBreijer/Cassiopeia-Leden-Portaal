@@ -128,6 +128,8 @@ app.get("/activity/:activityId", (req, res, next) => {
   sendActivitySharePage(String(req.params.activityId || "").trim(), res, next);
 });
 
+app.get(/^\/admin\/+$/, (req, res) => res.redirect(308, "/admin"));
+
 app.use("/vendor/pdfjs/build", express.static(path.join(__dirname, "..", "node_modules", "pdfjs-dist", "build"), { index: false }));
 app.use("/vendor/pdfjs/cmaps", express.static(path.join(__dirname, "..", "node_modules", "pdfjs-dist", "cmaps"), { index: false }));
 app.use("/vendor/pdfjs/standard_fonts", express.static(path.join(__dirname, "..", "node_modules", "pdfjs-dist", "standard_fonts"), { index: false }));

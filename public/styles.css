@@ -57,6 +57,14 @@ body.is-authenticated {
   background-attachment: fixed;
 }
 
+body.admin-portal .admin-banner {
+  margin-top: 0;
+}
+
+body.admin-portal main {
+  margin-top: 18px;
+}
+
 button,
 input,
 textarea,

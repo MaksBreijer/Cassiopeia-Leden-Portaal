@@ -49,6 +49,7 @@ const mapView = {
 };
 
 const API_BASE = location.protocol === "file:" || location.port === "5500" ? "http://127.0.0.1:3000" : "";
+const IS_ADMIN_PORTAL = location.pathname.replace(/\/+$/, "") === "/admin";
 
 const DEFAULT_YEAR_AGENDA_ITEMS = [
   ["Oktober 2025", 1, "2", "DispuBo"],
@@ -685,8 +686,12 @@ function closeMobileMenu() {
 }
 
 function showPage(page = location.hash.slice(1) || "home") {
-  const allowedPages = ["home", "leden", "plattegrond", "profiel", "documenten", "biechten", ...(state.user?.isAdmin ? ["beheer"] : [])];
-  const activePage = allowedPages.includes(page) ? page : "home";
+  if (!IS_ADMIN_PORTAL && page === "beheer" && state.user?.isAdmin) {
+    location.assign("/admin");
+    return;
+  }
+  const allowedPages = ["home", "leden", "plattegrond", "profiel", "documenten", "biechten"];
+  const activePage = IS_ADMIN_PORTAL && state.user?.isAdmin ? "beheer" : allowedPages.includes(page) ? page : "home";
   document.querySelectorAll(".page-view").forEach((section) => {
     section.classList.toggle("hidden", section.id !== activePage);
   });
@@ -701,7 +706,12 @@ function showPage(page = location.hash.slice(1) || "home") {
 
 function setLoggedIn(user) {
   state.user = user;
+  if (IS_ADMIN_PORTAL && !user.isAdmin) {
+    location.replace("/#home");
+    return false;
+  }
   document.body.classList.add("is-authenticated");
+  document.body.classList.toggle("admin-portal", IS_ADMIN_PORTAL);
   els.loginScreen.classList.add("hidden");
   els.siteHeader.classList.remove("hidden");
   els.appMain.classList.remove("hidden");
@@ -709,13 +719,17 @@ function setLoggedIn(user) {
   els.loggedOutMembers.classList.add("hidden");
   els.memberGrid.classList.remove("hidden");
   renderProfile();
-  showPage();
   document.querySelectorAll(".admin-only").forEach((el) => el.classList.toggle("hidden", !user.isAdmin));
+  document.querySelectorAll(".member-portal-nav").forEach((el) => el.classList.toggle("hidden", IS_ADMIN_PORTAL));
+  document.querySelectorAll(".admin-portal-only").forEach((el) => el.classList.toggle("hidden", !IS_ADMIN_PORTAL));
+  showPage(IS_ADMIN_PORTAL ? "beheer" : undefined);
+  return true;
 }
 
 function setLoggedOut() {
   state.user = null;
   document.body.classList.remove("is-authenticated");
+  document.body.classList.remove("admin-portal");
   state.members = [];
   state.mapMembers = [];
   state.activities = [];
@@ -2359,8 +2373,9 @@ els.loginForm.addEventListener("submit", async (event) => {
       body: JSON.stringify(formJson(els.loginForm))
     });
     els.loginForm.reset();
-    setLoggedIn(user);
+    if (!setLoggedIn(user)) return;
     await refreshPortal();
+    if (IS_ADMIN_PORTAL) return showPage("beheer");
     if (!focusSharedActivity()) {
       location.hash = "#home";
       showPage("home");
@@ -2385,7 +2400,7 @@ els.activationForm.addEventListener("submit", async (event) => {
       body: JSON.stringify({ token: state.activationToken, password })
     });
     closeActivation();
-    setLoggedIn(user);
+    if (!setLoggedIn(user)) return;
     await refreshPortal();
     location.hash = "#home";
     showPage("home");
@@ -2569,8 +2584,8 @@ document.body.addEventListener("click", async (event) => {
   if (calendarSubscriptionButton) return openCalendarSubscriptionDialog();
 
   const navLink = event.target.closest(".site-nav a");
-  if (navLink) {
-    showPage(navLink.getAttribute("href").replace("#", ""));
+  if (navLink?.getAttribute("href")?.startsWith("#")) {
+    showPage(navLink.getAttribute("href").slice(1));
   }
 
   const scrollTargetButton = event.target.closest("[data-scroll-target]");
@@ -2918,6 +2933,14 @@ els.activityForm.addEventListener("submit", async (event) => {
 
 initializeWebApp();
 
+document.title = IS_ADMIN_PORTAL ? "Admin · Dameschdispuut Cassiopeia" : "Dameschdispuut Cassiopeia";
+if (IS_ADMIN_PORTAL) {
+  const loginTitle = document.querySelector("#loginTitle");
+  const portalSubtitle = document.querySelector("#portalSubtitle");
+  if (loginTitle) loginTitle.textContent = "Login Admin";
+  if (portalSubtitle) portalSubtitle.textContent = "Adminomgeving";
+}
+
 const initialActivationToken = activationTokenFromHash();
 loadSiteAssets().catch(() => {});
 if (initialActivationToken) {
@@ -2926,7 +2949,7 @@ if (initialActivationToken) {
   api("/api/session")
     .then(async ({ user }) => {
       if (!user) return setLoggedOut();
-      setLoggedIn(user);
+      if (!setLoggedIn(user)) return;
       await refreshPortal();
     })
     .catch(async () => {
@@ -2937,5 +2960,5 @@ if (initialActivationToken) {
 window.addEventListener("hashchange", () => {
   const token = activationTokenFromHash();
   if (token) return openActivation(token);
-  if (state.user) showPage();
+  if (state.user) showPage(IS_ADMIN_PORTAL ? "beheer" : undefined);
 });
