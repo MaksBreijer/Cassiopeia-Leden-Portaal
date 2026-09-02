@@ -128,6 +128,10 @@ test("members can update their own address from their profile", () => {
   assert.match(profileForm, /name="postalCode"/);
   assert.match(profileForm, /name="city"/);
   assert.match(profileForm, /name="address"/);
+  assert.match(profileForm, /name="birthday" type="date"/);
+  assert.match(html, /id="birthdayList"/);
+  assert.match(html, /name="responseMode"/);
+  assert.match(html, /id="cancellationForm"/);
   assert.match(appScript, /syncAddressFields\(els\.profileForm\)/);
   assert.match(appScript, /api\("\/api\/me",\s*\{\s*method: "PUT"/);
   assert.match(server, /app\.put\("\/api\/me", requireAuth/);
@@ -593,6 +597,70 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.equal(activated.response.status, 200);
   assert.equal(activated.data.user.accountStatus, "active");
   assert.match(activated.cookie, /^cassiopeia\.sid=/);
+
+  const birthdayUpdate = await jsonRequest(baseUrl, "/api/me", {
+    method: "PUT",
+    cookie: activated.cookie,
+    body: { birthday: "2001-05-12" }
+  });
+  assert.equal(birthdayUpdate.response.status, 200);
+  assert.equal(birthdayUpdate.data.user.birthday, "2001-05-12");
+  const invalidBirthday = await jsonRequest(baseUrl, "/api/me", {
+    method: "PUT",
+    cookie: activated.cookie,
+    body: { birthday: "2001-02-31" }
+  });
+  assert.equal(invalidBirthday.response.status, 400);
+
+  const optOutActivity = await jsonRequest(baseUrl, "/api/activities", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { title: "Verplicht diner", startsAt: futureStart.toISOString(), responseMode: "optout" }
+  });
+  assert.equal(optOutActivity.response.status, 201);
+  assert.equal(optOutActivity.data.activity.responseMode, "optout");
+  assert.equal(optOutActivity.data.activity.registrationCount, 2);
+
+  const optOutMemberView = await jsonRequest(baseUrl, "/api/activities", { cookie: activated.cookie });
+  const memberOptOutActivity = optOutMemberView.data.activities.find((item) => item.id === optOutActivity.data.activity.id);
+  assert.equal(memberOptOutActivity.isRegistered, true);
+
+  const privateCancellation = await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/register`, {
+    method: "DELETE",
+    cookie: activated.cookie,
+    body: { reason: "Familieverjaardag" }
+  });
+  assert.equal(privateCancellation.response.status, 200);
+
+  const forbiddenReasons = await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/registrations`, { cookie: activated.cookie });
+  assert.equal(forbiddenReasons.response.status, 403);
+  const adminReasons = await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/registrations`, { cookie: adminLogin.cookie });
+  const cancelledMember = adminReasons.data.registrations.find((member) => member.id === created.data.member.id);
+  assert.equal(cancelledMember.cancellationReason, "Familieverjaardag");
+  assert.ok(cancelledMember.cancelledAt);
+
+  await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/register`, {
+    method: "DELETE",
+    cookie: adminLogin.cookie,
+    body: { reason: "Alleen het bestuur mag dit lezen" }
+  });
+  const memberCannotSeeOtherReason = await jsonRequest(baseUrl, "/api/activities", { cookie: activated.cookie });
+  assert.doesNotMatch(JSON.stringify(memberCannotSeeOtherReason.data), /Alleen het bestuur mag dit lezen/);
+  await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/register`, {
+    method: "POST",
+    cookie: adminLogin.cookie
+  });
+
+  const undoCancellation = await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/register`, {
+    method: "POST",
+    cookie: activated.cookie
+  });
+  assert.equal(undoCancellation.response.status, 200);
+  const optOutAfterUndo = await jsonRequest(baseUrl, "/api/activities", { cookie: activated.cookie });
+  const restoredAttendance = optOutAfterUndo.data.activities.find((item) => item.id === optOutActivity.data.activity.id);
+  assert.equal(restoredAttendance.isRegistered, true);
+  assert.equal(restoredAttendance.cancellationReason, "");
+
   const memberSubscription = await jsonRequest(baseUrl, "/api/calendar-subscription", {
     method: "POST",
     cookie: activated.cookie

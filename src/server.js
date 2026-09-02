@@ -129,6 +129,7 @@ function publicUser(user) {
     yearLayer: user.year_layer,
     roleTitle: user.role_title,
     phone: user.phone,
+    birthday: user.birthday || "",
     address: user.address,
     // Round positions before returning them so the map never exposes an exact home address.
     latitude: hasCoordinates(user.latitude, user.longitude) ? Number(Number(user.latitude).toFixed(3)) : null,
@@ -166,6 +167,19 @@ function getCurrentUser(req) {
 
 function valueFromBody(body, key, existingValue = "") {
   return Object.prototype.hasOwnProperty.call(body, key) ? String(body[key] || "").trim() : existingValue || "";
+}
+
+function birthdayFromBody(body, existingValue = "") {
+  const birthday = valueFromBody(body, "birthday", existingValue);
+  if (!birthday) return "";
+  const match = birthday.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) throw new Error("Vul een geldige verjaardag in.");
+  const [, year, month, day] = match;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  if (date.getUTCFullYear() !== Number(year) || date.getUTCMonth() !== Number(month) - 1 || date.getUTCDate() !== Number(day)) {
+    throw new Error("Vul een geldige verjaardag in.");
+  }
+  return birthday;
 }
 
 async function geocodeAddress(address) {
@@ -245,6 +259,7 @@ function memberFromBody(body, existing = {}) {
     year_layer: valueFromBody(body, "yearLayer", existing.year_layer),
     role_title: valueFromBody(body, "roleTitle", existing.role_title),
     phone: valueFromBody(body, "phone", existing.phone),
+    birthday: birthdayFromBody(body, existing.birthday),
     address: valueFromBody(body, "address", existing.address),
     bio: valueFromBody(body, "bio", existing.bio),
     avatar: avatarInput && avatarInput.length <= 2 ? avatarInput.toUpperCase() : existing.avatar || "",
@@ -531,8 +546,10 @@ app.put("/api/me", requireAuth, async (req, res) => {
   if (!existing) return res.status(404).json({ error: "Account niet gevonden." });
 
   let avatar;
+  let birthday;
   try {
     avatar = profileAvatarFromBody(req.body.avatar, existing.avatar);
+    birthday = birthdayFromBody(req.body, existing.birthday);
   } catch (error) {
     return res.status(400).json({ error: error.message });
   }
@@ -549,10 +566,10 @@ app.put("/api/me", requireAuth, async (req, res) => {
       return res.status(401).json({ error: "Je huidige wachtwoord klopt niet." });
     }
     const password_hash = await bcrypt.hash(newPassword, 12);
-    db.prepare("UPDATE users SET address = ?, latitude = ?, longitude = ?, location_updated_at = ?, avatar = ?, password_hash = ?, password_changed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(address, coordinates.latitude, coordinates.longitude, coordinates.location_updated_at, avatar, password_hash, req.session.userId);
+    db.prepare("UPDATE users SET address = ?, latitude = ?, longitude = ?, location_updated_at = ?, avatar = ?, birthday = ?, password_hash = ?, password_changed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(address, coordinates.latitude, coordinates.longitude, coordinates.location_updated_at, avatar, birthday, password_hash, req.session.userId);
     destroyUserSessions(req.session.userId, req.sessionID);
   } else {
-    db.prepare("UPDATE users SET address = ?, latitude = ?, longitude = ?, location_updated_at = ?, avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(address, coordinates.latitude, coordinates.longitude, coordinates.location_updated_at, avatar, req.session.userId);
+    db.prepare("UPDATE users SET address = ?, latitude = ?, longitude = ?, location_updated_at = ?, avatar = ?, birthday = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(address, coordinates.latitude, coordinates.longitude, coordinates.location_updated_at, avatar, birthday, req.session.userId);
   }
 
   res.json({ user: publicUser(db.prepare("SELECT * FROM users WHERE id = ?").get(req.session.userId)) });
@@ -696,7 +713,12 @@ app.post("/api/members/import", requireAuth, requireAdmin, (req, res) => {
 });
 
 app.post("/api/members", requireAuth, requireAdmin, async (req, res) => {
-  const member = memberFromBody(req.body);
+  let member;
+  try {
+    member = memberFromBody(req.body);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
   if (!member.name || !member.email || !member.year_layer) {
     return res.status(400).json({ error: "Naam, e-mail en jaarlaag zijn verplicht." });
   }
@@ -706,8 +728,8 @@ app.post("/api/members", requireAuth, requireAdmin, async (req, res) => {
   try {
     const result = db
       .prepare(`
-        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, address, latitude, longitude, location_updated_at, bio, avatar, member_status, committee, is_admin, account_status)
-        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @address, @latitude, @longitude, @location_updated_at, @bio, @avatar, @member_status, @committee, @is_admin, @account_status)
+        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, birthday, address, latitude, longitude, location_updated_at, bio, avatar, member_status, committee, is_admin, account_status)
+        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @birthday, @address, @latitude, @longitude, @location_updated_at, @bio, @avatar, @member_status, @committee, @is_admin, @account_status)
       `)
       .run({ ...member, ...coordinates, password_hash, account_status: "pending" });
     const created = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid);
@@ -758,7 +780,12 @@ app.put("/api/members/:id", requireAuth, requireAdmin, async (req, res) => {
   const existing = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);
   if (!existing) return res.status(404).json({ error: "Lid niet gevonden." });
 
-  const member = memberFromBody(req.body, existing);
+  let member;
+  try {
+    member = memberFromBody(req.body, existing);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
   if (!member.name || !member.email || !member.year_layer) {
     return res.status(400).json({ error: "Naam, e-mail en jaarlaag zijn verplicht." });
   }
@@ -778,7 +805,7 @@ app.put("/api/members/:id", requireAuth, requireAdmin, async (req, res) => {
     db.prepare(`
       UPDATE users
       SET name = @name, email = @email, year_layer = @year_layer, role_title = @role_title,
-          phone = @phone, address = @address, latitude = @latitude, longitude = @longitude,
+          phone = @phone, birthday = @birthday, address = @address, latitude = @latitude, longitude = @longitude,
           location_updated_at = @location_updated_at, bio = @bio, avatar = @avatar,
           member_status = @member_status, committee = @committee, is_admin = @is_admin,
           account_status = @account_status, updated_at = CURRENT_TIMESTAMP
@@ -824,12 +851,15 @@ function activityFromBody(body, existing = {}) {
   const capacity = body.capacity === "" || body.capacity === null || body.capacity === undefined ? null : Number(body.capacity);
   const requestedOverride = String(body.registrationOverride ?? existing.registration_override ?? "automatic").trim();
   const registrationOverride = ["automatic", "open", "closed"].includes(requestedOverride) ? requestedOverride : "automatic";
+  const requestedResponseMode = String(body.responseMode ?? existing.response_mode ?? "signup").trim();
+  const responseMode = ["signup", "optout"].includes(requestedResponseMode) ? requestedResponseMode : "signup";
   return {
     title: String(body.title || existing.title || "").trim(),
     description: String(body.description || existing.description || "").trim(),
     location: String(body.location || existing.location || "").trim(),
     starts_at: String(body.startsAt || existing.starts_at || "").trim(),
     capacity: Number.isFinite(capacity) && capacity > 0 ? capacity : null,
+    response_mode: responseMode,
     registration_override: registrationOverride
   };
 }
@@ -838,16 +868,14 @@ function activityRows(userId) {
   const rows = db
     .prepare(`
       SELECT a.*,
-        COUNT(CASE WHEN r.cancelled_at IS NULL THEN r.id END) AS registration_count,
         EXISTS(SELECT 1 FROM registrations mine WHERE mine.activity_id = a.id AND mine.user_id = ? AND mine.cancelled_at IS NULL) AS is_registered,
         EXISTS(SELECT 1 FROM registrations cancelled WHERE cancelled.activity_id = a.id AND cancelled.user_id = ? AND cancelled.cancelled_at IS NOT NULL) AS was_cancelled,
-        COALESCE((SELECT late_cancelled FROM registrations latest WHERE latest.activity_id = a.id AND latest.user_id = ?), 0) AS late_cancelled
+        COALESCE((SELECT late_cancelled FROM registrations latest WHERE latest.activity_id = a.id AND latest.user_id = ?), 0) AS late_cancelled,
+        COALESCE((SELECT cancellation_reason FROM registrations latest WHERE latest.activity_id = a.id AND latest.user_id = ?), '') AS cancellation_reason
       FROM activities a
-      LEFT JOIN registrations r ON r.activity_id = a.id
-      GROUP BY a.id
       ORDER BY datetime(a.starts_at) ASC
     `)
-    .all(userId, userId, userId);
+    .all(userId, userId, userId, userId);
   const participantsByActivity = new Map();
   const filesByActivity = new Map();
   const participants = db
@@ -855,8 +883,18 @@ function activityRows(userId) {
       SELECT r.activity_id, u.id, u.name, u.avatar
       FROM registrations r
       JOIN users u ON u.id = r.user_id
-      WHERE r.cancelled_at IS NULL
-      ORDER BY r.created_at ASC
+      JOIN activities a ON a.id = r.activity_id
+      WHERE r.cancelled_at IS NULL AND u.account_status = 'active' AND a.response_mode = 'signup'
+      UNION ALL
+      SELECT a.id AS activity_id, u.id, u.name, u.avatar
+      FROM activities a
+      CROSS JOIN users u
+      WHERE a.response_mode = 'optout' AND u.account_status = 'active'
+        AND NOT EXISTS (
+          SELECT 1 FROM registrations cancelled
+          WHERE cancelled.activity_id = a.id AND cancelled.user_id = u.id AND cancelled.cancelled_at IS NOT NULL
+        )
+      ORDER BY activity_id ASC, name ASC
     `)
     .all();
 
@@ -874,6 +912,8 @@ function activityRows(userId) {
 
   return rows.map((row) => {
     const deadline = registrationDeadline(row.starts_at);
+    const responseMode = row.response_mode || "signup";
+    const participants = participantsByActivity.get(row.id) || [];
     return {
       id: row.id,
       title: row.title,
@@ -881,15 +921,17 @@ function activityRows(userId) {
       location: row.location,
       startsAt: row.starts_at,
       capacity: row.capacity,
-      registrationCount: row.registration_count,
+      responseMode,
+      registrationCount: participants.length,
       registrationDeadline: deadline?.toISOString() || null,
       registrationOverride: row.registration_override || "automatic",
       registrationOpen: isRegistrationOpen(row.starts_at, row.registration_override),
-      isRegistered: Boolean(row.is_registered),
+      isRegistered: responseMode === "optout" ? !Boolean(row.was_cancelled) : Boolean(row.is_registered),
       wasCancelled: Boolean(row.was_cancelled),
       lateCancelled: Boolean(row.late_cancelled),
+      cancellationReason: row.cancellation_reason || "",
       files: filesByActivity.get(row.id) || [],
-      participants: participantsByActivity.get(row.id) || []
+      participants
     };
   });
 }
@@ -1234,7 +1276,7 @@ app.post("/api/activities", requireAuth, requireAdmin, (req, res) => {
   }
 
   const result = db
-    .prepare("INSERT INTO activities (title, description, location, starts_at, capacity, registration_override, created_by) VALUES (@title, @description, @location, @starts_at, @capacity, @registration_override, @created_by)")
+    .prepare("INSERT INTO activities (title, description, location, starts_at, capacity, response_mode, registration_override, created_by) VALUES (@title, @description, @location, @starts_at, @capacity, @response_mode, @registration_override, @created_by)")
     .run({ ...activity, created_by: req.session.userId });
   res.status(201).json({ activity: activityRows(req.session.userId).find((item) => item.id === result.lastInsertRowid) });
 });
@@ -1251,7 +1293,8 @@ app.put("/api/activities/:id", requireAuth, requireAdmin, (req, res) => {
   db.prepare(`
     UPDATE activities
     SET title = @title, description = @description, location = @location,
-        starts_at = @starts_at, capacity = @capacity, registration_override = @registration_override,
+        starts_at = @starts_at, capacity = @capacity, response_mode = @response_mode,
+        registration_override = @registration_override,
         updated_at = CURRENT_TIMESTAMP
     WHERE id = @id
   `).run({ ...activity, id: req.params.id });
@@ -1298,46 +1341,75 @@ app.delete("/api/activities/:id/files/:fileId", requireAuth, requireAdmin, (req,
 app.post("/api/activities/:id/register", requireAuth, (req, res) => {
   const activity = db.prepare("SELECT * FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
-  if (!isRegistrationOpen(activity.starts_at, activity.registration_override)) {
+  const responseMode = activity.response_mode || "signup";
+  if (responseMode === "signup" && !isRegistrationOpen(activity.starts_at, activity.registration_override)) {
     return res.status(400).json({ error: "De inschrijving is gesloten. De deadline was de eerste van de maand." });
   }
 
-  if (activity.capacity) {
+  if (responseMode === "signup" && activity.capacity) {
     const count = db.prepare("SELECT COUNT(*) AS count FROM registrations WHERE activity_id = ? AND cancelled_at IS NULL").get(req.params.id).count;
     if (count >= activity.capacity) return res.status(400).json({ error: "Deze activiteit is vol." });
   }
 
   db.prepare(`
-    INSERT INTO registrations (activity_id, user_id, cancelled_at, late_cancelled)
-    VALUES (?, ?, NULL, 0)
-    ON CONFLICT(activity_id, user_id) DO UPDATE SET cancelled_at = NULL, late_cancelled = 0
+    INSERT INTO registrations (activity_id, user_id, cancelled_at, late_cancelled, cancellation_reason)
+    VALUES (?, ?, NULL, 0, '')
+    ON CONFLICT(activity_id, user_id) DO UPDATE SET cancelled_at = NULL, late_cancelled = 0, cancellation_reason = ''
   `).run(req.params.id, req.session.userId);
   res.json({ ok: true });
 });
 
 app.delete("/api/activities/:id/register", requireAuth, (req, res) => {
-  const activity = db.prepare("SELECT starts_at FROM activities WHERE id = ?").get(req.params.id);
+  const activity = db.prepare("SELECT starts_at, response_mode FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
+  const reason = String(req.body?.reason || "").trim();
+  if (reason.length > 500) return res.status(400).json({ error: "De reden mag maximaal 500 tekens bevatten." });
   const lateCancelled = isLateCancellation(activity.starts_at);
-  const result = db.prepare(`
-    UPDATE registrations
-    SET cancelled_at = CURRENT_TIMESTAMP, late_cancelled = ?
-    WHERE activity_id = ? AND user_id = ? AND cancelled_at IS NULL
-  `).run(lateCancelled ? 1 : 0, req.params.id, req.session.userId);
+  const result = (activity.response_mode || "signup") === "optout"
+    ? db.prepare(`
+        INSERT INTO registrations (activity_id, user_id, cancelled_at, late_cancelled, cancellation_reason)
+        VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?)
+        ON CONFLICT(activity_id, user_id) DO UPDATE SET
+          cancelled_at = CURRENT_TIMESTAMP, late_cancelled = excluded.late_cancelled,
+          cancellation_reason = excluded.cancellation_reason
+      `).run(req.params.id, req.session.userId, lateCancelled ? 1 : 0, reason)
+    : db.prepare(`
+        UPDATE registrations
+        SET cancelled_at = CURRENT_TIMESTAMP, late_cancelled = ?, cancellation_reason = ?
+        WHERE activity_id = ? AND user_id = ? AND cancelled_at IS NULL
+      `).run(lateCancelled ? 1 : 0, reason, req.params.id, req.session.userId);
   res.json({ ok: true, lateCancelled, changed: result.changes });
 });
 
 app.get("/api/activities/:id/registrations", requireAuth, requireAdmin, (req, res) => {
-  const rows = db
-    .prepare(`
-      SELECT u.id, u.name, u.email, u.year_layer, u.role_title, r.created_at, r.cancelled_at, r.late_cancelled
-      FROM registrations r
-      JOIN users u ON u.id = r.user_id
-      WHERE r.activity_id = ?
-      ORDER BY r.created_at ASC
-    `)
-    .all(req.params.id);
-  res.json({ registrations: rows.map((row) => ({ ...publicUser(row), registeredAt: row.created_at, cancelledAt: row.cancelled_at, lateCancelled: Boolean(row.late_cancelled) })) });
+  const activity = db.prepare("SELECT response_mode FROM activities WHERE id = ?").get(req.params.id);
+  if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
+  const responseMode = activity.response_mode || "signup";
+  const rows = responseMode === "optout"
+    ? db.prepare(`
+        SELECT u.*, r.created_at AS registration_created_at, r.cancelled_at, r.late_cancelled, r.cancellation_reason
+        FROM users u
+        LEFT JOIN registrations r ON r.activity_id = ? AND r.user_id = u.id
+        WHERE u.account_status = 'active'
+        ORDER BY r.cancelled_at IS NOT NULL ASC, u.name ASC
+      `).all(req.params.id)
+    : db.prepare(`
+        SELECT u.*, r.created_at AS registration_created_at, r.cancelled_at, r.late_cancelled, r.cancellation_reason
+        FROM registrations r
+        JOIN users u ON u.id = r.user_id
+        WHERE r.activity_id = ?
+        ORDER BY r.created_at ASC
+      `).all(req.params.id);
+  res.json({
+    responseMode,
+    registrations: rows.map((row) => ({
+      ...publicUser(row),
+      registeredAt: row.registration_created_at,
+      cancelledAt: row.cancelled_at,
+      lateCancelled: Boolean(row.late_cancelled),
+      cancellationReason: row.cancellation_reason || ""
+    }))
+  });
 });
 
 app.get(/.*/, (req, res) => {

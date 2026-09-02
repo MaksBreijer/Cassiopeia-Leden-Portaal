@@ -27,7 +27,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20260902-lilac-banners" />
+    <link rel="stylesheet" href="styles.css?v=20260902-birthdays-rsvp" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -130,6 +130,18 @@
             <strong id="overviewMemberCount">— leden</strong>
             <span class="overview-meta">Van actief tot reünist</span>
           </a>
+        </div>
+
+        <div id="birthdayOverview" class="content-module birthday-module">
+          <div class="section-head birthday-section-head">
+            <div>
+              <p class="eyebrow">Binnenkort jarig</p>
+              <h2>Verjaardagen</h2>
+              <p id="birthdaySummary" class="section-intro">Verjaardagen laden…</p>
+            </div>
+            <a class="secondary" href="#profiel">Mijn verjaardag instellen</a>
+          </div>
+          <div id="birthdayList" class="birthday-list" aria-live="polite"></div>
         </div>
 
         <div id="activitiesOverview" class="content-module">
@@ -250,6 +262,7 @@
           <form id="profileForm" class="profile-card">
             <div class="form-section-heading"><span>Persoonlijke gegevens</span><p>Werk alleen bij wat is veranderd.</p></div>
             <div class="form-grid">
+              <label>Verjaardag<input name="birthday" type="date" autocomplete="bday" /></label>
               <fieldset class="address-fieldset wide">
                 <legend>Adres <span class="label-hint">voor de plattegrond</span></legend>
                 <div class="address-grid">
@@ -480,6 +493,7 @@
           </label>
           <label>Commissie<input name="committee" /></label>
           <label>Telefoon<input name="phone" /></label>
+          <label>Verjaardag<input name="birthday" type="date" autocomplete="bday" /></label>
           <label>Initialen zonder profielfoto<input name="avatar" maxlength="2" placeholder="Alleen als er geen foto is" /></label>
           <fieldset class="address-fieldset wide">
             <legend>Adres <span class="label-hint">voor de plattegrond</span></legend>
@@ -563,6 +577,13 @@
           <label class="wide">Titel<input name="title" required /></label>
           <label>Datum en tijd<input name="startsAt" type="datetime-local" required /></label>
           <label>Capaciteit<input name="capacity" type="number" min="1" /></label>
+          <label class="wide">Hoe reageren leden?
+            <select name="responseMode">
+              <option value="signup">Aanmelden — leden schrijven zichzelf in</option>
+              <option value="optout">Afmelden — iedereen telt standaard als aanwezig</option>
+            </select>
+            <span class="form-help">Bij afmelden kan een lid een privéreden delen. Alleen beheerders kunnen die reden bekijken.</span>
+          </label>
           <label class="wide">Inschrijving
             <select name="registrationOverride">
               <option value="automatic">Automatisch — sluit op de 1e van de maand</option>
@@ -584,12 +605,28 @@
 
     <dialog id="registrationsDialog">
       <div class="dialog-card">
-        <h3>Inschrijvingen</h3>
+        <h3 id="registrationsDialogTitle">Inschrijvingen</h3>
         <div id="registrationsList" class="table-list"></div>
         <div class="dialog-actions">
           <button type="button" class="primary" data-close>Sluiten</button>
         </div>
       </div>
+    </dialog>
+
+    <dialog id="cancellationDialog">
+      <form id="cancellationForm" method="dialog" class="dialog-card cancellation-dialog-card">
+        <p class="eyebrow">Alleen zichtbaar voor bestuur</p>
+        <h3 id="cancellationDialogTitle">Afmelden</h3>
+        <input type="hidden" name="activityId" />
+        <label class="wide">Reden van afmelding <span class="label-hint">optioneel</span>
+          <textarea name="reason" rows="4" maxlength="500" placeholder="Bijvoorbeeld: ik ben ziek of heb een andere afspraak."></textarea>
+        </label>
+        <p class="form-help">Deze reden is privé en wordt alleen getoond in het beheeroverzicht van deze activiteit.</p>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" data-close>Annuleren</button>
+          <button type="submit" class="primary">Afmelding opslaan</button>
+        </div>
+      </form>
     </dialog>
 
     <dialog id="installAppDialog" class="install-app-dialog">
@@ -648,6 +685,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260901-agenda"></script>
+    <script src="app.js?v=20260902-birthdays-rsvp"></script>
   </body>
 </html>

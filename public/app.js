@@ -169,6 +169,8 @@ const els = {
   overviewAgendaCount: document.querySelector("#overviewAgendaCount"),
   overviewNextActivity: document.querySelector("#overviewNextActivity"),
   overviewNextDate: document.querySelector("#overviewNextDate"),
+  birthdaySummary: document.querySelector("#birthdaySummary"),
+  birthdayList: document.querySelector("#birthdayList"),
   cribMap: document.querySelector("#cribMap"),
   mapMemberCount: document.querySelector("#mapMemberCount"),
   mapUnmapped: document.querySelector("#mapUnmapped"),
@@ -187,7 +189,11 @@ const els = {
   activityForm: document.querySelector("#activityForm"),
   activityDialogTitle: document.querySelector("#activityDialogTitle"),
   registrationsDialog: document.querySelector("#registrationsDialog"),
+  registrationsDialogTitle: document.querySelector("#registrationsDialogTitle"),
   registrationsList: document.querySelector("#registrationsList"),
+  cancellationDialog: document.querySelector("#cancellationDialog"),
+  cancellationForm: document.querySelector("#cancellationForm"),
+  cancellationDialogTitle: document.querySelector("#cancellationDialogTitle"),
   invitationDialog: document.querySelector("#invitationDialog"),
   invitationDialogTitle: document.querySelector("#invitationDialogTitle"),
   invitationDialogText: document.querySelector("#invitationDialogText"),
@@ -371,6 +377,37 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function birthdayParts(value) {
+  const match = String(value || "").match(/^\d{4}-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  return { month: Number(match[1]), day: Number(match[2]) };
+}
+
+function nextBirthdayDate(value, now = new Date()) {
+  const parts = birthdayParts(value);
+  if (!parts) return null;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let next = new Date(now.getFullYear(), parts.month - 1, parts.day);
+  if (next < today) next = new Date(now.getFullYear() + 1, parts.month - 1, parts.day);
+  return next;
+}
+
+function formatBirthday(value) {
+  const next = nextBirthdayDate(value);
+  return next
+    ? new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "long" }).format(next)
+    : "Niet ingevuld";
+}
+
+function birthdayDistanceLabel(date) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((date.getTime() - today.getTime()) / 86400000);
+  if (days === 0) return "Vandaag!";
+  if (days === 1) return "Morgen";
+  return `Over ${days} dagen`;
+}
+
 function activityRegistrationDeadline(activity) {
   if (activity.registrationDeadline) return new Date(activity.registrationDeadline);
   const start = new Date(activity.startsAt);
@@ -436,7 +473,7 @@ function avatarHtml(user) {
 function renderActivityParticipants(activity) {
   const participants = activity.participants || [];
   if (!participants.length) {
-    return '<div class="activity-participants empty">Nog niemand ingeschreven</div>';
+    return `<div class="activity-participants empty">${activity.responseMode === "optout" ? "Niemand staat op aanwezig" : "Nog niemand ingeschreven"}</div>`;
   }
   const preview = participants.slice(0, 8);
   const extra = participants.length - preview.length;
@@ -581,7 +618,32 @@ function renderProfile() {
   els.profileEmail.textContent = state.user.email;
   if (els.headerUserName) els.headerUserName.textContent = state.user.name.split(/\s+/)[0] || "Profiel";
   if (els.welcomeName) els.welcomeName.textContent = state.user.name.split(/\s+/)[0] || "Cassiopeia";
+  if (els.profileForm.elements.birthday) els.profileForm.elements.birthday.value = state.user.birthday || "";
   fillAddressFields(els.profileForm, state.user.address || "");
+}
+
+function renderBirthdays() {
+  if (!els.birthdayList || !els.birthdaySummary) return;
+  const birthdays = state.members
+    .filter((member) => member.accountStatus === "active" && birthdayParts(member.birthday))
+    .map((member) => ({ member, date: nextBirthdayDate(member.birthday) }))
+    .filter((item) => item.date)
+    .sort((a, b) => a.date - b.date);
+
+  if (!birthdays.length) {
+    els.birthdaySummary.textContent = "Nog niemand heeft een verjaardag ingevuld.";
+    els.birthdayList.innerHTML = '<div class="birthday-empty"><strong>Wie trapt af?</strong><span>Vul je verjaardag in via je profiel.</span></div>';
+    return;
+  }
+
+  els.birthdaySummary.textContent = `${birthdays.length} ${birthdays.length === 1 ? "verjaardag staat" : "verjaardagen staan"} in het ledenportaal.`;
+  els.birthdayList.innerHTML = birthdays.slice(0, 6).map(({ member, date }) => `
+    <article class="birthday-card">
+      <span class="birthday-avatar avatar">${avatarHtml(member)}</span>
+      <span class="birthday-copy"><strong>${escapeHtml(member.name)}</strong><small>${escapeHtml(birthdayDistanceLabel(date))}</small></span>
+      <time datetime="${escapeHtml(member.birthday)}">${escapeHtml(formatBirthday(member.birthday))}</time>
+    </article>
+  `).join("");
 }
 
 function renderPortalOverview() {
@@ -661,6 +723,7 @@ function setLoggedOut() {
   renderYearAgenda();
   renderPublicActivities();
   renderMembers();
+  renderBirthdays();
   renderCribMap();
   renderAdminAccounts();
 }
@@ -676,6 +739,7 @@ async function loadMembers() {
   state.members = data.members;
   renderMemberFilters();
   renderMembers();
+  renderBirthdays();
   renderCribMap();
   renderAdminAccounts();
   renderPortalOverview();
@@ -1068,6 +1132,7 @@ async function showMemberDetail(id) {
     <p>${escapeHtml(member.bio || "Nog geen profieltekst ingevuld.")}</p>
     <p class="meta">E-mail: ${escapeHtml(member.email)}</p>
     <p class="meta">Telefoon: ${escapeHtml(member.phone || "Niet ingevuld")}</p>
+    <p class="meta">Verjaardag: ${escapeHtml(formatBirthday(member.birthday))}</p>
     <p class="meta">Adres: ${escapeHtml(member.address || "Niet ingevuld")}</p>
     ${
       state.user?.isAdmin
@@ -1312,12 +1377,17 @@ function renderPublicActivities() {
 
   els.publicActivityList.innerHTML = state.activities
     .map((activity) => {
-      const full = activity.capacity && activity.registrationCount >= activity.capacity;
+      const optOut = activity.responseMode === "optout";
+      const full = !optOut && activity.capacity && activity.registrationCount >= activity.capacity;
       const registrationOpen = activityRegistrationIsOpen(activity);
-      const canRegister = Boolean(state.user && !activity.isRegistered && registrationOpen && !full);
-      const canCancel = Boolean(state.user && activity.isRegistered);
-      const registrationState = activity.isRegistered
-        ? "Je bent ingeschreven"
+      const canRegister = Boolean(state.user && (optOut ? activity.wasCancelled : !activity.isRegistered && registrationOpen && !full));
+      const canCancel = Boolean(state.user && (optOut ? !activity.wasCancelled : activity.isRegistered));
+      const registrationState = optOut
+        ? activity.wasCancelled
+          ? activity.lateCancelled ? "Te laat afgemeld" : "Je bent afgemeld"
+          : "Je bent erbij"
+        : activity.isRegistered
+          ? "Je bent ingeschreven"
         : activity.lateCancelled
           ? "Te laat afgemeld"
           : activity.wasCancelled
@@ -1329,13 +1399,17 @@ function renderPublicActivities() {
                 : registrationOpen
                   ? "Inschrijving open"
                   : "Inschrijving gesloten";
-      const registrationNote = activity.registrationOverride === "open"
-        ? `Handmatig geopend door de beheerder. De normale deadline is ${formatActivityDeadline(activity)}.`
-        : activity.registrationOverride === "closed"
-          ? "Handmatig gesloten door de beheerder."
-          : registrationOpen
-            ? `Inschrijven kan tot ${formatActivityDeadline(activity)}.`
-            : `De inschrijving sloot op ${formatActivityDeadline(activity)}.`;
+      const registrationNote = optOut
+        ? activity.wasCancelled
+          ? `Je afmelding is opgeslagen${activity.cancellationReason ? ", inclusief je privéreden" : ""}. Je kunt haar altijd intrekken.`
+          : `Je staat automatisch op aanwezig. Kun je niet? Meld je af${registrationOpen ? ` vóór ${formatActivityDeadline(activity)}` : ""}.`
+        : activity.registrationOverride === "open"
+          ? `Handmatig geopend door de beheerder. De normale deadline is ${formatActivityDeadline(activity)}.`
+          : activity.registrationOverride === "closed"
+            ? "Handmatig gesloten door de beheerder."
+            : registrationOpen
+              ? `Inschrijven kan tot ${formatActivityDeadline(activity)}.`
+              : `De inschrijving sloot op ${formatActivityDeadline(activity)}.`;
       return `
         <article id="activiteit-${activity.id}" class="activity-card" data-activity-card="${activity.id}">
           <div class="activity-card-content">
@@ -1347,8 +1421,8 @@ function renderPublicActivities() {
             <p>${escapeHtml(activity.description || "Geen beschrijving ingevuld.")}</p>
             <div class="activity-facts">
               <span><strong>Locatie</strong>${escapeHtml(activity.location || "Volgt")}</span>
-              <span><strong>Aanmeldingen</strong>${activity.registrationCount}${activity.capacity ? ` van ${activity.capacity}` : ""}</span>
-              <span><strong>Inschrijfdeadline</strong>${formatActivityDeadline(activity)}</span>
+              <span><strong>${optOut ? "Verwacht" : "Aanmeldingen"}</strong>${activity.registrationCount}${!optOut && activity.capacity ? ` van ${activity.capacity}` : ""}</span>
+              <span><strong>${optOut ? "Afmelddeadline" : "Inschrijfdeadline"}</strong>${formatActivityDeadline(activity)}</span>
             </div>
             ${activity.wasCancelled ? `<p class="late-cancelled-note">${activity.lateCancelled ? "Afmelding te laat geregistreerd." : "Je bent afgemeld."}</p>` : ""}
             ${activity.files?.length ? `<div class="activity-files"><span class="module-label">Bestanden</span>${activity.files.map((file) => `<button class="file-link" type="button" data-download-activity-file="${file.id}" data-activity-id="${activity.id}" data-file-name="${escapeHtml(file.fileName)}" data-file-type="${escapeHtml(file.mimeType)}">${escapeHtml(file.fileName)}</button>${state.user?.isAdmin ? `<button class="file-delete" type="button" data-delete-activity-file="${file.id}" data-activity-id="${activity.id}" aria-label="Verwijder ${escapeHtml(file.fileName)}">×</button>` : ""}`).join("")}</div>` : ""}
@@ -1357,17 +1431,17 @@ function renderPublicActivities() {
           <div class="activity-actions">
             <div class="activity-member-actions">
               <span class="module-label">Jouw deelname</span>
-              <button class="primary" data-register="${activity.id}" data-registration-action="join" ${canRegister ? "" : "disabled"}>Inschrijven</button>
-              <button class="secondary" data-register="${activity.id}" data-registration-action="cancel" ${canCancel ? "" : "disabled"}>Afmelden</button>
+              <button class="primary" data-register="${activity.id}" data-registration-action="join" ${canRegister ? "" : "disabled"}>${optOut ? "Afmelding intrekken" : "Inschrijven"}</button>
+              <button class="secondary" data-register="${activity.id}" data-registration-action="cancel" ${canCancel ? "" : "disabled"}>${optOut ? "Ik kan niet" : "Afmelden"}</button>
               <p>${registrationNote}${canCancel && Date.now() >= activityRegistrationDeadline(activity)?.getTime() ? " Afmelden kan nog, maar wordt als te laat gemarkeerd." : ""}</p>
             </div>
             ${
               state.user?.isAdmin
                 ? `<div class="activity-admin-actions">
                     <span class="module-label">Beheer</span>
-                    <button class="secondary" data-toggle-activity-registration="${activity.id}" data-registration-override="${registrationOpen ? "closed" : "open"}">${registrationOpen ? "Inschrijving sluiten" : "Inschrijving openen"}</button>
+                    ${optOut ? "" : `<button class="secondary" data-toggle-activity-registration="${activity.id}" data-registration-override="${registrationOpen ? "closed" : "open"}">${registrationOpen ? "Inschrijving sluiten" : "Inschrijving openen"}</button>`}
                     <button class="activity-excel-button" data-export-activity="${activity.id}">Excel downloaden</button>
-                    <button class="secondary" data-registrations="${activity.id}">Deelnemers bekijken</button>
+                    <button class="secondary" data-registrations="${activity.id}">${optOut ? "Aanwezigheid bekijken" : "Deelnemers bekijken"}</button>
                     <div class="activity-admin-utilities">
                       <button class="secondary" data-google-calendar="${activity.id}">Google Agenda</button>
                       <button class="secondary" data-whatsapp-activity="${activity.id}">WhatsApp</button>
@@ -1457,6 +1531,7 @@ function openMemberDialog(member = null) {
   fields.memberStatus.value = member?.memberStatus || "actief";
   fields.committee.value = member?.committee || "";
   fields.phone.value = member?.phone || "";
+  fields.birthday.value = member?.birthday || "";
   fillAddressFields(els.memberForm, member?.address || "");
   fields.avatar.value = editableInitials;
   fields.bio.value = member?.bio || "";
@@ -1482,11 +1557,19 @@ function openActivityDialog(activity = null) {
   fields.title.value = activity?.title || "";
   fields.startsAt.value = activity?.startsAt || "";
   fields.capacity.value = activity?.capacity || "";
+  fields.responseMode.value = activity?.responseMode || "signup";
   fields.registrationOverride.value = activity?.registrationOverride || "automatic";
   fields.location.value = activity?.location || "";
   fields.description.value = activity?.description || "";
   if (fields.activityFiles) fields.activityFiles.value = "";
   els.activityDialog.showModal();
+}
+
+function openCancellationDialog(activity) {
+  els.cancellationForm.reset();
+  els.cancellationForm.elements.activityId.value = activity.id;
+  els.cancellationDialogTitle.textContent = `Afmelden voor ${activity.title}`;
+  els.cancellationDialog.showModal();
 }
 
 function openYearAgendaDialog(item = null) {
@@ -1565,7 +1648,8 @@ async function saveYearAgendaSummary(summary) {
 }
 
 async function showRegistrations(activityId) {
-  const { registrations } = await api(`/api/activities/${activityId}/registrations`);
+  const { registrations, responseMode } = await api(`/api/activities/${activityId}/registrations`);
+  els.registrationsDialogTitle.textContent = responseMode === "optout" ? "Aanwezigheid & afmeldingen" : "Inschrijvingen";
   els.registrationsList.innerHTML = registrations.length
     ? registrations
         .map(
@@ -1574,21 +1658,23 @@ async function showRegistrations(activityId) {
               <div>
                 <strong>${escapeHtml(member.name)}</strong>
                 <p class="meta">${escapeHtml(member.email)} · ${escapeHtml(member.yearLayer)} · ${escapeHtml(member.roleTitle || "Actief")}</p>
-                ${member.cancelledAt ? `<span class="late-registration-label">${member.lateCancelled ? "Te laat afgemeld" : "Afgemeld"}</span>` : '<span class="registration-active-label">Ingeschreven</span>'}
+                ${member.cancelledAt
+                  ? `<span class="late-registration-label">${member.lateCancelled ? "Te laat afgemeld" : "Afgemeld"}</span>${member.cancellationReason ? `<p class="cancellation-reason"><strong>Privéreden</strong>${escapeHtml(member.cancellationReason)}</p>` : ""}`
+                  : `<span class="registration-active-label">${responseMode === "optout" ? "Aanwezig (standaard)" : "Ingeschreven"}</span>`}
               </div>
             </div>
           `
         )
         .join("")
-    : '<p class="meta">Nog niemand heeft zich ingeschreven.</p>';
+    : `<p class="meta">${responseMode === "optout" ? "Geen actieve leden gevonden." : "Nog niemand heeft zich ingeschreven."}</p>`;
   els.registrationsDialog.showModal();
 }
 
 async function exportRegistrations(activityId) {
   const activity = state.activities.find((item) => item.id === Number(activityId));
-  const { registrations } = await api(`/api/activities/${activityId}/registrations`);
+  const { registrations, responseMode } = await api(`/api/activities/${activityId}/registrations`);
   const rows = [
-    ["Naam", "E-mail", "Lichting", "Functie", "Ingeschreven op", "Afmelding", "Status"],
+    ["Naam", "E-mail", "Lichting", "Functie", "Ingeschreven op", "Afmelding", "Status", "Privéreden afmelding"],
     ...registrations.map((member) => [
       member.lateCancelled ? `${member.name} — TE LAAT` : member.name,
       member.email,
@@ -1596,15 +1682,16 @@ async function exportRegistrations(activityId) {
       member.roleTitle || "Actief",
       member.registeredAt ? formatDate(member.registeredAt) : "",
       member.cancelledAt ? formatDate(member.cancelledAt) : "",
-      member.lateCancelled ? "TE LAAT" : member.cancelledAt ? "Afgemeld" : "Ingeschreven"
+      member.lateCancelled ? "TE LAAT" : member.cancelledAt ? "Afgemeld" : responseMode === "optout" ? "Aanwezig (standaard)" : "Ingeschreven",
+      member.cancellationReason || ""
     ])
   ];
   const safeTitle = String(activity?.title || "activiteit")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-  downloadExcel(`inschrijvingen-${safeTitle || "activiteit"}.xls`, rows[0], rows.slice(1));
-  showToast("Inschrijvingen geëxporteerd naar Excel.");
+  downloadExcel(`${responseMode === "optout" ? "aanwezigheid" : "inschrijvingen"}-${safeTitle || "activiteit"}.xls`, rows[0], rows.slice(1));
+  showToast(`${responseMode === "optout" ? "Aanwezigheid" : "Inschrijvingen"} geëxporteerd naar Excel.`);
 }
 
 function openLogin() {
@@ -2009,6 +2096,25 @@ els.profileForm.addEventListener("submit", async (event) => {
   }
 });
 
+els.cancellationForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const activityId = Number(els.cancellationForm.elements.activityId.value);
+  const activity = state.activities.find((item) => item.id === activityId);
+  if (!activity) return els.cancellationDialog.close();
+  try {
+    const result = await api(`/api/activities/${activity.id}/register`, {
+      method: "DELETE",
+      body: JSON.stringify({ reason: els.cancellationForm.elements.reason.value })
+    });
+    els.cancellationDialog.close();
+    await loadActivities();
+    renderAdmin();
+    showToast(result.lateCancelled ? `Je afmelding voor ${activity.title} is na de deadline opgeslagen.` : `Je bent afgemeld voor ${activity.title}.`);
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
 els.documentUploadForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const file = els.documentUploadForm.elements.documentFile.files[0];
@@ -2144,11 +2250,11 @@ document.body.addEventListener("click", async (event) => {
     const action = registerBtn.dataset.registrationAction;
     if (action === "join" && activity.isRegistered) return;
     if (action === "cancel" && !activity.isRegistered) return;
-    const isCancellation = action === "cancel";
-    const result = await api(`/api/activities/${activity.id}/register`, { method: isCancellation ? "DELETE" : "POST" });
+    if (action === "cancel") return openCancellationDialog(activity);
+    await api(`/api/activities/${activity.id}/register`, { method: "POST" });
     await loadActivities();
     renderAdmin();
-    return showToast(isCancellation ? (result.lateCancelled ? `Je bent afgemeld voor ${activity.title}; dit is na de deadline.` : `Je bent afgemeld voor ${activity.title}.`) : `Je bent ingeschreven voor ${activity.title}.`);
+    return showToast(activity.responseMode === "optout" ? `Je afmelding voor ${activity.title} is ingetrokken.` : `Je bent ingeschreven voor ${activity.title}.`);
   }
 
   const registrationsBtn = event.target.closest("[data-registrations]");

@@ -21,6 +21,7 @@ function initializeDatabase() {
       year_layer TEXT NOT NULL,
       role_title TEXT DEFAULT '',
       phone TEXT DEFAULT '',
+      birthday TEXT DEFAULT '',
       address TEXT DEFAULT '',
       latitude REAL,
       longitude REAL,
@@ -44,6 +45,7 @@ function initializeDatabase() {
       location TEXT DEFAULT '',
       starts_at TEXT NOT NULL,
       capacity INTEGER,
+      response_mode TEXT NOT NULL DEFAULT 'signup',
       registration_override TEXT NOT NULL DEFAULT 'automatic',
       created_by INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -58,6 +60,7 @@ function initializeDatabase() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       cancelled_at TEXT,
       late_cancelled INTEGER NOT NULL DEFAULT 0,
+      cancellation_reason TEXT DEFAULT '',
       UNIQUE(activity_id, user_id),
       FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -155,6 +158,7 @@ function initializeDatabase() {
   `);
 
   ensureColumn("users", "address", "TEXT DEFAULT ''");
+  ensureColumn("users", "birthday", "TEXT DEFAULT ''");
   ensureColumn("users", "latitude", "REAL");
   ensureColumn("users", "longitude", "REAL");
   ensureColumn("users", "location_updated_at", "TEXT");
@@ -165,6 +169,8 @@ function initializeDatabase() {
   ensureColumn("users", "last_login_at", "TEXT");
   ensureColumn("registrations", "cancelled_at", "TEXT");
   ensureColumn("registrations", "late_cancelled", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn("registrations", "cancellation_reason", "TEXT DEFAULT ''");
+  ensureColumn("activities", "response_mode", "TEXT NOT NULL DEFAULT 'signup'");
   ensureColumn("activities", "registration_override", "TEXT NOT NULL DEFAULT 'automatic'");
   revokeExposedCredentials();
   bootstrapAdmin();
