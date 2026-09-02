@@ -1270,11 +1270,7 @@ function focusYearAgendaMonth(monthIndex) {
   const activeMonth = months.find((month) => month.monthIndex === Number(monthIndex));
   if (!activeMonth) return;
   state.activeYearAgendaMonthIndex = activeMonth.monthIndex;
-  renderYearAgendaToolbar(months, activeMonth);
-  document.querySelectorAll("[data-year-agenda-month]").forEach((card) => {
-    card.classList.toggle("year-month-active", Number(card.dataset.yearAgendaMonth) === activeMonth.monthIndex);
-  });
-  document.querySelector(`[data-year-agenda-month="${activeMonth.monthIndex}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  renderYearAgenda();
 }
 
 function renderYearAgenda() {
@@ -1321,15 +1317,15 @@ function renderYearAgenda() {
     .filter(({ timestamp }) => timestamp !== null && timestamp >= startOfToday.getTime())
     .sort((a, b) => a.timestamp - b.timestamp)[0]?.item;
 
+  const activeMonthPosition = months.findIndex((month) => month.monthIndex === activeMonth.monthIndex) + 1;
   els.yearAgendaGrid.innerHTML = `
-    ${months.map((month) => `
-      <article class="year-month ${month.monthIndex === activeMonth.monthIndex ? "year-month-active" : ""}" data-year-agenda-month="${month.monthIndex}">
+      <article class="year-month year-month-active" data-year-agenda-month="${activeMonth.monthIndex}" aria-label="${escapeHtml(activeMonth.monthLabel)}, maand ${activeMonthPosition} van ${months.length}">
         <header class="year-month-heading">
-          <div><span class="year-month-kicker">Maandplanning</span><h3>${escapeHtml(month.monthLabel)}</h3></div>
-          <span class="year-month-count">${month.items.length} ${month.items.length === 1 ? "activiteit" : "activiteiten"}</span>
+          <div><span class="year-month-kicker">Maand ${activeMonthPosition} van ${months.length}</span><h3>${escapeHtml(activeMonth.monthLabel)}</h3></div>
+          <span class="year-month-count">${activeMonth.items.length} ${activeMonth.items.length === 1 ? "activiteit" : "activiteiten"}</span>
         </header>
         <div class="year-month-items">
-          ${month.items.map((item) => {
+          ${activeMonth.items.map((item) => {
             const timestamp = yearAgendaItemTimestamp(item);
             const isPast = timestamp !== null && timestamp < startOfToday.getTime();
             const isNext = nextItem && String(nextItem.id) === String(item.id);
@@ -1351,7 +1347,6 @@ function renderYearAgenda() {
           }).join("")}
         </div>
       </article>
-    `).join("")}
   `;
 }
 
