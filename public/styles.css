@@ -1225,6 +1225,11 @@ main {
   padding-top: 18px;
 }
 
+.activity-actions-admin-only .activity-admin-actions {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .activity-excel-button {
   min-height: 44px;
   border: 0;

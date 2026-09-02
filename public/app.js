@@ -1372,10 +1372,11 @@ function renderPublicActivities() {
   els.publicActivityList.innerHTML = state.activities
     .map((activity) => {
       const optOut = activity.responseMode === "optout";
+      const canParticipate = Boolean(state.user && !state.user.isAdmin);
       const full = !optOut && activity.capacity && activity.registrationCount >= activity.capacity;
       const registrationOpen = activityRegistrationIsOpen(activity);
-      const canRegister = Boolean(state.user && (optOut ? activity.wasCancelled : !activity.isRegistered && registrationOpen && !full));
-      const canCancel = Boolean(state.user && !activity.wasCancelled);
+      const canRegister = Boolean(canParticipate && (optOut ? activity.wasCancelled : !activity.isRegistered && registrationOpen && !full));
+      const canCancel = Boolean(canParticipate && !activity.wasCancelled);
       const registrationState = optOut
         ? activity.wasCancelled
           ? activity.lateCancelled ? "Te laat afgemeld" : "Je bent afgemeld"
@@ -1422,8 +1423,8 @@ function renderPublicActivities() {
             ${activity.files?.length ? `<div class="activity-files"><span class="module-label">Bestanden</span>${activity.files.map((file) => `<button class="file-link" type="button" data-download-activity-file="${file.id}" data-activity-id="${activity.id}" data-file-name="${escapeHtml(file.fileName)}" data-file-type="${escapeHtml(file.mimeType)}">${escapeHtml(file.fileName)}</button>${state.user?.isAdmin ? `<button class="file-delete" type="button" data-delete-activity-file="${file.id}" data-activity-id="${activity.id}" aria-label="Verwijder ${escapeHtml(file.fileName)}">×</button>` : ""}`).join("")}</div>` : ""}
             ${renderActivityParticipants(activity)}
           </div>
-          <div class="activity-actions">
-            <div class="activity-member-actions">
+          <div class="activity-actions ${state.user?.isAdmin ? "activity-actions-admin-only" : ""}">
+            <div class="activity-member-actions ${state.user?.isAdmin ? "hidden" : ""}">
               <span class="module-label">Jouw deelname</span>
               <button class="primary" data-register="${activity.id}" data-registration-action="join" ${canRegister ? "" : "disabled"}>${optOut ? "Afmelding intrekken" : "Inschrijven"}</button>
               <button class="secondary" data-register="${activity.id}" data-registration-action="cancel" ${canCancel ? "" : "disabled"}>${optOut ? "Ik kan niet" : "Afmelden"}</button>

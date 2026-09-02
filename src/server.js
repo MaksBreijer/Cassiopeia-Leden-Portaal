@@ -865,6 +865,7 @@ function activityFromBody(body, existing = {}) {
 }
 
 function activityRows(userId) {
+  const canParticipate = !Boolean(db.prepare("SELECT is_admin FROM users WHERE id = ?").get(userId)?.is_admin);
   const rows = db
     .prepare(`
       SELECT a.*,
@@ -884,12 +885,12 @@ function activityRows(userId) {
       FROM registrations r
       JOIN users u ON u.id = r.user_id
       JOIN activities a ON a.id = r.activity_id
-      WHERE r.cancelled_at IS NULL AND u.account_status = 'active' AND a.response_mode = 'signup'
+      WHERE r.cancelled_at IS NULL AND u.account_status = 'active' AND u.is_admin = 0 AND a.response_mode = 'signup'
       UNION ALL
       SELECT a.id AS activity_id, u.id, u.name, u.avatar
       FROM activities a
       CROSS JOIN users u
-      WHERE a.response_mode = 'optout' AND u.account_status = 'active'
+      WHERE a.response_mode = 'optout' AND u.account_status = 'active' AND u.is_admin = 0
         AND NOT EXISTS (
           SELECT 1 FROM registrations cancelled
           WHERE cancelled.activity_id = a.id AND cancelled.user_id = u.id AND cancelled.cancelled_at IS NOT NULL
@@ -926,10 +927,10 @@ function activityRows(userId) {
       registrationDeadline: deadline?.toISOString() || null,
       registrationOverride: row.registration_override || "automatic",
       registrationOpen: isRegistrationOpen(row.starts_at, row.registration_override),
-      isRegistered: responseMode === "optout" ? !Boolean(row.was_cancelled) : Boolean(row.is_registered),
-      wasCancelled: Boolean(row.was_cancelled),
-      lateCancelled: Boolean(row.late_cancelled),
-      cancellationReason: row.cancellation_reason || "",
+      isRegistered: canParticipate && (responseMode === "optout" ? !Boolean(row.was_cancelled) : Boolean(row.is_registered)),
+      wasCancelled: canParticipate && Boolean(row.was_cancelled),
+      lateCancelled: canParticipate && Boolean(row.late_cancelled),
+      cancellationReason: canParticipate ? row.cancellation_reason || "" : "",
       files: filesByActivity.get(row.id) || [],
       participants
     };
@@ -1339,6 +1340,8 @@ app.delete("/api/activities/:id/files/:fileId", requireAuth, requireAdmin, (req,
 });
 
 app.post("/api/activities/:id/register", requireAuth, (req, res) => {
+  const user = db.prepare("SELECT is_admin FROM users WHERE id = ?").get(req.session.userId);
+  if (user?.is_admin) return res.status(403).json({ error: "Beheeraccounts nemen niet deel aan activiteiten." });
   const activity = db.prepare("SELECT * FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
   const responseMode = activity.response_mode || "signup";
@@ -1360,6 +1363,8 @@ app.post("/api/activities/:id/register", requireAuth, (req, res) => {
 });
 
 app.delete("/api/activities/:id/register", requireAuth, (req, res) => {
+  const user = db.prepare("SELECT is_admin FROM users WHERE id = ?").get(req.session.userId);
+  if (user?.is_admin) return res.status(403).json({ error: "Beheeraccounts nemen niet deel aan activiteiten." });
   const activity = db.prepare("SELECT starts_at, response_mode FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
   const reason = String(req.body?.reason || "").trim();
@@ -1384,14 +1389,14 @@ app.get("/api/activities/:id/registrations", requireAuth, requireAdmin, (req, re
         SELECT u.*, r.created_at AS registration_created_at, r.cancelled_at, r.late_cancelled, r.cancellation_reason
         FROM users u
         LEFT JOIN registrations r ON r.activity_id = ? AND r.user_id = u.id
-        WHERE u.account_status = 'active'
+        WHERE u.account_status = 'active' AND u.is_admin = 0
         ORDER BY r.cancelled_at IS NOT NULL ASC, u.name ASC
       `).all(req.params.id)
     : db.prepare(`
         SELECT u.*, r.created_at AS registration_created_at, r.cancelled_at, r.late_cancelled, r.cancellation_reason
         FROM registrations r
         JOIN users u ON u.id = r.user_id
-        WHERE r.activity_id = ?
+        WHERE r.activity_id = ? AND u.is_admin = 0
         ORDER BY r.created_at ASC
       `).all(req.params.id);
   res.json({

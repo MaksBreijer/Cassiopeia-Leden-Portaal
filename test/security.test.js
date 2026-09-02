@@ -132,6 +132,8 @@ test("members can update their own address from their profile", () => {
   assert.match(html, /id="birthdayList"/);
   assert.match(html, /Vandaag jarig/);
   assert.match(appScript, /isBirthdayToday\(member\.birthday\)/);
+  assert.match(appScript, /activity-actions-admin-only/);
+  assert.match(server, /Beheeraccounts nemen niet deel aan activiteiten/);
   assert.match(html, /name="responseMode"/);
   assert.match(html, /id="cancellationForm"/);
   assert.match(appScript, /syncAddressFields\(els\.profileForm\)/);
@@ -443,16 +445,8 @@ test("admins invite members who set and reset their own password", async (t) => 
     method: "POST",
     cookie: adminLogin.cookie
   });
-  assert.equal(registration.response.status, 200);
-  const cancellation = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
-    method: "DELETE",
-    cookie: adminLogin.cookie
-  });
-  assert.equal(cancellation.response.status, 200);
-  assert.equal(cancellation.data.lateCancelled, false);
-  const registrations = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/registrations`, { cookie: adminLogin.cookie });
-  assert.equal(registrations.response.status, 200);
-  assert.equal(registrations.data.registrations[0].lateCancelled, false);
+  assert.equal(registration.response.status, 403);
+  assert.match(registration.data.error, /Beheeraccounts/i);
 
   const closedStart = new Date();
   closedStart.setDate(Math.min(28, closedStart.getDate()));
@@ -468,8 +462,7 @@ test("admins invite members who set and reset their own password", async (t) => 
     method: "POST",
     cookie: adminLogin.cookie
   });
-  assert.equal(closedRegistration.response.status, 400);
-  assert.match(closedRegistration.data.error, /gesloten/i);
+  assert.equal(closedRegistration.response.status, 403);
   const reopenedActivity = await jsonRequest(baseUrl, `/api/activities/${closedActivity.data.activity.id}`, {
     method: "PUT",
     cookie: adminLogin.cookie,
@@ -482,7 +475,7 @@ test("admins invite members who set and reset their own password", async (t) => 
     method: "POST",
     cookie: adminLogin.cookie
   });
-  assert.equal(reopenedRegistration.response.status, 200);
+  assert.equal(reopenedRegistration.response.status, 403);
 
   const document = await jsonRequest(baseUrl, "/api/documents", {
     method: "POST",
@@ -614,6 +607,12 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(invalidBirthday.response.status, 400);
 
+  const memberReopenedRegistration = await jsonRequest(baseUrl, `/api/activities/${closedActivity.data.activity.id}/register`, {
+    method: "POST",
+    cookie: activated.cookie
+  });
+  assert.equal(memberReopenedRegistration.response.status, 200);
+
   const directOptOutFromSignup = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
     method: "DELETE",
     cookie: activated.cookie,
@@ -633,7 +632,7 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(optOutActivity.response.status, 201);
   assert.equal(optOutActivity.data.activity.responseMode, "optout");
-  assert.equal(optOutActivity.data.activity.registrationCount, 2);
+  assert.equal(optOutActivity.data.activity.registrationCount, 1);
 
   const optOutMemberView = await jsonRequest(baseUrl, "/api/activities", { cookie: activated.cookie });
   const memberOptOutActivity = optOutMemberView.data.activities.find((item) => item.id === optOutActivity.data.activity.id);
@@ -653,17 +652,12 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.equal(cancelledMember.cancellationReason, "Familieverjaardag");
   assert.ok(cancelledMember.cancelledAt);
 
-  await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/register`, {
+  const adminCannotOptOut = await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/register`, {
     method: "DELETE",
     cookie: adminLogin.cookie,
     body: { reason: "Alleen het bestuur mag dit lezen" }
   });
-  const memberCannotSeeOtherReason = await jsonRequest(baseUrl, "/api/activities", { cookie: activated.cookie });
-  assert.doesNotMatch(JSON.stringify(memberCannotSeeOtherReason.data), /Alleen het bestuur mag dit lezen/);
-  await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/register`, {
-    method: "POST",
-    cookie: adminLogin.cookie
-  });
+  assert.equal(adminCannotOptOut.response.status, 403);
 
   const undoCancellation = await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/register`, {
     method: "POST",
