@@ -102,8 +102,6 @@ app.use("/api", (req, res, next) => {
 
 function sendActivitySharePage(activityId, res, next) {
   if (!/^\d+$/.test(activityId)) return next();
-  const activityExists = db.prepare("SELECT 1 FROM activities WHERE id = ?").get(activityId);
-  if (!activityExists) return next();
 
   const shareUrl = `https://www.dispuutcassiopeia.nl/activity/${activityId}`;
   const html = fs.readFileSync(INDEX_HTML_PATH, "utf8")
