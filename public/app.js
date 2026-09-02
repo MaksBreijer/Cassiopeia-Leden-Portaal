@@ -635,7 +635,7 @@ function renderBirthdays() {
 
   if (!birthdays.length) {
     els.birthdaySummary.textContent = "Vandaag is er niemand jarig.";
-    els.birthdayList.innerHTML = '<div class="birthday-empty"><strong>Vandaag geen jarige</strong><span>Morgen wordt dit automatisch opnieuw bekeken.</span></div>';
+    els.birthdayList.innerHTML = '<div class="birthday-empty"><strong>Vandaag geen jarige</strong></div>';
     return;
   }
 
