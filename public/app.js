@@ -166,16 +166,21 @@ const els = {
   yearAgendaSourceTitle: document.querySelector("#yearAgendaSourceTitle"),
   yearAgendaSourceLabel: document.querySelector("#yearAgendaSourceLabel"),
   publicActivityList: document.querySelector("#publicActivityList"),
+  adminActivityList: document.querySelector("#adminActivityList"),
+  adminYearAgendaList: document.querySelector("#adminYearAgendaList"),
+  adminAgendaSourceSummary: document.querySelector("#adminAgendaSourceSummary"),
   activityArchiveList: document.querySelector("#activityArchiveList"),
   activityArchiveYearFilter: document.querySelector("#activityArchiveYearFilter"),
   activityArchiveMonthFilter: document.querySelector("#activityArchiveMonthFilter"),
   documentList: document.querySelector("#documentList"),
+  adminDocumentList: document.querySelector("#adminDocumentList"),
   documentViewerDialog: document.querySelector("#documentViewerDialog"),
   documentViewerTitle: document.querySelector("#documentViewerTitle"),
   documentViewerFrame: document.querySelector("#documentViewerFrame"),
   documentViewerPages: document.querySelector("#documentViewerPages"),
   documentDownloadLink: document.querySelector("#documentDownloadLink"),
   confessionList: document.querySelector("#confessionList"),
+  adminConfessionList: document.querySelector("#adminConfessionList"),
   confessionForm: document.querySelector("#confessionForm"),
   confessionBody: document.querySelector("#confessionBody"),
   documentUploadForm: document.querySelector("#documentUploadForm"),
@@ -197,9 +202,6 @@ const els = {
   cribMap: document.querySelector("#cribMap"),
   mapMemberCount: document.querySelector("#mapMemberCount"),
   mapUnmapped: document.querySelector("#mapUnmapped"),
-  newMemberBtn: document.querySelector("#newMemberBtn"),
-  newYearAgendaItemBtn: document.querySelector("#newYearAgendaItemBtn"),
-  newActivityBtn: document.querySelector("#newActivityBtn"),
   memberDialog: document.querySelector("#memberDialog"),
   memberForm: document.querySelector("#memberForm"),
   memberDialogTitle: document.querySelector("#memberDialogTitle"),
@@ -1165,7 +1167,7 @@ function accountStatusLabel(status) {
 
 function renderAdminAccounts() {
   if (!els.adminAccountList) return;
-  if (!state.user?.isAdmin) {
+  if (!state.user?.isAdmin || !IS_ADMIN_PORTAL) {
     els.adminAccountList.innerHTML = "";
     syncMemberSelection([]);
     return;
@@ -1173,7 +1175,7 @@ function renderAdminAccounts() {
   const query = String(els.adminSearch?.value || "").trim().toLocaleLowerCase("nl");
   const members = state.members.filter((member) => {
     if (!query) return true;
-    return [member.name, member.email, member.yearLayer, member.roleTitle]
+    return [member.name, member.email, member.yearLayer, member.roleTitle, member.committee]
       .some((value) => String(value || "").toLocaleLowerCase("nl").includes(query));
   });
   if (els.adminActiveCount) els.adminActiveCount.textContent = String(state.members.filter((member) => member.accountStatus === "active").length);
@@ -1261,7 +1263,7 @@ async function showMemberDetail(id) {
     <p class="meta">Verjaardag: ${escapeHtml(formatBirthday(member.birthday))}</p>
     <p class="meta">Adres: ${escapeHtml(member.address || "Niet ingevuld")}</p>
     ${
-      state.user?.isAdmin
+      state.user?.isAdmin && IS_ADMIN_PORTAL
         ? `<div class="row-actions admin-controls">
             <button class="secondary" data-edit-member="${member.id}">Bewerken</button>
             ${
@@ -1334,9 +1336,8 @@ async function loadYearAgenda() {
     state.yearAgendaSource = { type: "local", label: "Cassiopeia" };
     showToast("Jaarplanning lokaal geladen.");
   }
-  const managedInGoogle = state.yearAgendaSource.type === "google";
-  if (els.newYearAgendaItemBtn) els.newYearAgendaItemBtn.classList.toggle("hidden", !state.user?.isAdmin || managedInGoogle);
   renderYearAgenda();
+  renderAdminYearAgenda();
   renderPortalOverview();
 }
 
@@ -1464,7 +1465,7 @@ function renderYearAgenda() {
         <span><strong>${months.length}</strong> maanden</span>
       </div>
       <span class="year-agenda-summary-line">${escapeHtml(summary)}</span>
-      ${state.user?.isAdmin && state.yearAgendaSource.type !== "google" ? '<button type="button" class="summary-edit-action" data-edit-year-agenda-summary>Bewerk</button>' : ""}
+      ${state.user?.isAdmin && IS_ADMIN_PORTAL && state.yearAgendaSource.type !== "google" ? '<button type="button" class="summary-edit-action" data-edit-year-agenda-summary>Bewerk</button>' : ""}
     `;
   }
 
@@ -1497,7 +1498,7 @@ function renderYearAgenda() {
                   ${timeLabel ? `<span class="year-agenda-time">${escapeHtml(timeLabel)}</span>` : ""}
                   ${isNext ? '<span class="year-agenda-next-label">Eerstvolgende</span>' : ""}
                 </span>
-                ${state.user?.isAdmin && state.yearAgendaSource.type !== "google"
+                ${state.user?.isAdmin && IS_ADMIN_PORTAL && state.yearAgendaSource.type !== "google"
                   ? `<span class="year-agenda-actions">
                       <button type="button" class="icon-action" data-edit-year-agenda="${item.id}" aria-label="Agendapunt bewerken" title="Bewerk">B</button>
                       <button type="button" class="icon-action danger-action" data-delete-year-agenda="${item.id}" aria-label="Agendapunt verwijderen" title="Verwijder">x</button>
@@ -1510,9 +1511,9 @@ function renderYearAgenda() {
   `;
 }
 
-function renderPublicActivities() {
+function activityListHtml(adminMode = false) {
   if (!state.activities.length) {
-    els.publicActivityList.innerHTML = `
+    return `
       <article class="activity-card">
         <div>
           <p class="eyebrow">Agenda</p>
@@ -1521,10 +1522,9 @@ function renderPublicActivities() {
         </div>
       </article>
     `;
-    return;
   }
 
-  els.publicActivityList.innerHTML = state.activities
+  return state.activities
     .map((activity) => {
       const optOut = activity.responseMode === "optout";
       const canParticipate = Boolean(state.user && !state.user.isAdmin);
@@ -1561,7 +1561,7 @@ function renderPublicActivities() {
               ? `Schrijf je in als je komt, of meld je af als je niet kunt. Reageren kan tot ${formatActivityDeadline(activity)}.`
               : `De inschrijving sloot op ${formatActivityDeadline(activity)}. Afmelden blijft mogelijk.`;
       return `
-        <article id="activiteit-${activity.id}" class="activity-card" data-activity-card="${activity.id}">
+        <article ${adminMode ? "" : `id="activiteit-${activity.id}"`} class="activity-card ${state.user?.isAdmin && !adminMode ? "activity-card-readonly" : ""}" data-activity-card="${activity.id}">
           <div class="activity-card-content">
             <div class="activity-card-intro ${activity.hasImage ? "has-image" : ""}">
               <div>
@@ -1580,10 +1580,10 @@ function renderPublicActivities() {
               <span><strong>${optOut ? "Afmelddeadline" : "Inschrijfdeadline"}</strong>${formatActivityDeadline(activity)}</span>
             </div>
             ${activity.wasCancelled ? `<p class="late-cancelled-note">${activity.lateCancelled ? "Afmelding te laat geregistreerd." : "Je bent afgemeld."}</p>` : ""}
-            ${activity.files?.length ? `<div class="activity-files"><span class="module-label">Bestanden</span>${activity.files.map((file) => `<button class="file-link" type="button" data-download-activity-file="${file.id}" data-activity-id="${activity.id}" data-file-name="${escapeHtml(file.fileName)}" data-file-type="${escapeHtml(file.mimeType)}">${escapeHtml(file.fileName)}</button>${state.user?.isAdmin ? `<button class="file-delete" type="button" data-delete-activity-file="${file.id}" data-activity-id="${activity.id}" aria-label="Verwijder ${escapeHtml(file.fileName)}">×</button>` : ""}`).join("")}</div>` : ""}
+            ${activity.files?.length ? `<div class="activity-files"><span class="module-label">Bestanden</span>${activity.files.map((file) => `<button class="file-link" type="button" data-download-activity-file="${file.id}" data-activity-id="${activity.id}" data-file-name="${escapeHtml(file.fileName)}" data-file-type="${escapeHtml(file.mimeType)}">${escapeHtml(file.fileName)}</button>${adminMode ? `<button class="file-delete" type="button" data-delete-activity-file="${file.id}" data-activity-id="${activity.id}" aria-label="Verwijder ${escapeHtml(file.fileName)}">×</button>` : ""}`).join("")}</div>` : ""}
             ${renderActivityParticipants(activity)}
           </div>
-          <div class="activity-actions ${state.user?.isAdmin ? "activity-actions-admin-only" : ""}">
+          <div class="activity-actions ${adminMode ? "activity-actions-admin-only" : ""}">
             <div class="activity-member-actions ${state.user?.isAdmin ? "hidden" : ""}">
               <span class="module-label">Jouw deelname</span>
               <button class="primary" data-register="${activity.id}" data-registration-action="join" ${canRegister ? "" : "disabled"}>${optOut ? "Afmelding intrekken" : "Inschrijven"}</button>
@@ -1591,7 +1591,7 @@ function renderPublicActivities() {
               <p>${registrationNote}${canCancel && Date.now() >= activityRegistrationDeadline(activity)?.getTime() ? " Afmelden kan nog, maar wordt als te laat gemarkeerd." : ""}</p>
             </div>
             ${
-              state.user?.isAdmin
+              adminMode
                 ? `<div class="activity-admin-actions">
                     <span class="module-label">Beheer</span>
                     ${optOut ? "" : `<button class="secondary" data-toggle-activity-registration="${activity.id}" data-registration-override="${registrationOpen ? "closed" : "open"}">${registrationOpen ? "Inschrijving sluiten" : "Inschrijving openen"}</button>`}
@@ -1613,6 +1613,11 @@ function renderPublicActivities() {
     .join("");
 }
 
+function renderPublicActivities() {
+  if (els.publicActivityList) els.publicActivityList.innerHTML = activityListHtml(false);
+  if (els.adminActivityList) els.adminActivityList.innerHTML = state.user?.isAdmin && IS_ADMIN_PORTAL ? activityListHtml(true) : "";
+}
+
 function applySiteAssets() {
   Object.entries(state.siteAssets).forEach(([key, src]) => {
     document.querySelectorAll(`[data-site-asset="${key}"]`).forEach((image) => {
@@ -1622,31 +1627,35 @@ function applySiteAssets() {
 }
 
 function renderDocuments() {
-  if (!els.documentList) return;
   if (!state.documents.length) {
-    els.documentList.innerHTML = '<p class="meta">Er zijn nog geen documenten gedeeld.</p>';
+    if (els.documentList) els.documentList.innerHTML = '<p class="meta">Er zijn nog geen documenten gedeeld.</p>';
+    if (els.adminDocumentList) els.adminDocumentList.innerHTML = state.user?.isAdmin && IS_ADMIN_PORTAL ? '<p class="meta">Er zijn nog geen documenten gedeeld.</p>' : "";
     return;
   }
-  els.documentList.innerHTML = state.documents.map((document) => `
+  const rows = (adminMode) => state.documents.map((document) => `
     <article class="document-row">
       <div><span class="document-category">${escapeHtml(document.category.toUpperCase())}</span><strong>${escapeHtml(document.title)}</strong><p class="meta">${escapeHtml(document.fileName)} · ${formatDate(document.createdAt)}</p></div>
-      <div class="row-actions"><button class="secondary" data-download-document="${document.id}">Openen</button>${state.user?.isAdmin ? `<button class="danger" data-delete-document="${document.id}">Verwijderen</button>` : ""}</div>
+      <div class="row-actions"><button class="secondary" data-download-document="${document.id}">Openen</button>${adminMode ? `<button class="danger" data-delete-document="${document.id}">Verwijderen</button>` : ""}</div>
     </article>
   `).join("");
+  if (els.documentList) els.documentList.innerHTML = rows(false);
+  if (els.adminDocumentList) els.adminDocumentList.innerHTML = state.user?.isAdmin && IS_ADMIN_PORTAL ? rows(true) : "";
 }
 
 function renderConfessions() {
-  if (!els.confessionList) return;
   if (!state.confessions.length) {
-    els.confessionList.innerHTML = '<p class="meta">Nog geen biechten geplaatst.</p>';
+    if (els.confessionList) els.confessionList.innerHTML = '<p class="meta">Nog geen biechten geplaatst.</p>';
+    if (els.adminConfessionList) els.adminConfessionList.innerHTML = state.user?.isAdmin && IS_ADMIN_PORTAL ? '<p class="meta">Nog geen biechten geplaatst.</p>' : "";
     return;
   }
-  els.confessionList.innerHTML = state.confessions.map((confession) => `
+  const rows = (adminMode) => state.confessions.map((confession) => `
     <article class="confession-card">
       <p>${escapeHtml(confession.body)}</p>
-      <div class="confession-meta"><span>${formatDate(confession.createdAt)}</span>${state.user?.isAdmin ? `<button class="text-button danger-text" data-delete-confession="${confession.id}">Verwijderen</button>` : ""}</div>
+      <div class="confession-meta"><span>${formatDate(confession.createdAt)}</span>${adminMode ? `<button class="text-button danger-text" data-delete-confession="${confession.id}">Verwijderen</button>` : ""}</div>
     </article>
   `).join("");
+  if (els.confessionList) els.confessionList.innerHTML = rows(false);
+  if (els.adminConfessionList) els.adminConfessionList.innerHTML = state.user?.isAdmin && IS_ADMIN_PORTAL ? rows(true) : "";
 }
 
 async function downloadProtectedFile(path, fileName, mimeType) {
@@ -1758,7 +1767,7 @@ function googleCalendarUrl(activity) {
 
 function renderActivityArchive() {
   if (!els.activityArchiveList) return;
-  if (!state.user?.isAdmin) {
+  if (!state.user?.isAdmin || !IS_ADMIN_PORTAL) {
     els.activityArchiveList.innerHTML = "";
     return;
   }
@@ -1818,10 +1827,49 @@ function renderActivityArchive() {
   `).join("");
 }
 
+function renderAdminYearAgenda() {
+  if (!els.adminYearAgendaList) return;
+  if (!state.user?.isAdmin || !IS_ADMIN_PORTAL) {
+    els.adminYearAgendaList.innerHTML = "";
+    return;
+  }
+  const managedInGoogle = state.yearAgendaSource.type === "google";
+  document.querySelectorAll("[data-new-year-agenda-item]").forEach((button) => button.classList.toggle("hidden", managedInGoogle));
+  if (els.adminAgendaSourceSummary) {
+    els.adminAgendaSourceSummary.textContent = managedInGoogle
+      ? `${state.yearAgendaItems.length} afspraken worden beheerd via Google Agenda. Pas ze daar aan of wijzig de koppeling via Agenda-instellingen.`
+      : `${state.yearAgendaItems.length} agendapunten worden op de website beheerd. Voeg hier punten toe of wijzig ze direct.`;
+  }
+  if (!state.yearAgendaItems.length) {
+    els.adminYearAgendaList.innerHTML = '<p class="archive-empty">Er zijn nog geen agendapunten toegevoegd.</p>';
+    return;
+  }
+  const items = [...state.yearAgendaItems].sort((a, b) => {
+    const aTime = yearAgendaItemTimestamp(a);
+    const bTime = yearAgendaItemTimestamp(b);
+    if (aTime !== null && bTime !== null) return aTime - bTime;
+    return Number(a.sortOrder || 0) - Number(b.sortOrder || 0);
+  });
+  els.adminYearAgendaList.innerHTML = items.map((item) => {
+    const timeLabel = yearAgendaTimeLabel(item);
+    return `
+      <article class="admin-agenda-row">
+        <div class="admin-agenda-date"><span>${escapeHtml(item.monthLabel || "Datum volgt")}</span><strong>${escapeHtml(item.dayLabel || "?")}</strong></div>
+        <div class="admin-agenda-copy"><strong>${escapeHtml(item.title)}</strong>${timeLabel ? `<p>${escapeHtml(timeLabel)} uur</p>` : '<p>Geen tijd ingesteld</p>'}</div>
+        ${managedInGoogle
+          ? '<span class="badge">Google Agenda</span>'
+          : `<div class="row-actions"><button class="secondary" type="button" data-edit-year-agenda="${item.id}">Bewerken</button><button class="danger" type="button" data-delete-year-agenda="${item.id}">Verwijderen</button></div>`}
+      </article>`;
+  }).join("");
+}
+
 function renderAdmin() {
   document.querySelectorAll(".admin-only").forEach((el) => el.classList.toggle("hidden", !state.user?.isAdmin));
-  if (els.newYearAgendaItemBtn && state.yearAgendaSource.type === "google") els.newYearAgendaItemBtn.classList.add("hidden");
   renderYearAgenda();
+  renderAdminYearAgenda();
+  renderPublicActivities();
+  renderDocuments();
+  renderConfessions();
   renderActivityArchive();
   renderAdminAccounts();
 }
@@ -1952,6 +2000,7 @@ async function saveYearAgendaSummary(summary) {
     state.yearAgendaSummaryText = summary;
     saveLocalYearAgendaSummary(summary);
     renderYearAgenda();
+    renderAdminYearAgenda();
     return;
   }
   const data = await api("/api/year-agenda-summary", {
@@ -1960,6 +2009,7 @@ async function saveYearAgendaSummary(summary) {
   });
   state.yearAgendaSummaryText = data.summary;
   renderYearAgenda();
+  renderAdminYearAgenda();
 }
 
 async function showRegistrations(activityId) {
@@ -2259,7 +2309,7 @@ els.adminSelectAll?.addEventListener("change", () => {
   const query = String(els.adminSearch?.value || "").trim().toLocaleLowerCase("nl");
   const visibleMembers = state.members.filter((member) => {
     if (!query) return true;
-    return [member.name, member.email, member.yearLayer, member.roleTitle]
+    return [member.name, member.email, member.yearLayer, member.roleTitle, member.committee]
       .some((value) => String(value || "").toLocaleLowerCase("nl").includes(query));
   });
   visibleMembers.filter((member) => !member.isAdmin).forEach((member) => {
@@ -2279,7 +2329,7 @@ els.adminAccountList?.addEventListener("change", (event) => {
   if (row) row.dataset.selected = String(checkbox.checked);
   syncMemberSelection(state.members.filter((member) => {
     const query = String(els.adminSearch?.value || "").trim().toLocaleLowerCase("nl");
-    return !query || [member.name, member.email, member.yearLayer, member.roleTitle]
+    return !query || [member.name, member.email, member.yearLayer, member.roleTitle, member.committee]
       .some((value) => String(value || "").toLocaleLowerCase("nl").includes(query));
   }));
 });
@@ -2291,10 +2341,6 @@ els.clearMemberFilters.addEventListener("click", () => {
   renderMemberFilters();
   renderMembers();
 });
-els.newMemberBtn.addEventListener("click", () => openMemberDialog());
-els.newYearAgendaItemBtn.addEventListener("click", () => openYearAgendaDialog());
-els.newActivityBtn.addEventListener("click", () => openActivityDialog());
-
 els.activityForm.elements.activityImage.addEventListener("change", async () => {
   const file = els.activityForm.elements.activityImage.files[0];
   if (!file) return;
@@ -2333,7 +2379,7 @@ async function openCalendarSubscriptionDialog() {
     els.calendarSubscriptionIntro.textContent = `${subscription.sourceLabel} blijft na het koppelen automatisch bijgewerkt.`;
     els.openGoogleCalendar.classList.toggle("hidden", !subscription.googleCalendarUrl);
     if (subscription.googleCalendarUrl) els.openGoogleCalendar.href = subscription.googleCalendarUrl;
-    els.calendarIntegrationAdmin.classList.toggle("hidden", !integration.canConfigure);
+    els.calendarIntegrationAdmin.classList.toggle("hidden", !integration.canConfigure || !IS_ADMIN_PORTAL);
   } catch (error) {
     els.calendarSubscriptionIntro.textContent = error.message;
   }
@@ -2604,6 +2650,12 @@ document.body.addEventListener("click", async (event) => {
   const newMemberButton = event.target.closest("[data-new-member]");
   if (newMemberButton) return openMemberDialog();
 
+  const newActivityButton = event.target.closest("[data-new-activity]");
+  if (newActivityButton) return openActivityDialog();
+
+  const newYearAgendaItemButton = event.target.closest("[data-new-year-agenda-item]");
+  if (newYearAgendaItemButton) return openYearAgendaDialog();
+
   const importMembersButton = event.target.closest("[data-import-members]");
   if (importMembersButton) return openMemberImportDialog();
 
@@ -2695,6 +2747,7 @@ document.body.addEventListener("click", async (event) => {
       state.yearAgendaItems = state.yearAgendaItems.filter((item) => String(item.id) !== deleteYearAgendaBtn.dataset.deleteYearAgenda);
       saveLocalYearAgendaItems(state.yearAgendaItems);
       renderYearAgenda();
+      renderAdminYearAgenda();
       return showToast("Agendapunt verwijderd.");
     }
     await api(`/api/year-agenda/${deleteYearAgendaBtn.dataset.deleteYearAgenda}`, { method: "DELETE" });
@@ -2811,6 +2864,7 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
         saveLocalYearAgendaItems(nextItems);
         els.yearAgendaDialog.close();
         renderYearAgenda();
+        renderAdminYearAgenda();
         return showToast(`${bulkItems.length} agendapunten opgeslagen.`);
       }
 
@@ -2834,6 +2888,7 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
       saveLocalYearAgendaItems(nextItems);
       els.yearAgendaDialog.close();
       renderYearAgenda();
+      renderAdminYearAgenda();
       return showToast("Agendapunt opgeslagen.");
     }
 

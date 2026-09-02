@@ -1076,6 +1076,14 @@ main {
   box-shadow: var(--shadow-md);
 }
 
+.activity-card-readonly {
+  grid-template-columns: 1fr;
+}
+
+.activity-card-readonly .activity-actions {
+  display: none;
+}
+
 .activity-card-content {
   padding: clamp(24px, 4vw, 38px);
 }
@@ -2125,6 +2133,44 @@ label {
 }
 
 /* Admin */
+.admin-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.admin-quick-action {
+  min-height: 104px;
+  display: grid;
+  align-content: space-between;
+  gap: 18px;
+  border: 1px solid rgba(128, 104, 146, 0.2);
+  border-radius: 18px;
+  padding: 18px;
+  color: var(--plum);
+  background: #fff;
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-quick-action:hover {
+  border-color: rgba(128, 104, 146, 0.42);
+  transform: translateY(-2px);
+}
+
+.admin-quick-action span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.admin-quick-action strong {
+  font-size: 15px;
+}
+
 .admin-stat-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2189,6 +2235,83 @@ label {
   color: #fff;
   background: var(--success);
   font-weight: 850;
+}
+
+.admin-management-module {
+  margin-bottom: 18px;
+}
+
+.admin-management-module > .section-head {
+  margin-bottom: 22px;
+}
+
+.admin-activity-list,
+.admin-year-agenda-list,
+.admin-document-list,
+.admin-confession-list {
+  max-height: min(720px, 70vh);
+  max-height: min(720px, 70dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
+}
+
+.admin-year-agenda-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-agenda-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  background: var(--lavender-50);
+}
+
+.admin-agenda-date {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.admin-agenda-date span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-agenda-date strong,
+.admin-agenda-copy > strong {
+  color: var(--plum);
+}
+
+.admin-agenda-copy p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.admin-document-upload {
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 22px;
+}
+
+.admin-member-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.admin-member-actions .search-field {
+  min-width: min(380px, 40vw);
 }
 
 .activity-archive-module {
@@ -3813,6 +3936,33 @@ dialog::backdrop {
     grid-template-columns: 1fr;
   }
 
+  .admin-quick-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-agenda-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .admin-agenda-copy {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .admin-agenda-row .row-actions {
+    grid-column: 1 / -1;
+  }
+
+  .admin-member-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-member-actions .search-field,
+  .admin-member-actions button {
+    width: 100%;
+  }
+
   .activity-archive-row {
     grid-template-columns: 50px minmax(0, 1fr);
   }
@@ -3848,7 +3998,8 @@ dialog::backdrop {
   }
 
   .admin-banner-actions,
-  .admin-banner-actions button {
+  .admin-banner-actions button,
+  .admin-banner-actions a {
     width: 100%;
   }
 
@@ -3932,6 +4083,22 @@ dialog::backdrop {
     max-height: 62vh;
     max-height: 62dvh;
     gap: 8px;
+  }
+
+  .admin-quick-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-quick-action {
+    min-height: 82px;
+  }
+
+  .admin-activity-list,
+  .admin-year-agenda-list,
+  .admin-document-list,
+  .admin-confession-list {
+    max-height: 62vh;
+    max-height: 62dvh;
   }
 
   .portal-hero-copy {

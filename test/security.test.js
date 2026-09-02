@@ -125,6 +125,8 @@ test("members can update their own address from their profile", () => {
   const server = fs.readFileSync(path.join(projectRoot, "src", "server.js"), "utf8");
   const styles = fs.readFileSync(path.join(projectRoot, "public", "styles.css"), "utf8");
   const profileForm = html.match(/<form id="profileForm"[\s\S]*?<\/form>/)?.[0] || "";
+  const documentsSection = html.match(/<section id="documenten"[\s\S]*?<section id="biechten"/)?.[0] || "";
+  const adminSection = html.match(/<section id="beheer"[\s\S]*?<\/main>/)?.[0] || "";
 
   assert.match(profileForm, /name="street"/);
   assert.match(profileForm, /name="houseNumber"/);
@@ -149,6 +151,15 @@ test("members can update their own address from their profile", () => {
   assert.match(html, /id="documentViewerPages"/);
   assert.match(html, /href="\/admin">Admin<\/a>/);
   assert.match(html, /admin-portal-only hidden/);
+  assert.match(adminSection, /id="adminActivityList"/);
+  assert.match(adminSection, /id="adminYearAgendaList"/);
+  assert.match(adminSection, /id="adminDocumentList"/);
+  assert.match(adminSection, /id="adminConfessionList"/);
+  assert.match(adminSection, /id="documentUploadForm"/);
+  assert.match(adminSection, /data-new-activity/);
+  assert.match(adminSection, /data-new-member/);
+  assert.doesNotMatch(documentsSection, /id="documentUploadForm"/);
+  assert.doesNotMatch(documentsSection, /data-delete-document/);
   assert.match(appScript, /api\("\/api\/activities\/archive"\)/);
   assert.match(appScript, /memberCommittees\(member\)/);
   assert.match(appScript, /function yearAgendaTimeLabel\(item\)/);
@@ -163,6 +174,9 @@ test("members can update their own address from their profile", () => {
   assert.match(appScript, /const IS_ADMIN_PORTAL = location\.pathname/);
   assert.match(appScript, /location\.assign\("\/admin"\)/);
   assert.match(appScript, /location\.replace\("\/#home"\)/);
+  assert.match(appScript, /function renderAdminYearAgenda\(\)/);
+  assert.match(appScript, /activityListHtml\(true\)/);
+  assert.match(appScript, /adminMode \? `<button class="danger" data-delete-document/);
   assert.match(server, /ACTIVITY_ARCHIVE_DELAY_MS = 2 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(server, /committee LIKE \?/);
   assert.match(styles, /\.activity-archive-list[\s\S]*max-height: 560px;[\s\S]*overflow-y: auto;/);
