@@ -1570,23 +1570,9 @@ main {
   overflow: hidden;
   border-radius: var(--radius-xl);
   padding: clamp(34px, 6vw, 70px);
-  color: #fff;
-  background:
-    radial-gradient(circle at 86% 18%, rgba(246, 160, 113, 0.3), transparent 14rem),
-    linear-gradient(135deg, var(--lavender-700), var(--plum));
+  color: var(--plum);
+  background: var(--lavender-500);
   box-shadow: var(--shadow-md);
-}
-
-.page-banner::before {
-  content: "";
-  position: absolute;
-  right: -100px;
-  bottom: -180px;
-  width: 420px;
-  height: 420px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 50%;
-  box-shadow: 0 0 0 54px rgba(255, 255, 255, 0.025), 0 0 0 108px rgba(255, 255, 255, 0.02);
 }
 
 .page-banner-copy {
@@ -1596,26 +1582,26 @@ main {
 }
 
 .page-banner .eyebrow {
-  color: var(--lavender-200);
+  color: var(--plum-soft);
 }
 
 .page-banner h1 {
   margin-bottom: 12px;
-  color: #fff;
+  color: var(--plum);
   font-style: italic;
 }
 
 .page-banner p:last-child {
   max-width: 580px;
   margin-bottom: 0;
-  color: rgba(255, 255, 255, 0.76);
+  color: rgba(57, 50, 62, 0.76);
   font-size: 17px;
 }
 
 .page-number {
   position: relative;
   z-index: 1;
-  color: rgba(255, 255, 255, 0.24);
+  color: rgba(57, 50, 62, 0.2);
   font-family: var(--serif);
   font-size: clamp(82px, 13vw, 150px);
   font-style: italic;
@@ -1646,9 +1632,9 @@ main {
 }
 
 .admin-banner-actions .secondary {
-  border-color: rgba(255, 255, 255, 0.26);
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(57, 50, 62, 0.18);
+  color: var(--plum);
+  background: rgba(255, 255, 255, 0.34);
 }
 
 /* Directory */
