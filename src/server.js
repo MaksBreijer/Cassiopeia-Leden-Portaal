@@ -23,6 +23,7 @@ const LOGIN_WINDOW_MS = 1000 * 60 * 15;
 const LOGIN_MAX_ATTEMPTS = 5;
 const MEMBER_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
 const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const ACTIVITY_ARCHIVE_DELAY_MS = 2 * 24 * 60 * 60 * 1000;
 const INDEX_HTML_PATH = path.join(__dirname, "..", "public", "index.html");
 const ACTIVITY_SHARE_IMAGE_URL = "https://www.dispuutcassiopeia.nl/assets/cassiopeia-activity-share.png?v=20260902-rsvp";
 const loginAttempts = new Map();
@@ -894,7 +895,13 @@ function activityFromBody(body, existing = {}) {
   };
 }
 
-function activityRows(userId) {
+function activityArchiveDate(startsAt) {
+  const startsAtMs = new Date(startsAt).getTime();
+  if (!Number.isFinite(startsAtMs)) return null;
+  return new Date(startsAtMs + ACTIVITY_ARCHIVE_DELAY_MS);
+}
+
+function activityRows(userId, scope = "active") {
   const canParticipate = !Boolean(db.prepare("SELECT is_admin FROM users WHERE id = ?").get(userId)?.is_admin);
   const rows = db
     .prepare(`
@@ -942,8 +949,9 @@ function activityRows(userId) {
     filesByActivity.set(file.activity_id, files);
   });
 
-  return rows.map((row) => {
+  const activities = rows.map((row) => {
     const deadline = registrationDeadline(row.starts_at);
+    const archiveDate = activityArchiveDate(row.starts_at);
     const responseMode = row.response_mode || "signup";
     const participants = participantsByActivity.get(row.id) || [];
     return {
@@ -959,6 +967,7 @@ function activityRows(userId) {
       registrationDeadline: deadline?.toISOString() || null,
       registrationOverride: row.registration_override || "automatic",
       registrationOpen: isRegistrationOpen(row.starts_at, row.registration_override),
+      archiveAt: archiveDate?.toISOString() || null,
       isRegistered: canParticipate && (responseMode === "optout" ? !Boolean(row.was_cancelled) : Boolean(row.is_registered)),
       wasCancelled: canParticipate && Boolean(row.was_cancelled),
       lateCancelled: canParticipate && Boolean(row.late_cancelled),
@@ -967,6 +976,11 @@ function activityRows(userId) {
       participants
     };
   });
+
+  if (scope === "all") return activities;
+  const now = Date.now();
+  const isArchived = (activity) => activity.archiveAt && new Date(activity.archiveAt).getTime() <= now;
+  return activities.filter((activity) => scope === "archive" ? isArchived(activity) : !isArchived(activity));
 }
 
 function yearAgendaItemFromRow(row) {
@@ -1054,6 +1068,10 @@ function localYearAgendaRows() {
 
 app.get("/api/activities", requireAuth, (req, res) => {
   res.json({ activities: activityRows(req.session.userId) });
+});
+
+app.get("/api/activities/archive", requireAuth, requireAdmin, (req, res) => {
+  res.json({ activities: activityRows(req.session.userId, "archive").reverse() });
 });
 
 app.get("/api/year-agenda", requireAuth, async (req, res) => {
@@ -1311,7 +1329,7 @@ app.post("/api/activities", requireAuth, requireAdmin, (req, res) => {
   const result = db
     .prepare("INSERT INTO activities (title, description, location, starts_at, capacity, response_mode, registration_override, created_by) VALUES (@title, @description, @location, @starts_at, @capacity, @response_mode, @registration_override, @created_by)")
     .run({ ...activity, created_by: req.session.userId });
-  res.status(201).json({ activity: activityRows(req.session.userId).find((item) => item.id === result.lastInsertRowid) });
+  res.status(201).json({ activity: activityRows(req.session.userId, "all").find((item) => item.id === result.lastInsertRowid) });
 });
 
 app.put("/api/activities/:id", requireAuth, requireAdmin, (req, res) => {
@@ -1332,7 +1350,7 @@ app.put("/api/activities/:id", requireAuth, requireAdmin, (req, res) => {
     WHERE id = @id
   `).run({ ...activity, id: req.params.id });
 
-  res.json({ activity: activityRows(req.session.userId).find((item) => item.id === Number(req.params.id)) });
+  res.json({ activity: activityRows(req.session.userId, "all").find((item) => item.id === Number(req.params.id)) });
 });
 
 app.delete("/api/activities/:id", requireAuth, requireAdmin, (req, res) => {
@@ -1450,25 +1468,25 @@ app.get("/api/activities/:id/registrations", requireAuth, requireAdmin, (req, re
   const activity = db.prepare("SELECT response_mode FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
   const responseMode = activity.response_mode || "signup";
-  const rows = responseMode === "optout"
-    ? db.prepare(`
-        SELECT u.*, r.created_at AS registration_created_at, r.cancelled_at, r.late_cancelled, r.cancellation_reason
-        FROM users u
-        LEFT JOIN registrations r ON r.activity_id = ? AND r.user_id = u.id
-        WHERE u.account_status = 'active' AND u.is_admin = 0
-        ORDER BY r.cancelled_at IS NOT NULL ASC, u.name ASC
-      `).all(req.params.id)
-    : db.prepare(`
-        SELECT u.*, r.created_at AS registration_created_at, r.cancelled_at, r.late_cancelled, r.cancellation_reason
-        FROM registrations r
-        JOIN users u ON u.id = r.user_id
-        WHERE r.activity_id = ? AND u.is_admin = 0
-        ORDER BY r.created_at ASC
-      `).all(req.params.id);
+  const rows = db.prepare(`
+    SELECT u.*, r.id AS registration_id, r.created_at AS registration_created_at,
+      r.cancelled_at, r.late_cancelled, r.cancellation_reason
+    FROM users u
+    LEFT JOIN registrations r ON r.activity_id = ? AND r.user_id = u.id
+    WHERE u.account_status = 'active' AND u.is_admin = 0
+    ORDER BY
+      CASE
+        WHEN r.cancelled_at IS NULL AND (r.id IS NOT NULL OR ? = 'optout') THEN 0
+        WHEN r.cancelled_at IS NOT NULL THEN 1
+        ELSE 2
+      END,
+      u.name ASC
+  `).all(req.params.id, responseMode);
   res.json({
     responseMode,
     registrations: rows.map((row) => ({
       ...publicUser(row),
+      hasResponded: Boolean(row.registration_id),
       registeredAt: row.registration_created_at,
       cancelledAt: row.cancelled_at,
       lateCancelled: Boolean(row.late_cancelled),

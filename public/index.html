@@ -27,7 +27,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20260902-document-viewer" />
+    <link rel="stylesheet" href="styles.css?v=20260902-activity-archive" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -364,6 +364,16 @@
           <div><strong>Veilig uitnodigen</strong><p>Leden kiezen altijd zelf hun wachtwoord via een eenmalige link. Beheerders kunnen wachtwoorden nooit bekijken.</p></div>
           <span aria-hidden="true">✓</span>
         </div>
+        <section class="content-module activity-archive-module">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Activiteiten</p>
+              <h2>Activiteitenarchief</h2>
+              <p class="section-intro">Twee dagen na een activiteit verhuist zij automatisch hierheen. Alle aanmeldingen, afmeldingen en reacties blijven bewaard.</p>
+            </div>
+          </div>
+          <div id="activityArchiveList" class="activity-archive-list" aria-live="polite"></div>
+        </section>
         <form id="siteImagesForm" class="admin-images-panel content-module">
           <div class="section-head"><div><p class="eyebrow">Vormgeving</p><h2>Website-afbeeldingen</h2><p class="section-intro">Vervang het logo, de homefoto of het lustrumbeeld. PNG, JPG of WebP tot 5 MB.</p></div></div>
           <div class="admin-image-edit-grid">
@@ -704,6 +714,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260902-document-viewer"></script>
+    <script src="app.js?v=20260902-activity-archive"></script>
   </body>
 </html>

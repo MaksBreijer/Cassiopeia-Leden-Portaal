@@ -137,6 +137,9 @@ test("members can update their own address from their profile", () => {
   assert.match(server, /Beheeraccounts nemen niet deel aan activiteiten/);
   assert.match(html, /name="responseMode"/);
   assert.match(html, /id="cancellationForm"/);
+  assert.match(html, /id="activityArchiveList"/);
+  assert.match(appScript, /api\("\/api\/activities\/archive"\)/);
+  assert.match(server, /ACTIVITY_ARCHIVE_DELAY_MS = 2 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(appScript, /syncAddressFields\(els\.profileForm\)/);
   assert.match(appScript, /api\("\/api\/me",\s*\{\s*method: "PUT"/);
   assert.match(server, /app\.put\("\/api\/me", requireAuth/);
@@ -471,6 +474,19 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.equal(registration.response.status, 403);
   assert.match(registration.data.error, /Beheeraccounts/i);
 
+  const archivedStart = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  const archivedActivity = await jsonRequest(baseUrl, "/api/activities", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { title: "Activiteit in archief", startsAt: archivedStart.toISOString(), location: "Utrecht" }
+  });
+  assert.equal(archivedActivity.response.status, 201);
+  const visibleActivities = await jsonRequest(baseUrl, "/api/activities", { cookie: adminLogin.cookie });
+  assert.equal(visibleActivities.data.activities.some((item) => item.id === archivedActivity.data.activity.id), false);
+  const archivedActivities = await jsonRequest(baseUrl, "/api/activities/archive", { cookie: adminLogin.cookie });
+  assert.equal(archivedActivities.response.status, 200);
+  assert.equal(archivedActivities.data.activities.some((item) => item.id === archivedActivity.data.activity.id), true);
+
   const closedStart = new Date();
   closedStart.setDate(Math.min(28, closedStart.getDate()));
   closedStart.setHours(19, 0, 0, 0);
@@ -629,6 +645,13 @@ test("admins invite members who set and reset their own password", async (t) => 
     body: { birthday: "2001-02-31" }
   });
   assert.equal(invalidBirthday.response.status, 400);
+
+  const forbiddenArchive = await jsonRequest(baseUrl, "/api/activities/archive", { cookie: activated.cookie });
+  assert.equal(forbiddenArchive.response.status, 403);
+  const signupBeforeResponse = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/registrations`, { cookie: adminLogin.cookie });
+  const memberWithoutResponse = signupBeforeResponse.data.registrations.find((member) => member.id === created.data.member.id);
+  assert.equal(memberWithoutResponse.hasResponded, false);
+  assert.equal(memberWithoutResponse.cancelledAt, null);
 
   const memberReopenedRegistration = await jsonRequest(baseUrl, `/api/activities/${closedActivity.data.activity.id}/register`, {
     method: "POST",

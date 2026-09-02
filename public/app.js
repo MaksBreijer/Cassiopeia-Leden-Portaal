@@ -3,6 +3,7 @@ const state = {
   members: [],
   mapMembers: [],
   activities: [],
+  archivedActivities: [],
   documents: [],
   confessions: [],
   siteAssets: {},
@@ -151,6 +152,7 @@ const els = {
   yearAgendaSourceTitle: document.querySelector("#yearAgendaSourceTitle"),
   yearAgendaSourceLabel: document.querySelector("#yearAgendaSourceLabel"),
   publicActivityList: document.querySelector("#publicActivityList"),
+  activityArchiveList: document.querySelector("#activityArchiveList"),
   documentList: document.querySelector("#documentList"),
   documentViewerDialog: document.querySelector("#documentViewerDialog"),
   documentViewerTitle: document.querySelector("#documentViewerTitle"),
@@ -701,6 +703,7 @@ function setLoggedOut() {
   state.members = [];
   state.mapMembers = [];
   state.activities = [];
+  state.archivedActivities = [];
   state.documents = [];
   state.confessions = [];
   state.siteAssets = {};
@@ -720,6 +723,7 @@ function setLoggedOut() {
   document.querySelectorAll(".admin-only").forEach((el) => el.classList.add("hidden"));
   renderYearAgenda();
   renderPublicActivities();
+  renderActivityArchive();
   renderMembers();
   renderBirthdays();
   renderCribMap();
@@ -727,7 +731,8 @@ function setLoggedOut() {
 }
 
 async function refreshPortal() {
-  await Promise.all([loadMembers(), loadMapMembers(), loadActivities(), loadYearAgenda(), loadDocuments(), loadConfessions(), loadSiteAssets()]);
+  const archiveTask = state.user?.isAdmin ? loadActivityArchive() : Promise.resolve();
+  await Promise.all([loadMembers(), loadMapMembers(), loadActivities(), archiveTask, loadYearAgenda(), loadDocuments(), loadConfessions(), loadSiteAssets()]);
   focusSharedActivity();
 }
 
@@ -1162,6 +1167,17 @@ async function loadActivities() {
   renderPortalOverview();
 }
 
+async function loadActivityArchive() {
+  if (!state.user?.isAdmin) {
+    state.archivedActivities = [];
+    renderActivityArchive();
+    return;
+  }
+  const data = await api("/api/activities/archive");
+  state.archivedActivities = data.activities || [];
+  renderActivityArchive();
+}
+
 async function loadDocuments() {
   const data = await api("/api/documents");
   state.documents = data.documents || [];
@@ -1538,10 +1554,40 @@ function googleCalendarUrl(activity) {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+function renderActivityArchive() {
+  if (!els.activityArchiveList) return;
+  if (!state.user?.isAdmin) {
+    els.activityArchiveList.innerHTML = "";
+    return;
+  }
+  if (!state.archivedActivities.length) {
+    els.activityArchiveList.innerHTML = '<p class="archive-empty">Er staan nog geen afgelopen activiteiten in het archief.</p>';
+    return;
+  }
+
+  els.activityArchiveList.innerHTML = state.archivedActivities.map((activity) => `
+    <article class="activity-archive-row">
+      <div class="activity-archive-date" aria-hidden="true">
+        <span>${new Intl.DateTimeFormat("nl-NL", { month: "short" }).format(new Date(activity.startsAt))}</span>
+        <strong>${new Intl.DateTimeFormat("nl-NL", { day: "numeric" }).format(new Date(activity.startsAt))}</strong>
+      </div>
+      <div class="activity-archive-copy">
+        <strong>${escapeHtml(activity.title)}</strong>
+        <p>${formatDate(activity.startsAt)}${activity.location ? ` · ${escapeHtml(activity.location)}` : ""}</p>
+      </div>
+      <div class="activity-archive-actions">
+        <button class="secondary" type="button" data-registrations="${activity.id}">Reacties bekijken</button>
+        <button class="activity-excel-button" type="button" data-export-activity="${activity.id}">Excel downloaden</button>
+      </div>
+    </article>
+  `).join("");
+}
+
 function renderAdmin() {
   document.querySelectorAll(".admin-only").forEach((el) => el.classList.toggle("hidden", !state.user?.isAdmin));
   if (els.newYearAgendaItemBtn && state.yearAgendaSource.type === "google") els.newYearAgendaItemBtn.classList.add("hidden");
   renderYearAgenda();
+  renderActivityArchive();
   renderAdminAccounts();
 }
 
@@ -1682,8 +1728,12 @@ async function saveYearAgendaSummary(summary) {
 
 async function showRegistrations(activityId) {
   const { registrations, responseMode } = await api(`/api/activities/${activityId}/registrations`);
-  const attending = registrations.filter((member) => !member.cancelledAt);
+  const activity = [...state.activities, ...state.archivedActivities].find((item) => item.id === Number(activityId));
+  const attending = registrations.filter((member) => !member.cancelledAt && (responseMode === "optout" || member.hasResponded));
   const cancelled = registrations.filter((member) => member.cancelledAt);
+  const noResponse = responseMode === "signup"
+    ? registrations.filter((member) => !member.cancelledAt && !member.hasResponded)
+    : [];
   const lateCount = cancelled.filter((member) => member.lateCancelled).length;
   const attendingLabel = responseMode === "optout" ? "Aanwezig" : "Ingeschreven";
 
@@ -1698,19 +1748,19 @@ async function showRegistrations(activityId) {
               ? `<p class="cancellation-reason"><strong>Privéreden</strong>${escapeHtml(member.cancellationReason)}</p>`
               : ""}
           </div>
-          <span class="registration-status ${status === "cancelled" ? "registration-status-cancelled" : "registration-status-active"}">
-            ${status === "cancelled" ? (member.lateCancelled ? "Te laat afgemeld" : "Afgemeld") : attendingLabel}
+          <span class="registration-status ${status === "cancelled" ? "registration-status-cancelled" : status === "pending" ? "registration-status-pending" : "registration-status-active"}">
+            ${status === "cancelled" ? (member.lateCancelled ? "Te laat afgemeld" : "Afgemeld") : status === "pending" ? "Geen reactie" : attendingLabel}
           </span>
         </article>
       `).join("")
-    : `<p class="registration-empty">${status === "cancelled" ? "Niemand heeft zich afgemeld." : responseMode === "optout" ? "Er staan geen leden op aanwezig." : "Nog niemand is ingeschreven."}</p>`;
+    : `<p class="registration-empty">${status === "cancelled" ? "Niemand heeft zich afgemeld." : status === "pending" ? "Iedereen heeft gereageerd." : responseMode === "optout" ? "Er staan geen leden op aanwezig." : "Nog niemand is ingeschreven."}</p>`;
 
-  els.registrationsDialogTitle.textContent = responseMode === "optout" ? "Aanwezigheid en afmeldingen" : "Inschrijvingen en afmeldingen";
+  els.registrationsDialogTitle.textContent = activity?.title || (responseMode === "optout" ? "Aanwezigheid en afmeldingen" : "Inschrijvingen en afmeldingen");
   els.registrationsList.innerHTML = `
     <div class="registration-summary" aria-label="Samenvatting reacties">
       <div class="registration-summary-card registration-summary-active"><span>${attendingLabel}</span><strong>${attending.length}</strong></div>
       <div class="registration-summary-card registration-summary-cancelled"><span>Afgemeld</span><strong>${cancelled.length}</strong></div>
-      <div class="registration-summary-card"><span>Te laat</span><strong>${lateCount}</strong></div>
+      <div class="registration-summary-card"><span>${responseMode === "signup" ? "Geen reactie" : "Te laat"}</span><strong>${responseMode === "signup" ? noResponse.length : lateCount}</strong></div>
     </div>
     <div class="registration-groups">
       <details class="registration-group" open>
@@ -1721,13 +1771,19 @@ async function showRegistrations(activityId) {
         <summary><span>Afgemeld</span><strong>${cancelled.length}</strong></summary>
         <div class="registration-people">${memberRows(cancelled, "cancelled")}</div>
       </details>
+      ${responseMode === "signup" ? `
+        <details class="registration-group registration-group-pending" ${noResponse.length ? "open" : ""}>
+          <summary><span>Niet ingeschreven / geen reactie</span><strong>${noResponse.length}</strong></summary>
+          <div class="registration-people">${memberRows(noResponse, "pending")}</div>
+        </details>
+      ` : ""}
     </div>
   `;
   els.registrationsDialog.showModal();
 }
 
 async function exportRegistrations(activityId) {
-  const activity = state.activities.find((item) => item.id === Number(activityId));
+  const activity = [...state.activities, ...state.archivedActivities].find((item) => item.id === Number(activityId));
   const { registrations, responseMode } = await api(`/api/activities/${activityId}/registrations`);
   const rows = [
     ["Naam", "E-mail", "Lichting", "Functie", "Ingeschreven op", "Afmelding", "Status", "Privéreden afmelding"],
@@ -1738,7 +1794,13 @@ async function exportRegistrations(activityId) {
       member.roleTitle || "Actief",
       member.registeredAt ? formatDate(member.registeredAt) : "",
       member.cancelledAt ? formatDate(member.cancelledAt) : "",
-      member.lateCancelled ? "TE LAAT" : member.cancelledAt ? "Afgemeld" : responseMode === "optout" ? "Aanwezig (standaard)" : "Ingeschreven",
+      member.lateCancelled
+        ? "TE LAAT AFGEMELD"
+        : member.cancelledAt
+          ? "Afgemeld"
+          : responseMode === "optout"
+            ? member.hasResponded ? "Aanwezig (afmelding ingetrokken)" : "Aanwezig (standaard)"
+            : member.hasResponded ? "Ingeschreven" : "Niet ingeschreven / geen reactie",
       member.cancellationReason || ""
     ])
   ];
