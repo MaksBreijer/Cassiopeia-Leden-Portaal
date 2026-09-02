@@ -38,6 +38,13 @@ const mapView = {
   pinching: false,
   pinchStartDistance: 0,
   pinchStartZoom: 7,
+  pinchStartMidpointX: 0,
+  pinchStartMidpointY: 0,
+  pinchCurrentMidpointX: 0,
+  pinchCurrentMidpointY: 0,
+  pinchScale: 1,
+  pinchAnchorLatitude: 52.2,
+  pinchAnchorLongitude: 5.3,
   ignoreClickUntil: 0
 };
 
@@ -952,17 +959,19 @@ function renderCribMap() {
   const centerY = center.y;
   const left = centerX - 450;
   const top = centerY - 250;
-  const tileXStart = Math.floor(left / 256) - 1;
-  const tileXEnd = Math.ceil((left + 900) / 256) + 1;
-  const tileYStart = Math.floor(top / 256) - 1;
-  const tileYEnd = Math.ceil((top + 500) / 256) + 1;
-  const worldTiles = 2 ** zoom;
+  const tileZoom = Math.floor(zoom);
+  const tileSize = 256 * 2 ** (zoom - tileZoom);
+  const tileXStart = Math.floor(left / tileSize) - 1;
+  const tileXEnd = Math.ceil((left + 900) / tileSize) + 1;
+  const tileYStart = Math.floor(top / tileSize) - 1;
+  const tileYEnd = Math.ceil((top + 500) / tileSize) + 1;
+  const worldTiles = 2 ** tileZoom;
   const tiles = [];
   for (let tileX = tileXStart; tileX <= tileXEnd; tileX += 1) {
     for (let tileY = tileYStart; tileY <= tileYEnd; tileY += 1) {
       if (tileY < 0 || tileY >= worldTiles) continue;
       const wrappedX = ((tileX % worldTiles) + worldTiles) % worldTiles;
-      tiles.push(`<image class="map-tile" x="${tileX * 256 - left}" y="${tileY * 256 - top}" width="256" height="256" href="https://tile.openstreetmap.org/${zoom}/${wrappedX}/${tileY}.png" />`);
+      tiles.push(`<image class="map-tile" x="${tileX * tileSize - left}" y="${tileY * tileSize - top}" width="${tileSize}" height="${tileSize}" href="https://tile.openstreetmap.org/${tileZoom}/${wrappedX}/${tileY}.png" />`);
     }
   }
   const markers = projected.map(({ member, point, offsetX, offsetY }) => {
@@ -1027,10 +1036,26 @@ if (els.cribMap) {
     els.cribMap.setPointerCapture?.(event.pointerId);
     if (mapView.pointers.size >= 2) {
       const [first, second] = [...mapView.pointers.values()];
+      const rect = els.cribMap.getBoundingClientRect();
+      const midpointX = (first.x + second.x) / 2;
+      const midpointY = (first.y + second.y) / 2;
+      const centerPoint = projectMapPoint(mapView.centerLatitude, mapView.centerLongitude, mapView.zoom);
+      const anchorPoint = {
+        x: centerPoint.x + ((midpointX - rect.left) / rect.width - 0.5) * 900,
+        y: centerPoint.y + ((midpointY - rect.top) / rect.height - 0.5) * 500
+      };
+      const anchor = unprojectMapPoint(anchorPoint.x, anchorPoint.y, mapView.zoom);
       mapView.pinching = true;
       mapView.dragging = false;
       mapView.pinchStartDistance = Math.hypot(second.x - first.x, second.y - first.y);
       mapView.pinchStartZoom = mapView.zoom;
+      mapView.pinchStartMidpointX = midpointX;
+      mapView.pinchStartMidpointY = midpointY;
+      mapView.pinchCurrentMidpointX = midpointX;
+      mapView.pinchCurrentMidpointY = midpointY;
+      mapView.pinchScale = 1;
+      mapView.pinchAnchorLatitude = anchor.latitude;
+      mapView.pinchAnchorLongitude = anchor.longitude;
       mapView.ignoreClickUntil = Date.now() + 400;
       els.cribMap.classList.remove("is-dragging");
       els.cribMap.classList.add("is-pinching");
@@ -1052,14 +1077,21 @@ if (els.cribMap) {
       const [first, second] = [...mapView.pointers.values()];
       const distance = Math.hypot(second.x - first.x, second.y - first.y);
       if (mapView.pinchStartDistance > 0) {
-        const zoomDelta = Math.round(Math.log2(distance / mapView.pinchStartDistance) * 2);
-        const nextZoom = Math.max(6, Math.min(17, mapView.pinchStartZoom + zoomDelta));
-        if (nextZoom !== mapView.zoom) {
-          mapView.zoom = nextZoom;
-          mapView.ignoreClickUntil = Date.now() + 400;
-          hideMapTooltip();
-          renderCribMap();
+        const rect = els.cribMap.getBoundingClientRect();
+        const midpointX = (first.x + second.x) / 2;
+        const midpointY = (first.y + second.y) / 2;
+        const minimumScale = 2 ** (6 - mapView.pinchStartZoom);
+        const maximumScale = 2 ** (17 - mapView.pinchStartZoom);
+        mapView.pinchScale = Math.max(minimumScale, Math.min(maximumScale, distance / mapView.pinchStartDistance));
+        mapView.pinchCurrentMidpointX = midpointX;
+        mapView.pinchCurrentMidpointY = midpointY;
+        const mapSurface = els.cribMap.querySelector(".crib-map-svg");
+        if (mapSurface) {
+          mapSurface.style.transformOrigin = `${mapView.pinchStartMidpointX - rect.left}px ${mapView.pinchStartMidpointY - rect.top}px`;
+          mapSurface.style.transform = `translate3d(${midpointX - mapView.pinchStartMidpointX}px, ${midpointY - mapView.pinchStartMidpointY}px, 0) scale(${mapView.pinchScale})`;
         }
+        mapView.ignoreClickUntil = Date.now() + 400;
+        hideMapTooltip();
       }
       return;
     }
@@ -1076,14 +1108,31 @@ if (els.cribMap) {
     hideMapTooltip();
     renderCribMap();
   });
+  const finishMapPinch = () => {
+    const rect = els.cribMap.getBoundingClientRect();
+    const nextZoom = Number(Math.max(6, Math.min(17, mapView.pinchStartZoom + Math.log2(mapView.pinchScale))).toFixed(3));
+    const anchorPoint = projectMapPoint(mapView.pinchAnchorLatitude, mapView.pinchAnchorLongitude, nextZoom);
+    const currentOffsetX = ((mapView.pinchCurrentMidpointX - rect.left) / rect.width - 0.5) * 900;
+    const currentOffsetY = ((mapView.pinchCurrentMidpointY - rect.top) / rect.height - 0.5) * 500;
+    const nextCenter = unprojectMapPoint(anchorPoint.x - currentOffsetX, anchorPoint.y - currentOffsetY, nextZoom);
+    mapView.zoom = nextZoom;
+    mapView.centerLatitude = nextCenter.latitude;
+    mapView.centerLongitude = nextCenter.longitude;
+    mapView.pinching = false;
+    mapView.dragging = false;
+    mapView.pointerId = null;
+    mapView.pinchStartDistance = 0;
+    mapView.pinchScale = 1;
+    mapView.pointers.clear();
+    mapView.ignoreClickUntil = Date.now() + 400;
+    els.cribMap.classList.remove("is-pinching", "is-dragging");
+    renderCribMap();
+  };
   const stopMapDrag = (event) => {
     mapView.pointers.delete(event.pointerId);
     if (mapView.pinching) {
-      mapView.ignoreClickUntil = Date.now() + 400;
-      if (mapView.pointers.size) return;
-      mapView.pinching = false;
-      mapView.pinchStartDistance = 0;
-      els.cribMap.classList.remove("is-pinching");
+      finishMapPinch();
+      return;
     }
     if (!mapView.dragging || (event.pointerId !== undefined && event.pointerId !== mapView.pointerId)) return;
     mapView.dragging = false;

@@ -150,7 +150,10 @@ test("members can update their own address from their profile", () => {
   assert.match(appScript, /function yearAgendaTimeLabel\(item\)/);
   assert.match(appScript, /year-agenda-time/);
   assert.match(appScript, /pointers: new Map\(\)/);
-  assert.match(appScript, /Math\.log2\(distance \/ mapView\.pinchStartDistance\)/);
+  assert.match(appScript, /mapSurface\.style\.transform = `translate3d/);
+  assert.match(appScript, /mapView\.pinchStartZoom \+ Math\.log2\(mapView\.pinchScale\)/);
+  assert.match(appScript, /pinchAnchorLatitude/);
+  assert.match(appScript, /const tileSize = 256 \* 2 \*\* \(zoom - tileZoom\)/);
   assert.match(server, /ACTIVITY_ARCHIVE_DELAY_MS = 2 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(server, /committee LIKE \?/);
   assert.match(styles, /\.activity-archive-list[\s\S]*max-height: 560px;[\s\S]*overflow-y: auto;/);

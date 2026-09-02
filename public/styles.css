@@ -785,6 +785,11 @@ main {
   min-height: 440px;
   display: block;
   background: #e8e1d8;
+  transform: translateZ(0);
+}
+
+.crib-map.is-pinching .crib-map-svg {
+  will-change: transform;
 }
 
 .map-tile {
