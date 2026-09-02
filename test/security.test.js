@@ -117,6 +117,23 @@ test("the portal is installable as a web app without caching private API data", 
   assert.doesNotMatch(serviceWorker, /caches\.put\([^\n]*\/api\//);
 });
 
+test("members can update their own address from their profile", () => {
+  const html = fs.readFileSync(path.join(projectRoot, "public", "index.html"), "utf8");
+  const appScript = fs.readFileSync(path.join(projectRoot, "public", "app.js"), "utf8");
+  const server = fs.readFileSync(path.join(projectRoot, "src", "server.js"), "utf8");
+  const profileForm = html.match(/<form id="profileForm"[\s\S]*?<\/form>/)?.[0] || "";
+
+  assert.match(profileForm, /name="street"/);
+  assert.match(profileForm, /name="houseNumber"/);
+  assert.match(profileForm, /name="postalCode"/);
+  assert.match(profileForm, /name="city"/);
+  assert.match(profileForm, /name="address"/);
+  assert.match(appScript, /syncAddressFields\(els\.profileForm\)/);
+  assert.match(appScript, /api\("\/api\/me",\s*\{\s*method: "PUT"/);
+  assert.match(server, /app\.put\("\/api\/me", requireAuth/);
+  assert.match(server, /UPDATE users SET address = \?[\s\S]*WHERE id = \?"\)\.run\([\s\S]*req\.session\.userId\)/);
+});
+
 test("the supplied transparent Cassiopeia crest is used for the site and app icons", () => {
   const html = fs.readFileSync(path.join(projectRoot, "public", "index.html"), "utf8");
   const manifest = JSON.parse(fs.readFileSync(path.join(projectRoot, "public", "manifest.webmanifest"), "utf8"));
