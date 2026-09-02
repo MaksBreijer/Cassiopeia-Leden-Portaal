@@ -406,6 +406,7 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.equal(adminLogin.response.status, 200);
   assert.match(adminLogin.cookie, /^cassiopeia\.sid=/);
   assert.equal(adminLogin.response.headers.get("x-frame-options"), "DENY");
+  assert.match(adminLogin.response.headers.get("content-security-policy"), /frame-src 'self' blob:/);
 
   const unauthenticatedSubscription = await jsonRequest(baseUrl, "/api/calendar-subscription", { method: "POST" });
   assert.equal(unauthenticatedSubscription.response.status, 401);

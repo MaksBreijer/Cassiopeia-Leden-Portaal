@@ -27,7 +27,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20260902-activity-images" />
+    <link rel="stylesheet" href="styles.css?v=20260902-document-viewer" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -318,7 +318,7 @@
           <span class="page-number" aria-hidden="true">04</span>
         </div>
         <div class="content-module">
-          <div class="section-head"><div><p class="eyebrow">Alle leden</p><h2>Statuten &amp; HR</h2><p class="section-intro">Open of download de meest recente versie.</p></div></div>
+          <div class="section-head"><div><p class="eyebrow">Alle leden</p><h2>Statuten &amp; HR</h2><p class="section-intro">Lees de nieuwste versie direct in het ledenportaal of download haar.</p></div></div>
           <div id="documentList" class="document-list" aria-live="polite"></div>
         </div>
         <form id="documentUploadForm" class="content-module admin-only hidden">
@@ -616,6 +616,22 @@
       </div>
     </dialog>
 
+    <dialog id="documentViewerDialog" class="document-viewer-dialog">
+      <div class="document-viewer-card">
+        <header class="document-viewer-header">
+          <div>
+            <p class="eyebrow">Documenten</p>
+            <h3 id="documentViewerTitle">Document bekijken</h3>
+          </div>
+          <div class="document-viewer-actions">
+            <a id="documentDownloadLink" class="secondary" href="#" download>Downloaden</a>
+            <button class="primary" type="button" data-close>Sluiten</button>
+          </div>
+        </header>
+        <iframe id="documentViewerFrame" title="PDF-document" loading="eager"></iframe>
+      </div>
+    </dialog>
+
     <dialog id="cancellationDialog">
       <form id="cancellationForm" method="dialog" class="dialog-card cancellation-dialog-card">
         <p class="eyebrow">Alleen zichtbaar voor bestuur</p>
@@ -688,6 +704,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260902-activity-images"></script>
+    <script src="app.js?v=20260902-document-viewer"></script>
   </body>
 </html>

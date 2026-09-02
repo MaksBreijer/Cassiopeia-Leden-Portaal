@@ -152,6 +152,10 @@ const els = {
   yearAgendaSourceLabel: document.querySelector("#yearAgendaSourceLabel"),
   publicActivityList: document.querySelector("#publicActivityList"),
   documentList: document.querySelector("#documentList"),
+  documentViewerDialog: document.querySelector("#documentViewerDialog"),
+  documentViewerTitle: document.querySelector("#documentViewerTitle"),
+  documentViewerFrame: document.querySelector("#documentViewerFrame"),
+  documentDownloadLink: document.querySelector("#documentDownloadLink"),
   confessionList: document.querySelector("#confessionList"),
   confessionForm: document.querySelector("#confessionForm"),
   confessionBody: document.querySelector("#confessionBody"),
@@ -1497,6 +1501,35 @@ async function downloadProtectedFile(path, fileName, mimeType) {
   link.click();
 }
 
+let documentViewerUrl = "";
+
+function base64BlobUrl(data, mimeType) {
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+}
+
+function clearDocumentViewer() {
+  els.documentViewerFrame.removeAttribute("src");
+  els.documentDownloadLink.removeAttribute("href");
+  if (documentViewerUrl) URL.revokeObjectURL(documentViewerUrl);
+  documentViewerUrl = "";
+}
+
+async function openProtectedDocument(document) {
+  const response = await api(`/api/documents/${document.id}/download`);
+  clearDocumentViewer();
+  documentViewerUrl = base64BlobUrl(response.data, document.mimeType || "application/pdf");
+  els.documentViewerTitle.textContent = document.title;
+  els.documentViewerFrame.src = documentViewerUrl;
+  els.documentDownloadLink.href = documentViewerUrl;
+  els.documentDownloadLink.download = document.fileName;
+  els.documentViewerDialog.showModal();
+}
+
+els.documentViewerDialog.addEventListener("close", clearDocumentViewer);
+
 function googleCalendarUrl(activity) {
   const start = new Date(activity.startsAt);
   const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
@@ -2314,7 +2347,7 @@ document.body.addEventListener("click", async (event) => {
   const downloadDocumentBtn = event.target.closest("[data-download-document]");
   if (downloadDocumentBtn) {
     const document = state.documents.find((item) => item.id === Number(downloadDocumentBtn.dataset.downloadDocument));
-    if (document) downloadProtectedFile(`/api/documents/${document.id}/download`, document.fileName, document.mimeType).catch((error) => showToast(error.message));
+    if (document) openProtectedDocument(document).catch((error) => showToast(error.message));
     return;
   }
 

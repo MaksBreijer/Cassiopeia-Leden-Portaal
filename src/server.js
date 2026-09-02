@@ -46,7 +46,7 @@ app.use((req, res, next) => {
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   res.setHeader(
     "Content-Security-Policy",
-    `default-src 'self'; img-src 'self' data: https:; style-src 'self'; script-src 'self'; connect-src ${connectSources}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`
+    `default-src 'self'; img-src 'self' data: https:; style-src 'self'; script-src 'self'; connect-src ${connectSources}; frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`
   );
   if (process.env.NODE_ENV === "production") {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
