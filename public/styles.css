@@ -50,10 +50,7 @@ body {
 
 body.is-authenticated {
   min-height: 100vh;
-  background:
-    linear-gradient(rgba(250, 248, 252, 0.74), rgba(250, 248, 252, 0.74)),
-    url("assets/lustrum-patroon.png") center top / 420px auto repeat,
-    var(--lavender-50);
+  background: var(--lavender-500);
   background-attachment: fixed;
 }
 
