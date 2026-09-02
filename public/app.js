@@ -399,13 +399,9 @@ function formatBirthday(value) {
     : "Niet ingevuld";
 }
 
-function birthdayDistanceLabel(date) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const days = Math.round((date.getTime() - today.getTime()) / 86400000);
-  if (days === 0) return "Vandaag!";
-  if (days === 1) return "Morgen";
-  return `Over ${days} dagen`;
+function isBirthdayToday(value, now = new Date()) {
+  const parts = birthdayParts(value);
+  return Boolean(parts && parts.month === now.getMonth() + 1 && parts.day === now.getDate());
 }
 
 function activityRegistrationDeadline(activity) {
@@ -625,22 +621,20 @@ function renderProfile() {
 function renderBirthdays() {
   if (!els.birthdayList || !els.birthdaySummary) return;
   const birthdays = state.members
-    .filter((member) => member.accountStatus === "active" && birthdayParts(member.birthday))
-    .map((member) => ({ member, date: nextBirthdayDate(member.birthday) }))
-    .filter((item) => item.date)
-    .sort((a, b) => a.date - b.date);
+    .filter((member) => member.accountStatus === "active" && isBirthdayToday(member.birthday))
+    .sort((a, b) => a.name.localeCompare(b.name, "nl"));
 
   if (!birthdays.length) {
-    els.birthdaySummary.textContent = "Nog niemand heeft een verjaardag ingevuld.";
-    els.birthdayList.innerHTML = '<div class="birthday-empty"><strong>Wie trapt af?</strong><span>Vul je verjaardag in via je profiel.</span></div>';
+    els.birthdaySummary.textContent = "Vandaag is er niemand jarig.";
+    els.birthdayList.innerHTML = '<div class="birthday-empty"><strong>Vandaag geen jarige</strong><span>Morgen wordt dit automatisch opnieuw bekeken.</span></div>';
     return;
   }
 
-  els.birthdaySummary.textContent = `${birthdays.length} ${birthdays.length === 1 ? "verjaardag staat" : "verjaardagen staan"} in het ledenportaal.`;
-  els.birthdayList.innerHTML = birthdays.slice(0, 6).map(({ member, date }) => `
+  els.birthdaySummary.textContent = `${birthdays.length} ${birthdays.length === 1 ? "lid is" : "leden zijn"} vandaag jarig.`;
+  els.birthdayList.innerHTML = birthdays.map((member) => `
     <article class="birthday-card">
       <span class="birthday-avatar avatar">${avatarHtml(member)}</span>
-      <span class="birthday-copy"><strong>${escapeHtml(member.name)}</strong><small>${escapeHtml(birthdayDistanceLabel(date))}</small></span>
+      <span class="birthday-copy"><strong>${escapeHtml(member.name)}</strong><small>Vandaag!</small></span>
       <time datetime="${escapeHtml(member.birthday)}">${escapeHtml(formatBirthday(member.birthday))}</time>
     </article>
   `).join("");

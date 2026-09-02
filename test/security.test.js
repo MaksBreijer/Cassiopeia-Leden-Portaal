@@ -130,6 +130,8 @@ test("members can update their own address from their profile", () => {
   assert.match(profileForm, /name="address"/);
   assert.match(profileForm, /name="birthday" type="date"/);
   assert.match(html, /id="birthdayList"/);
+  assert.match(html, /Vandaag jarig/);
+  assert.match(appScript, /isBirthdayToday\(member\.birthday\)/);
   assert.match(html, /name="responseMode"/);
   assert.match(html, /id="cancellationForm"/);
   assert.match(appScript, /syncAddressFields\(els\.profileForm\)/);
