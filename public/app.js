@@ -1431,7 +1431,7 @@ function renderPublicActivities() {
                     <span class="module-label">Beheer</span>
                     ${optOut ? "" : `<button class="secondary" data-toggle-activity-registration="${activity.id}" data-registration-override="${registrationOpen ? "closed" : "open"}">${registrationOpen ? "Inschrijving sluiten" : "Inschrijving openen"}</button>`}
                     <button class="activity-excel-button" data-export-activity="${activity.id}">Excel downloaden</button>
-                    <button class="secondary" data-registrations="${activity.id}">${optOut ? "Aanwezigheid bekijken" : "Deelnemers bekijken"}</button>
+                    <button class="secondary" data-registrations="${activity.id}">In- en afmeldingen</button>
                     <div class="activity-admin-utilities">
                       <button class="secondary" data-google-calendar="${activity.id}">Google Agenda</button>
                       <button class="secondary" data-whatsapp-activity="${activity.id}">WhatsApp</button>
@@ -1639,24 +1639,47 @@ async function saveYearAgendaSummary(summary) {
 
 async function showRegistrations(activityId) {
   const { registrations, responseMode } = await api(`/api/activities/${activityId}/registrations`);
-  els.registrationsDialogTitle.textContent = responseMode === "optout" ? "Aanwezigheid & afmeldingen" : "Inschrijvingen";
-  els.registrationsList.innerHTML = registrations.length
-    ? registrations
-        .map(
-          (member) => `
-            <div class="table-row ${member.lateCancelled ? "late-registration-row" : ""}">
-              <div>
-                <strong>${escapeHtml(member.name)}</strong>
-                <p class="meta">${escapeHtml(member.email)} · ${escapeHtml(member.yearLayer)} · ${escapeHtml(member.roleTitle || "Actief")}</p>
-                ${member.cancelledAt
-                  ? `<span class="late-registration-label">${member.lateCancelled ? "Te laat afgemeld" : "Afgemeld"}</span>${member.cancellationReason ? `<p class="cancellation-reason"><strong>Privéreden</strong>${escapeHtml(member.cancellationReason)}</p>` : ""}`
-                  : `<span class="registration-active-label">${responseMode === "optout" ? "Aanwezig (standaard)" : "Ingeschreven"}</span>`}
-              </div>
-            </div>
-          `
-        )
-        .join("")
-    : `<p class="meta">${responseMode === "optout" ? "Geen actieve leden gevonden." : "Nog niemand heeft zich ingeschreven."}</p>`;
+  const attending = registrations.filter((member) => !member.cancelledAt);
+  const cancelled = registrations.filter((member) => member.cancelledAt);
+  const lateCount = cancelled.filter((member) => member.lateCancelled).length;
+  const attendingLabel = responseMode === "optout" ? "Aanwezig" : "Ingeschreven";
+
+  const memberRows = (members, status) => members.length
+    ? members.map((member) => `
+        <article class="registration-person ${member.lateCancelled ? "late-registration-row" : ""}">
+          <span class="registration-avatar avatar">${avatarHtml(member)}</span>
+          <div class="registration-person-copy">
+            <strong>${escapeHtml(member.name)}</strong>
+            <p class="meta">${escapeHtml(member.email)} · ${escapeHtml(formatLichting(member.yearLayer))}${member.roleTitle ? ` · ${escapeHtml(member.roleTitle)}` : ""}</p>
+            ${status === "cancelled" && member.cancellationReason
+              ? `<p class="cancellation-reason"><strong>Privéreden</strong>${escapeHtml(member.cancellationReason)}</p>`
+              : ""}
+          </div>
+          <span class="registration-status ${status === "cancelled" ? "registration-status-cancelled" : "registration-status-active"}">
+            ${status === "cancelled" ? (member.lateCancelled ? "Te laat afgemeld" : "Afgemeld") : attendingLabel}
+          </span>
+        </article>
+      `).join("")
+    : `<p class="registration-empty">${status === "cancelled" ? "Niemand heeft zich afgemeld." : responseMode === "optout" ? "Er staan geen leden op aanwezig." : "Nog niemand is ingeschreven."}</p>`;
+
+  els.registrationsDialogTitle.textContent = responseMode === "optout" ? "Aanwezigheid en afmeldingen" : "Inschrijvingen en afmeldingen";
+  els.registrationsList.innerHTML = `
+    <div class="registration-summary" aria-label="Samenvatting reacties">
+      <div class="registration-summary-card registration-summary-active"><span>${attendingLabel}</span><strong>${attending.length}</strong></div>
+      <div class="registration-summary-card registration-summary-cancelled"><span>Afgemeld</span><strong>${cancelled.length}</strong></div>
+      <div class="registration-summary-card"><span>Te laat</span><strong>${lateCount}</strong></div>
+    </div>
+    <div class="registration-groups">
+      <details class="registration-group" open>
+        <summary><span>${attendingLabel}</span><strong>${attending.length}</strong></summary>
+        <div class="registration-people">${memberRows(attending, "active")}</div>
+      </details>
+      <details class="registration-group registration-group-cancelled" ${cancelled.length ? "open" : ""}>
+        <summary><span>Afgemeld</span><strong>${cancelled.length}</strong></summary>
+        <div class="registration-people">${memberRows(cancelled, "cancelled")}</div>
+      </details>
+    </div>
+  `;
   els.registrationsDialog.showModal();
 }
 

@@ -27,7 +27,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20260902-month-view" />
+    <link rel="stylesheet" href="styles.css?v=20260902-registration-overview" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -599,8 +599,9 @@
       </form>
     </dialog>
 
-    <dialog id="registrationsDialog">
-      <div class="dialog-card">
+    <dialog id="registrationsDialog" class="registrations-dialog">
+      <div class="dialog-card registrations-dialog-card">
+        <p class="eyebrow">Activiteitsoverzicht</p>
         <h3 id="registrationsDialogTitle">Inschrijvingen</h3>
         <div id="registrationsList" class="table-list"></div>
         <div class="dialog-actions">
@@ -681,6 +682,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260902-month-view"></script>
+    <script src="app.js?v=20260902-registration-overview"></script>
   </body>
 </html>
