@@ -192,7 +192,7 @@ p {
   position: sticky;
   z-index: 20;
   top: 10px;
-  width: min(1240px, calc(100% - 32px));
+  width: min(1440px, calc(100% - 32px));
   min-height: 68px;
   display: flex;
   align-items: center;
@@ -215,7 +215,7 @@ p {
 }
 
 .brand {
-  flex: 1 1 230px;
+  flex: 0 0 auto;
   min-width: 0;
   gap: 10px;
 }
@@ -244,13 +244,13 @@ p {
 }
 
 .brand-copy strong {
-  overflow: hidden;
+  overflow: visible;
   font-family: var(--serif);
   font-size: clamp(17px, 1.4vw, 20px);
   font-style: normal;
   font-weight: 600;
   line-height: 1;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
@@ -2721,7 +2721,7 @@ dialog::backdrop {
 }
 
 /* Compact header before the navigation starts competing with the brand. */
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
   .site-header {
     top: 8px;
     width: calc(100% - 20px);
