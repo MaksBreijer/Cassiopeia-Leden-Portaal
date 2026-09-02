@@ -612,6 +612,18 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(invalidBirthday.response.status, 400);
 
+  const directOptOutFromSignup = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
+    method: "DELETE",
+    cookie: activated.cookie,
+    body: { reason: "Kan deze keer niet" }
+  });
+  assert.equal(directOptOutFromSignup.response.status, 200);
+  assert.equal(directOptOutFromSignup.data.changed, 1);
+  const signupResponses = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/registrations`, { cookie: adminLogin.cookie });
+  const directOptOutMember = signupResponses.data.registrations.find((member) => member.id === created.data.member.id);
+  assert.equal(directOptOutMember.cancellationReason, "Kan deze keer niet");
+  assert.ok(directOptOutMember.cancelledAt);
+
   const optOutActivity = await jsonRequest(baseUrl, "/api/activities", {
     method: "POST",
     cookie: adminLogin.cookie,

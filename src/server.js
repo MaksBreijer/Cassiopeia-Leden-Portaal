@@ -1365,19 +1365,13 @@ app.delete("/api/activities/:id/register", requireAuth, (req, res) => {
   const reason = String(req.body?.reason || "").trim();
   if (reason.length > 500) return res.status(400).json({ error: "De reden mag maximaal 500 tekens bevatten." });
   const lateCancelled = isLateCancellation(activity.starts_at);
-  const result = (activity.response_mode || "signup") === "optout"
-    ? db.prepare(`
-        INSERT INTO registrations (activity_id, user_id, cancelled_at, late_cancelled, cancellation_reason)
-        VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?)
-        ON CONFLICT(activity_id, user_id) DO UPDATE SET
-          cancelled_at = CURRENT_TIMESTAMP, late_cancelled = excluded.late_cancelled,
-          cancellation_reason = excluded.cancellation_reason
-      `).run(req.params.id, req.session.userId, lateCancelled ? 1 : 0, reason)
-    : db.prepare(`
-        UPDATE registrations
-        SET cancelled_at = CURRENT_TIMESTAMP, late_cancelled = ?, cancellation_reason = ?
-        WHERE activity_id = ? AND user_id = ? AND cancelled_at IS NULL
-      `).run(lateCancelled ? 1 : 0, reason, req.params.id, req.session.userId);
+  const result = db.prepare(`
+    INSERT INTO registrations (activity_id, user_id, cancelled_at, late_cancelled, cancellation_reason)
+    VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?)
+    ON CONFLICT(activity_id, user_id) DO UPDATE SET
+      cancelled_at = CURRENT_TIMESTAMP, late_cancelled = excluded.late_cancelled,
+      cancellation_reason = excluded.cancellation_reason
+  `).run(req.params.id, req.session.userId, lateCancelled ? 1 : 0, reason);
   res.json({ ok: true, lateCancelled, changed: result.changes });
 });
 

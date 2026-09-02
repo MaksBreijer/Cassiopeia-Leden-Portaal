@@ -1381,7 +1381,7 @@ function renderPublicActivities() {
       const full = !optOut && activity.capacity && activity.registrationCount >= activity.capacity;
       const registrationOpen = activityRegistrationIsOpen(activity);
       const canRegister = Boolean(state.user && (optOut ? activity.wasCancelled : !activity.isRegistered && registrationOpen && !full));
-      const canCancel = Boolean(state.user && (optOut ? !activity.wasCancelled : activity.isRegistered));
+      const canCancel = Boolean(state.user && !activity.wasCancelled);
       const registrationState = optOut
         ? activity.wasCancelled
           ? activity.lateCancelled ? "Te laat afgemeld" : "Je bent afgemeld"
@@ -1408,8 +1408,8 @@ function renderPublicActivities() {
           : activity.registrationOverride === "closed"
             ? "Handmatig gesloten door de beheerder."
             : registrationOpen
-              ? `Inschrijven kan tot ${formatActivityDeadline(activity)}.`
-              : `De inschrijving sloot op ${formatActivityDeadline(activity)}.`;
+              ? `Schrijf je in als je komt, of meld je af als je niet kunt. Reageren kan tot ${formatActivityDeadline(activity)}.`
+              : `De inschrijving sloot op ${formatActivityDeadline(activity)}. Afmelden blijft mogelijk.`;
       return `
         <article id="activiteit-${activity.id}" class="activity-card" data-activity-card="${activity.id}">
           <div class="activity-card-content">
@@ -2249,7 +2249,7 @@ document.body.addEventListener("click", async (event) => {
     const activity = state.activities.find((item) => item.id === Number(registerBtn.dataset.register));
     const action = registerBtn.dataset.registrationAction;
     if (action === "join" && activity.isRegistered) return;
-    if (action === "cancel" && !activity.isRegistered) return;
+    if (action === "cancel" && activity.wasCancelled) return;
     if (action === "cancel") return openCancellationDialog(activity);
     await api(`/api/activities/${activity.id}/register`, { method: "POST" });
     await loadActivities();
