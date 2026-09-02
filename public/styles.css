@@ -571,37 +571,6 @@ main {
   background: linear-gradient(transparent, rgba(52, 43, 61, 0.4));
 }
 
-.hero-crest-card {
-  position: absolute;
-  z-index: 1;
-  right: 24px;
-  bottom: 24px;
-  width: 138px;
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 18px;
-  padding: 10px 12px 12px;
-  color: var(--plum);
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(10px);
-}
-
-.hero-crest-card img {
-  width: 92px;
-  height: 108px;
-  object-fit: contain;
-}
-
-.hero-crest-card span {
-  font-size: 8px;
-  font-weight: 850;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3355,11 +3324,6 @@ dialog::backdrop {
 
   .portal-hero-media {
     min-height: 250px;
-  }
-
-  .hero-crest-card {
-    right: 14px;
-    bottom: 14px;
   }
 
   .hero-actions {

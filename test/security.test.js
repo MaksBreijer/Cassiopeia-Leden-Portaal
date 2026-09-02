@@ -156,6 +156,7 @@ test("the supplied transparent Cassiopeia crest is used for the site and app ico
   assert.equal(appIcon.readUInt32BE(20), 512);
   assert.match(html, /cassiopeia-embleem\.png\?v=20260831-logo/);
   assert.match(html, /app-icon-180\.png\?v=20260831-logo/);
+  assert.doesNotMatch(html, /hero-crest-card/);
   assert.ok(manifest.icons.every((icon) => icon.src.includes("v=20260831-logo")));
 });
 
