@@ -97,7 +97,8 @@ test("the login form does not publish credentials", () => {
   assert.doesNotMatch(loginForm, /value=["'][^"']+["']/);
   assert.doesNotMatch(html, /top-marquee/);
   assert.match(loginForm, /LUSTRUM|Cassiopeia/);
-  assert.match(html, /assets\/og\.png/);
+  assert.match(html, /assets\/cassiopeia-whatsapp\.png\?v=20260902/);
+  assert.ok(fs.existsSync(path.join(projectRoot, "public", "assets", "cassiopeia-whatsapp.png")));
 });
 
 test("the portal is installable as a web app without caching private API data", () => {
