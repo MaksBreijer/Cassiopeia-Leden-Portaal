@@ -33,7 +33,12 @@ const mapView = {
   startClientX: 0,
   startClientY: 0,
   startCenterPoint: null,
-  lastWheelAt: 0
+  lastWheelAt: 0,
+  pointers: new Map(),
+  pinching: false,
+  pinchStartDistance: 0,
+  pinchStartZoom: 7,
+  ignoreClickUntil: 0
 };
 
 const API_BASE = location.protocol === "file:" || location.port === "5500" ? "http://127.0.0.1:3000" : "";
@@ -974,6 +979,7 @@ function renderCribMap() {
 
 if (els.cribMap) {
   els.cribMap.addEventListener("click", (event) => {
+    if (Date.now() < mapView.ignoreClickUntil) return;
     const marker = event.target.closest?.(".crib-marker");
     if (marker) return showMapTooltip(marker);
     if (event.target.closest?.("[data-map-zoom-in]")) {
@@ -1017,15 +1023,46 @@ if (els.cribMap) {
 
   els.cribMap.addEventListener("pointerdown", (event) => {
     if (event.target.closest?.("button")) return;
+    mapView.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    els.cribMap.setPointerCapture?.(event.pointerId);
+    if (mapView.pointers.size >= 2) {
+      const [first, second] = [...mapView.pointers.values()];
+      mapView.pinching = true;
+      mapView.dragging = false;
+      mapView.pinchStartDistance = Math.hypot(second.x - first.x, second.y - first.y);
+      mapView.pinchStartZoom = mapView.zoom;
+      mapView.ignoreClickUntil = Date.now() + 400;
+      els.cribMap.classList.remove("is-dragging");
+      els.cribMap.classList.add("is-pinching");
+      return;
+    }
     mapView.dragging = true;
     mapView.pointerId = event.pointerId;
     mapView.startClientX = event.clientX;
     mapView.startClientY = event.clientY;
     mapView.startCenterPoint = projectMapPoint(mapView.centerLatitude, mapView.centerLongitude, mapView.zoom);
-    els.cribMap.setPointerCapture?.(event.pointerId);
     els.cribMap.classList.add("is-dragging");
   });
   els.cribMap.addEventListener("pointermove", (event) => {
+    if (mapView.pointers.has(event.pointerId)) {
+      mapView.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+    if (mapView.pinching && mapView.pointers.size >= 2) {
+      event.preventDefault();
+      const [first, second] = [...mapView.pointers.values()];
+      const distance = Math.hypot(second.x - first.x, second.y - first.y);
+      if (mapView.pinchStartDistance > 0) {
+        const zoomDelta = Math.round(Math.log2(distance / mapView.pinchStartDistance) * 2);
+        const nextZoom = Math.max(6, Math.min(17, mapView.pinchStartZoom + zoomDelta));
+        if (nextZoom !== mapView.zoom) {
+          mapView.zoom = nextZoom;
+          mapView.ignoreClickUntil = Date.now() + 400;
+          hideMapTooltip();
+          renderCribMap();
+        }
+      }
+      return;
+    }
     if (!mapView.dragging || event.pointerId !== mapView.pointerId) return;
     const rect = els.cribMap.getBoundingClientRect();
     const dragSensitivity = 0.55;
@@ -1040,6 +1077,14 @@ if (els.cribMap) {
     renderCribMap();
   });
   const stopMapDrag = (event) => {
+    mapView.pointers.delete(event.pointerId);
+    if (mapView.pinching) {
+      mapView.ignoreClickUntil = Date.now() + 400;
+      if (mapView.pointers.size) return;
+      mapView.pinching = false;
+      mapView.pinchStartDistance = 0;
+      els.cribMap.classList.remove("is-pinching");
+    }
     if (!mapView.dragging || (event.pointerId !== undefined && event.pointerId !== mapView.pointerId)) return;
     mapView.dragging = false;
     mapView.pointerId = null;

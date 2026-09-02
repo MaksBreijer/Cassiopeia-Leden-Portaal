@@ -774,7 +774,8 @@ main {
   user-select: none;
 }
 
-.crib-map.is-dragging {
+.crib-map.is-dragging,
+.crib-map.is-pinching {
   cursor: grabbing;
 }
 
@@ -2438,9 +2439,11 @@ label {
 .document-viewer-dialog {
   width: min(1180px, calc(100% - 24px));
   max-width: none;
+  overflow: hidden;
 }
 
 .document-viewer-card {
+  min-height: 0;
   width: 100%;
   height: min(900px, calc(100vh - 32px));
   height: min(900px, calc(100dvh - 32px));
@@ -2463,6 +2466,10 @@ label {
   background: #fff;
 }
 
+.document-viewer-header > div:first-child {
+  min-width: 0;
+}
+
 .document-viewer-header .eyebrow,
 .document-viewer-header h3 {
   margin: 0;
@@ -2473,6 +2480,7 @@ label {
   color: var(--plum);
   font-family: var(--serif);
   font-size: clamp(20px, 3vw, 28px);
+  overflow-wrap: anywhere;
 }
 
 .document-viewer-actions {
@@ -2491,6 +2499,7 @@ label {
 }
 
 .document-viewer-card iframe {
+  min-height: 0;
   width: 100%;
   height: 100%;
   border: 0;
@@ -2499,25 +2508,56 @@ label {
 
 @media (max-width: 620px) {
   .document-viewer-dialog {
-    width: calc(100% - 8px);
-    max-height: calc(100dvh - 8px);
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
   }
 
   .document-viewer-card {
-    height: calc(100dvh - 8px);
-    border-radius: 17px;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
   }
 
   .document-viewer-header {
     align-items: stretch;
     flex-direction: column;
-    gap: 12px;
-    padding: 14px;
+    gap: 10px;
+    padding: max(12px, env(safe-area-inset-top)) 12px 10px;
+  }
+
+  .document-viewer-header .eyebrow {
+    font-size: 8px;
+  }
+
+  .document-viewer-header h3 {
+    margin-top: 2px;
+    font-size: 20px;
+    line-height: 1.1;
+  }
+
+  .document-viewer-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 7px;
   }
 
   .document-viewer-actions a,
   .document-viewer-actions button {
-    flex: 1;
+    width: 100%;
+    min-height: 40px;
+    padding: 9px 10px;
+    font-size: 10px;
+  }
+
+  .document-viewer-card iframe {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
@@ -3199,7 +3239,15 @@ dialog::backdrop {
   display: grid;
   gap: 16px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: clamp(22px, 4vw, 34px);
+}
+
+.dialog-card > *,
+.form-grid > * {
+  min-width: 0;
 }
 
 /* Compact header before the navigation starts competing with the brand. */
@@ -3866,7 +3914,7 @@ dialog::backdrop {
   .dialog-card {
     max-height: calc(100vh - 12px);
     max-height: calc(100dvh - 12px);
-    padding: 20px 16px;
+    padding: 20px 16px max(20px, env(safe-area-inset-bottom));
   }
 
   .dialog-actions {

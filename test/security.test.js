@@ -149,11 +149,15 @@ test("members can update their own address from their profile", () => {
   assert.match(appScript, /memberCommittees\(member\)/);
   assert.match(appScript, /function yearAgendaTimeLabel\(item\)/);
   assert.match(appScript, /year-agenda-time/);
+  assert.match(appScript, /pointers: new Map\(\)/);
+  assert.match(appScript, /Math\.log2\(distance \/ mapView\.pinchStartDistance\)/);
   assert.match(server, /ACTIVITY_ARCHIVE_DELAY_MS = 2 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(server, /committee LIKE \?/);
   assert.match(styles, /\.activity-archive-list[\s\S]*max-height: 560px;[\s\S]*overflow-y: auto;/);
   assert.match(styles, /\.member-grid \{[\s\S]*max-height: 68vh;[\s\S]*overflow-y: auto;/);
   assert.match(styles, /\.member-card-main \{[\s\S]*grid-template-columns: 64px minmax\(0, 1fr\);/);
+  assert.match(styles, /\.document-viewer-dialog \{[\s\S]*position: fixed;[\s\S]*height: 100dvh;[\s\S]*margin: 0;/);
+  assert.match(styles, /\.dialog-card \{[\s\S]*overflow-x: hidden;[\s\S]*overscroll-behavior: contain;/);
   assert.match(appScript, /syncAddressFields\(els\.profileForm\)/);
   assert.match(appScript, /api\("\/api\/me",\s*\{\s*method: "PUT"/);
   assert.match(server, /app\.put\("\/api\/me", requireAuth/);
