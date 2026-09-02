@@ -108,6 +108,7 @@ test("the portal is installable as a web app without caching private API data", 
   const serviceWorker = fs.readFileSync(path.join(projectRoot, "public", "sw.js"), "utf8");
 
   assert.match(html, /rel="manifest" href="manifest\.webmanifest"/);
+  assert.match(html, /<base href="\/" \/>/);
   assert.match(html, /rel="apple-touch-icon"/);
   assert.match(html, /data-install-app/);
   assert.equal(manifest.display, "standalone");
