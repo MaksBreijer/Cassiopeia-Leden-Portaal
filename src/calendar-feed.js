@@ -102,10 +102,46 @@ function createCalendarFeed(items, { calendarName = "Cassiopeia Jaarplanning", s
   return `${lines.map(foldIcsLine).join("\r\n")}\r\n`;
 }
 
-function parseIcsDate(value) {
+function dateFromTimeZone(parts, timeZone) {
+  let timestamp = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  try {
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23"
+    });
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const shown = Object.fromEntries(formatter.formatToParts(new Date(timestamp)).map((part) => [part.type, part.value]));
+      const shownTimestamp = Date.UTC(Number(shown.year), Number(shown.month) - 1, Number(shown.day), Number(shown.hour), Number(shown.minute), Number(shown.second));
+      const wantedTimestamp = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+      timestamp += wantedTimestamp - shownTimestamp;
+    }
+  } catch (error) {
+    // Onbekende tijdzones vallen veilig terug op UTC.
+  }
+  return new Date(timestamp);
+}
+
+function parseIcsDate(value, timeZone = "") {
   const match = String(value || "").match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})Z?)?/);
   if (!match) return null;
-  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4] || 0), Number(match[5] || 0), Number(match[6] || 0)));
+  const parts = {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(match[4] || 0),
+    minute: Number(match[5] || 0),
+    second: Number(match[6] || 0)
+  };
+  const isUtc = String(value).endsWith("Z") || !match[4] || !timeZone;
+  const date = isUtc
+    ? new Date(Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second))
+    : dateFromTimeZone(parts, timeZone);
   return Number.isFinite(date.getTime()) ? date : null;
 }
 
@@ -113,16 +149,23 @@ function parseGoogleCalendarFeed(feed) {
   const unfolded = String(feed || "").replace(/\r?\n[ \t]/g, "");
   const events = [...unfolded.matchAll(/BEGIN:VEVENT\r?\n([\s\S]*?)\r?\nEND:VEVENT/g)].map((match) => {
     const fields = {};
+    const fieldParameters = {};
     for (const line of match[1].split(/\r?\n/)) {
       const separator = line.indexOf(":");
       if (separator < 0) continue;
-      const key = line.slice(0, separator).split(";", 1)[0].toUpperCase();
-      if (!fields[key]) fields[key] = line.slice(separator + 1);
+      const [rawKey, ...parameters] = line.slice(0, separator).split(";");
+      const key = rawKey.toUpperCase();
+      if (!fields[key]) {
+        fields[key] = line.slice(separator + 1);
+        fieldParameters[key] = parameters;
+      }
     }
-    const start = parseIcsDate(fields.DTSTART);
+    const startTimeZone = fieldParameters.DTSTART?.find((parameter) => parameter.toUpperCase().startsWith("TZID="))?.slice(5) || "";
+    const endTimeZone = fieldParameters.DTEND?.find((parameter) => parameter.toUpperCase().startsWith("TZID="))?.slice(5) || startTimeZone;
+    const start = parseIcsDate(fields.DTSTART, startTimeZone);
     if (!start || !fields.SUMMARY) return null;
-    const end = parseIcsDate(fields.DTEND);
-    const isAllDay = /^\d{8}$/.test(fields.DTSTART || "");
+    const end = parseIcsDate(fields.DTEND, endTimeZone);
+    const isAllDay = /^\d{8}$/.test(fields.DTSTART || "") || fieldParameters.DTSTART?.some((parameter) => parameter.toUpperCase() === "VALUE=DATE");
     let dayLabel = String(start.getUTCDate());
     if (isAllDay && end) {
       const inclusiveEnd = new Date(end.getTime() - 86400000);
@@ -138,7 +181,8 @@ function parseGoogleCalendarFeed(feed) {
       dayLabel,
       title: unescapeIcsText(fields.SUMMARY),
       sortOrder: start.getUTCDate() * 1440 + start.getUTCHours() * 60 + start.getUTCMinutes(),
-      startsAt: start.toISOString()
+      startsAt: start.toISOString(),
+      isAllDay
     };
   }).filter(Boolean);
   return events.sort((a, b) => a.monthIndex - b.monthIndex || a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, "nl"));

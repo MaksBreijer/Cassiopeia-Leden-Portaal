@@ -1595,6 +1595,18 @@ main {
   font-weight: 750;
 }
 
+.year-agenda-time {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: var(--lavender-700);
+  background: var(--lavender-50);
+  font-size: 10px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
 .year-agenda-next-label {
   border-radius: 999px;
   padding: 4px 7px;

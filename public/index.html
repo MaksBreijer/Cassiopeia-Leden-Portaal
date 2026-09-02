@@ -27,7 +27,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20260902-mobile-members" />
+    <link rel="stylesheet" href="styles.css?v=20260902-planning-times" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -558,10 +558,11 @@
           <label>Maand / jaar<input name="monthLabel" placeholder="Bijv. April 2026" required /></label>
           <label>Maandvolgorde<input name="monthIndex" type="number" min="1" required /></label>
           <label>Datum / dag<input name="dayLabel" placeholder="Bijv. 9, 23-24 of ?" required /></label>
+          <label>Begintijd (optioneel)<input name="timeLabel" type="time" /></label>
           <label>Volgorde binnen maand<input name="sortOrder" type="number" min="0" /></label>
           <label class="wide">Titel<input name="title" required /></label>
-          <label class="wide" data-bulk-year-agenda>Meerdere datums / activiteiten<textarea name="bulkItems" rows="5" placeholder="Bijv.&#10;2; DispuBo&#10;3-5; Dispuutsweekend&#10;15; Rendez-vous"></textarea></label>
-          <p class="form-help wide" data-bulk-year-agenda>Voor meerdere agendapunten vul je hierboven één maand in en zet je hier per regel: datum; activiteit.</p>
+          <label class="wide" data-bulk-year-agenda>Meerdere datums / activiteiten<textarea name="bulkItems" rows="5" placeholder="Bijv.&#10;2; 20:00; DispuBo&#10;3-5; Dispuutsweekend&#10;15; 18:30; Rendez-vous"></textarea></label>
+          <p class="form-help wide" data-bulk-year-agenda>Vul hierboven één maand in en zet hier per regel: datum; tijd; activiteit. De tijd mag je weglaten.</p>
         </div>
         <div class="dialog-actions">
           <button type="button" class="ghost" data-close>Sluiten</button>
@@ -720,6 +721,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260902-birthday-copy"></script>
+    <script src="app.js?v=20260902-planning-times"></script>
   </body>
 </html>

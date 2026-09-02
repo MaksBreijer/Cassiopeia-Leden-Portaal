@@ -71,6 +71,7 @@ function initializeDatabase() {
       month_label TEXT NOT NULL,
       month_index INTEGER NOT NULL,
       day_label TEXT NOT NULL,
+      time_label TEXT DEFAULT '',
       title TEXT NOT NULL,
       sort_order INTEGER DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -183,6 +184,7 @@ function initializeDatabase() {
   ensureColumn("registrations", "cancellation_reason", "TEXT DEFAULT ''");
   ensureColumn("activities", "response_mode", "TEXT NOT NULL DEFAULT 'signup'");
   ensureColumn("activities", "registration_override", "TEXT NOT NULL DEFAULT 'automatic'");
+  ensureColumn("year_agenda_items", "time_label", "TEXT DEFAULT ''");
   revokeExposedCredentials();
   bootstrapAdmin();
   purgeExistingNonAdminMembers();

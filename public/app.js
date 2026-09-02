@@ -1284,7 +1284,22 @@ function yearAgendaItemTimestamp(item) {
   const day = String(item.dayLabel || "").match(/\d{1,2}/);
   const monthIndex = DUTCH_MONTH_INDEX[month?.[1]];
   if (!month || !day || !Number.isFinite(monthIndex)) return null;
-  return new Date(Number(month[2]), monthIndex, Number(day[0])).getTime();
+  const time = String(item.timeLabel || "").match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  return new Date(Number(month[2]), monthIndex, Number(day[0]), Number(time?.[1] || 0), Number(time?.[2] || 0)).getTime();
+}
+
+function yearAgendaTimeLabel(item) {
+  const manualTime = String(item.timeLabel || "").trim();
+  if (/^([01]\d|2[0-3]):[0-5]\d$/.test(manualTime)) return manualTime;
+  if (item.isAllDay !== false || !item.startsAt) return "";
+  const date = new Date(item.startsAt);
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Intl.DateTimeFormat("nl-NL", {
+    timeZone: "Europe/Amsterdam",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).format(date);
 }
 
 function renderYearAgendaToolbar(months, activeMonth) {
@@ -1364,11 +1379,13 @@ function renderYearAgenda() {
             const isPast = timestamp !== null && timestamp < startOfToday.getTime();
             const isNext = nextItem && String(nextItem.id) === String(item.id);
             const dateLabel = String(item.dayLabel || "").trim() === "?" ? "N.t.b." : item.dayLabel;
+            const timeLabel = yearAgendaTimeLabel(item);
             return `
               <div class="year-agenda-item ${isPast ? "is-past" : ""} ${isNext ? "is-next" : ""}">
                 <span class="year-agenda-date"><small>${dateLabel === "N.t.b." ? "Datum" : "Dag"}</small><strong>${escapeHtml(dateLabel)}</strong></span>
                 <span class="year-agenda-copy">
                   <span class="year-agenda-title">${escapeHtml(item.title)}</span>
+                  ${timeLabel ? `<span class="year-agenda-time">${escapeHtml(timeLabel)}</span>` : ""}
                   ${isNext ? '<span class="year-agenda-next-label">Eerstvolgende</span>' : ""}
                 </span>
                 ${state.user?.isAdmin && state.yearAgendaSource.type !== "google"
@@ -1709,6 +1726,7 @@ function openYearAgendaDialog(item = null) {
   fields.monthLabel.value = item?.monthLabel || activeMonth?.monthLabel || "";
   fields.monthIndex.value = item?.monthIndex || activeMonth?.monthIndex || "";
   fields.dayLabel.value = item?.dayLabel || "";
+  fields.timeLabel.value = item?.timeLabel || "";
   fields.sortOrder.value = item?.sortOrder ?? nextSortOrder;
   fields.title.value = item?.title || "";
   fields.bulkItems.value = "";
@@ -1726,19 +1744,19 @@ function parseBulkYearAgendaItems(data) {
   if (!bulkItems.length) return [];
 
   return bulkItems.map((line, index) => {
-    const separatorIndex = line.indexOf(";");
-    if (separatorIndex === -1) {
-      throw new Error(`Gebruik per regel: datum; activiteit. Controleer regel ${index + 1}.`);
-    }
-    const dayLabel = line.slice(0, separatorIndex).trim();
-    const title = line.slice(separatorIndex + 1).trim();
+    const parts = line.split(";").map((part) => part.trim());
+    const dayLabel = parts.shift() || "";
+    let timeLabel = "";
+    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(parts[0] || "")) timeLabel = parts.shift();
+    const title = parts.join(";").trim();
     if (!dayLabel || !title) {
-      throw new Error(`Datum en activiteit zijn verplicht op regel ${index + 1}.`);
+      throw new Error(`Gebruik per regel: datum; tijd; activiteit. De tijd mag je weglaten. Controleer regel ${index + 1}.`);
     }
     return {
       monthLabel: String(data.monthLabel || "").trim(),
       monthIndex: Number(data.monthIndex) || 1,
       dayLabel,
+      timeLabel,
       title,
       sortOrder: (Number(data.sortOrder) || state.yearAgendaItems.length + 1) + index
     };
@@ -2629,6 +2647,7 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
         monthLabel: String(data.monthLabel || "").trim(),
         monthIndex: Number(data.monthIndex) || 1,
         dayLabel: String(data.dayLabel || "").trim(),
+        timeLabel: String(data.timeLabel || "").trim(),
         title: String(data.title || "").trim(),
         sortOrder: Number(data.sortOrder) || state.yearAgendaItems.length + 1,
         isDefault: String(id).startsWith("default-")

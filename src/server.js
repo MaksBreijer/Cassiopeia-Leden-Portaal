@@ -989,6 +989,7 @@ function yearAgendaItemFromRow(row) {
     monthLabel: row.month_label,
     monthIndex: row.month_index,
     dayLabel: row.day_label,
+    timeLabel: row.time_label || "",
     title: row.title,
     sortOrder: row.sort_order
   };
@@ -1001,6 +1002,9 @@ function yearAgendaItemFromBody(body, existing = {}) {
     month_label: String(body.monthLabel || existing.month_label || "").trim(),
     month_index: Number.isFinite(monthIndex) && monthIndex > 0 ? monthIndex : existing.month_index || 1,
     day_label: String(body.dayLabel || existing.day_label || "").trim(),
+    time_label: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(body.timeLabel ?? existing.time_label ?? "").trim())
+      ? String(body.timeLabel ?? existing.time_label ?? "").trim()
+      : "",
     title: String(body.title || existing.title || "").trim(),
     sort_order: Number.isFinite(sortOrder) ? sortOrder : existing.sort_order || 0
   };
@@ -1286,8 +1290,8 @@ app.post("/api/year-agenda", requireAuth, requireAdmin, (req, res) => {
 
   const result = db
     .prepare(`
-      INSERT INTO year_agenda_items (month_label, month_index, day_label, title, sort_order)
-      VALUES (@month_label, @month_index, @day_label, @title, @sort_order)
+      INSERT INTO year_agenda_items (month_label, month_index, day_label, time_label, title, sort_order)
+      VALUES (@month_label, @month_index, @day_label, @time_label, @title, @sort_order)
     `)
     .run(item);
   const created = db.prepare("SELECT * FROM year_agenda_items WHERE id = ?").get(result.lastInsertRowid);
@@ -1305,7 +1309,7 @@ app.put("/api/year-agenda/:id", requireAuth, requireAdmin, (req, res) => {
 
   db.prepare(`
     UPDATE year_agenda_items
-    SET month_label = @month_label, month_index = @month_index, day_label = @day_label,
+    SET month_label = @month_label, month_index = @month_index, day_label = @day_label, time_label = @time_label,
         title = @title, sort_order = @sort_order, updated_at = CURRENT_TIMESTAMP
     WHERE id = @id
   `).run({ ...item, id: req.params.id });

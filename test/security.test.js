@@ -144,8 +144,11 @@ test("members can update their own address from their profile", () => {
   assert.match(html, /id="activityArchiveYearFilter"/);
   assert.match(html, /id="activityArchiveMonthFilter"/);
   assert.match(html, /id="memberCommitteeFilter"/);
+  assert.match(html, /name="timeLabel" type="time"/);
   assert.match(appScript, /api\("\/api\/activities\/archive"\)/);
   assert.match(appScript, /memberCommittees\(member\)/);
+  assert.match(appScript, /function yearAgendaTimeLabel\(item\)/);
+  assert.match(appScript, /year-agenda-time/);
   assert.match(server, /ACTIVITY_ARCHIVE_DELAY_MS = 2 \* 24 \* 60 \* 60 \* 1000/);
   assert.match(server, /committee LIKE \?/);
   assert.match(styles, /\.activity-archive-list[\s\S]*max-height: 560px;[\s\S]*overflow-y: auto;/);
@@ -204,6 +207,21 @@ test("calendar feeds preserve dates, ranges and escaped titles", () => {
     { monthLabel: googleItems[0].monthLabel, dayLabel: googleItems[0].dayLabel, title: googleItems[0].title },
     { monthLabel: "November 2026", dayLabel: "12-13", title: "Lustrum, diner" }
   );
+  assert.equal(googleItems[0].isAllDay, true);
+
+  const timedGoogleItems = parseGoogleCalendarFeed([
+    "BEGIN:VCALENDAR",
+    "BEGIN:VEVENT",
+    "UID:cassio-timed-test",
+    "DTSTART;TZID=Europe/Amsterdam:20260903T200000",
+    "DTEND;TZID=Europe/Amsterdam:20260903T220000",
+    "SUMMARY:DispuBo",
+    "END:VEVENT",
+    "END:VCALENDAR"
+  ].join("\r\n"));
+  assert.equal(timedGoogleItems[0].startsAt, "2026-09-03T18:00:00.000Z");
+  assert.equal(timedGoogleItems[0].isAllDay, false);
+  assert.equal(timedGoogleItems[0].dayLabel, "3");
 
   const visible = visibleCalendarItems([
     { startsAt: "2025-09-01T00:00:00.000Z", title: "Oud" },
