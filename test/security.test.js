@@ -99,6 +99,7 @@ test("the login form does not publish credentials", () => {
   assert.match(loginForm, /LUSTRUM|Cassiopeia/);
   assert.match(html, /assets\/cassiopeia-whatsapp\.png\?v=20260902-info/);
   assert.ok(fs.existsSync(path.join(projectRoot, "public", "assets", "cassiopeia-whatsapp.png")));
+  assert.ok(fs.existsSync(path.join(projectRoot, "public", "assets", "cassiopeia-activity-share.png")));
 });
 
 test("the portal is installable as a web app without caching private API data", () => {
@@ -442,6 +443,12 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(activity.response.status, 201);
   assert.equal(activity.data.activity.registrationOpen, true);
+  const activitySharePage = await fetch(`${baseUrl}/?activity=${activity.data.activity.id}`);
+  const activityShareHtml = await activitySharePage.text();
+  assert.equal(activitySharePage.status, 200);
+  assert.match(activityShareHtml, /Activiteit · Dameschdispuut Cassiopeia/);
+  assert.match(activityShareHtml, /cassiopeia-activity-share\.png\?v=20260902-rsvp/);
+  assert.ok(activityShareHtml.includes(`property="og:url" content="https://www.dispuutcassiopeia.nl/?activity=${activity.data.activity.id}"`));
   const registration = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
     method: "POST",
     cookie: adminLogin.cookie

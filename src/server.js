@@ -1,4 +1,5 @@
 const path = require("path");
+const fs = require("fs");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const express = require("express");
@@ -22,6 +23,8 @@ const LOGIN_WINDOW_MS = 1000 * 60 * 15;
 const LOGIN_MAX_ATTEMPTS = 5;
 const MEMBER_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
 const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const INDEX_HTML_PATH = path.join(__dirname, "..", "public", "index.html");
+const ACTIVITY_SHARE_IMAGE_URL = "https://www.dispuutcassiopeia.nl/assets/cassiopeia-activity-share.png?v=20260902-rsvp";
 const loginAttempts = new Map();
 const confessionAttempts = new Map();
 let googleCalendarCache = { url: "", feed: "", items: [], expiresAt: 0 };
@@ -95,6 +98,29 @@ app.use(
 app.use("/api", (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
   next();
+});
+
+app.get("/", (req, res, next) => {
+  const activityId = String(req.query.activity || "").trim();
+  if (!/^\d+$/.test(activityId)) return next();
+
+  const activityExists = db.prepare("SELECT 1 FROM activities WHERE id = ?").get(activityId);
+  if (!activityExists) return next();
+
+  const shareUrl = `https://www.dispuutcassiopeia.nl/?activity=${activityId}`;
+  const html = fs.readFileSync(INDEX_HTML_PATH, "utf8")
+    .replace('<meta property="og:title" content="Dameschdispuut Cassiopeia · Lustrum III" />', '<meta property="og:title" content="Activiteit · Dameschdispuut Cassiopeia" />')
+    .replace('<meta property="og:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />', '<meta property="og:description" content="Log in en schrijf je in voor deze activiteit." />')
+    .replace(/<meta property="og:image" content="[^"]+" \/>/, `<meta property="og:image" content="${ACTIVITY_SHARE_IMAGE_URL}" />`)
+    .replace('<meta property="og:image:alt" content="Logo van Dameschdispuut Cassiopeia" />', '<meta property="og:image:alt" content="Schrijf je nu in voor een activiteit van Dameschdispuut Cassiopeia" />')
+    .replace('<meta property="og:url" content="https://www.dispuutcassiopeia.nl/" />', `<meta property="og:url" content="${shareUrl}" />`)
+    .replace('<meta name="twitter:title" content="Dameschdispuut Cassiopeia · Lustrum III" />', '<meta name="twitter:title" content="Activiteit · Dameschdispuut Cassiopeia" />')
+    .replace('<meta name="twitter:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />', '<meta name="twitter:description" content="Log in en schrijf je in voor deze activiteit." />')
+    .replace(/<meta name="twitter:image" content="[^"]+" \/>/, `<meta name="twitter:image" content="${ACTIVITY_SHARE_IMAGE_URL}" />`)
+    .replace('<meta name="twitter:image:alt" content="Logo van Dameschdispuut Cassiopeia" />', '<meta name="twitter:image:alt" content="Schrijf je nu in voor een activiteit van Dameschdispuut Cassiopeia" />');
+
+  res.setHeader("Cache-Control", "no-store");
+  res.type("html").send(html);
 });
 
 app.use(
