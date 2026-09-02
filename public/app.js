@@ -138,6 +138,7 @@ const els = {
   installBrowserInstructions: document.querySelector("#installBrowserInstructions"),
   memberSearch: document.querySelector("#memberSearch"),
   memberYearFilter: document.querySelector("#memberYearFilter"),
+  memberCommitteeFilter: document.querySelector("#memberCommitteeFilter"),
   clearMemberFilters: document.querySelector("#clearMemberFilters"),
   memberResultCount: document.querySelector("#memberResultCount"),
   loggedOutMembers: document.querySelector("#loggedOutMembers"),
@@ -153,6 +154,8 @@ const els = {
   yearAgendaSourceLabel: document.querySelector("#yearAgendaSourceLabel"),
   publicActivityList: document.querySelector("#publicActivityList"),
   activityArchiveList: document.querySelector("#activityArchiveList"),
+  activityArchiveYearFilter: document.querySelector("#activityArchiveYearFilter"),
+  activityArchiveMonthFilter: document.querySelector("#activityArchiveMonthFilter"),
   documentList: document.querySelector("#documentList"),
   documentViewerDialog: document.querySelector("#documentViewerDialog"),
   documentViewerTitle: document.querySelector("#documentViewerTitle"),
@@ -763,14 +766,23 @@ function uniqueSorted(values) {
   return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "nl"));
 }
 
-function setFilterOptions(select, values, emptyLabel) {
+function setFilterOptions(select, values, emptyLabel, formatValue = (value) => value) {
   const current = select.value;
-  select.innerHTML = `<option value="">${emptyLabel}</option>${values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(formatLichting(value))}</option>`).join("")}`;
+  select.innerHTML = `<option value="">${emptyLabel}</option>${values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(formatValue(value))}</option>`).join("")}`;
   select.value = values.includes(current) ? current : "";
 }
 
+function memberCommittees(member) {
+  return String(member.committee || "")
+    .split(/[,;|/]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 function renderMemberFilters() {
-  setFilterOptions(els.memberYearFilter, uniqueSorted(state.members.filter((member) => member.accountStatus === "active").map((member) => member.yearLayer)).reverse(), "Alle lichtingen");
+  const activeMembers = state.members.filter((member) => member.accountStatus === "active");
+  setFilterOptions(els.memberYearFilter, uniqueSorted(activeMembers.map((member) => member.yearLayer)).reverse(), "Alle lichtingen", formatLichting);
+  setFilterOptions(els.memberCommitteeFilter, uniqueSorted(activeMembers.flatMap(memberCommittees)), "Alle commissies");
   document.querySelectorAll("[data-status-filter]").forEach((button) => {
     button.classList.toggle("active", button.dataset.statusFilter === state.memberStatusFilter);
   });
@@ -779,10 +791,12 @@ function renderMemberFilters() {
 function filteredMembers() {
   const status = state.memberStatusFilter;
   const year = els.memberYearFilter.value;
+  const committee = els.memberCommitteeFilter.value;
   return state.members.filter((member) => {
     if (member.accountStatus !== "active") return false;
     if (status && member.memberStatus !== status) return false;
     if (year && member.yearLayer !== year) return false;
+    if (committee && !memberCommittees(member).includes(committee)) return false;
     return true;
   });
 }
@@ -1560,12 +1574,45 @@ function renderActivityArchive() {
     els.activityArchiveList.innerHTML = "";
     return;
   }
+  const archiveDates = state.archivedActivities
+    .map((activity) => new Date(activity.startsAt))
+    .filter((date) => !Number.isNaN(date.getTime()));
+  const selectedYear = els.activityArchiveYearFilter?.value || "";
+  const years = [...new Set(archiveDates.map((date) => String(date.getFullYear())))].sort((a, b) => Number(b) - Number(a));
+  setFilterOptions(els.activityArchiveYearFilter, years, "Alle jaren");
+
+  const activeYear = els.activityArchiveYearFilter?.value || selectedYear;
+  const availableMonths = [...new Set(archiveDates
+    .filter((date) => !activeYear || String(date.getFullYear()) === activeYear)
+    .map((date) => String(date.getMonth() + 1)))]
+    .sort((a, b) => Number(a) - Number(b));
+  setFilterOptions(
+    els.activityArchiveMonthFilter,
+    availableMonths,
+    "Alle maanden",
+    (month) => new Intl.DateTimeFormat("nl-NL", { month: "long" }).format(new Date(2024, Number(month) - 1, 1))
+  );
+
+  const year = els.activityArchiveYearFilter?.value || "";
+  const month = els.activityArchiveMonthFilter?.value || "";
+  const activities = state.archivedActivities.filter((activity) => {
+    const date = new Date(activity.startsAt);
+    if (Number.isNaN(date.getTime())) return false;
+    if (year && String(date.getFullYear()) !== year) return false;
+    if (month && String(date.getMonth() + 1) !== month) return false;
+    return true;
+  });
+
   if (!state.archivedActivities.length) {
     els.activityArchiveList.innerHTML = '<p class="archive-empty">Er staan nog geen afgelopen activiteiten in het archief.</p>';
     return;
   }
+  if (!activities.length) {
+    els.activityArchiveList.innerHTML = '<p class="archive-empty">Geen activiteiten gevonden in deze periode.</p>';
+    return;
+  }
 
-  els.activityArchiveList.innerHTML = state.archivedActivities.map((activity) => `
+  els.activityArchiveList.innerHTML = activities.map((activity) => `
     <article class="activity-archive-row">
       <div class="activity-archive-date" aria-hidden="true">
         <span>${new Intl.DateTimeFormat("nl-NL", { month: "short" }).format(new Date(activity.startsAt))}</span>
@@ -2015,6 +2062,9 @@ els.copyBulkInvitations.addEventListener("click", async () => {
 
 els.memberSearch.addEventListener("input", () => loadMembers().catch((error) => showToast(error.message)));
 els.memberYearFilter.addEventListener("change", renderMembers);
+els.memberCommitteeFilter.addEventListener("change", renderMembers);
+els.activityArchiveYearFilter?.addEventListener("change", renderActivityArchive);
+els.activityArchiveMonthFilter?.addEventListener("change", renderActivityArchive);
 els.adminSearch?.addEventListener("input", renderAdminAccounts);
 els.adminSelectAll?.addEventListener("change", () => {
   const query = String(els.adminSearch?.value || "").trim().toLocaleLowerCase("nl");
@@ -2048,6 +2098,7 @@ els.bulkDeleteMembers?.addEventListener("click", openBulkDeleteDialog);
 els.clearMemberFilters.addEventListener("click", () => {
   state.memberStatusFilter = "";
   els.memberYearFilter.value = "";
+  els.memberCommitteeFilter.value = "";
   renderMemberFilters();
   renderMembers();
 });

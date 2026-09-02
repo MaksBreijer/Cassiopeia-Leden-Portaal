@@ -612,11 +612,11 @@ app.get("/api/members", requireAuth, (req, res) => {
   const rows = db
     .prepare(`
       SELECT * FROM users
-      WHERE (name LIKE ? OR year_layer LIKE ?)
+      WHERE (name LIKE ? OR email LIKE ? OR year_layer LIKE ? OR role_title LIKE ? OR committee LIKE ?)
         AND (account_status = 'active' OR ? = 1)
       ORDER BY year_layer DESC, name ASC
     `)
-    .all(q, q, currentUser?.is_admin ? 1 : 0);
+    .all(q, q, q, q, q, currentUser?.is_admin ? 1 : 0);
   res.json({ members: rows.map(publicUser) });
 });
 

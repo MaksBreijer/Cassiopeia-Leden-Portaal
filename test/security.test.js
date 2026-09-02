@@ -122,6 +122,7 @@ test("members can update their own address from their profile", () => {
   const html = fs.readFileSync(path.join(projectRoot, "public", "index.html"), "utf8");
   const appScript = fs.readFileSync(path.join(projectRoot, "public", "app.js"), "utf8");
   const server = fs.readFileSync(path.join(projectRoot, "src", "server.js"), "utf8");
+  const styles = fs.readFileSync(path.join(projectRoot, "public", "styles.css"), "utf8");
   const profileForm = html.match(/<form id="profileForm"[\s\S]*?<\/form>/)?.[0] || "";
 
   assert.match(profileForm, /name="street"/);
@@ -138,8 +139,14 @@ test("members can update their own address from their profile", () => {
   assert.match(html, /name="responseMode"/);
   assert.match(html, /id="cancellationForm"/);
   assert.match(html, /id="activityArchiveList"/);
+  assert.match(html, /id="activityArchiveYearFilter"/);
+  assert.match(html, /id="activityArchiveMonthFilter"/);
+  assert.match(html, /id="memberCommitteeFilter"/);
   assert.match(appScript, /api\("\/api\/activities\/archive"\)/);
+  assert.match(appScript, /memberCommittees\(member\)/);
   assert.match(server, /ACTIVITY_ARCHIVE_DELAY_MS = 2 \* 24 \* 60 \* 60 \* 1000/);
+  assert.match(server, /committee LIKE \?/);
+  assert.match(styles, /\.activity-archive-list[\s\S]*max-height: 560px;[\s\S]*overflow-y: auto;/);
   assert.match(appScript, /syncAddressFields\(els\.profileForm\)/);
   assert.match(appScript, /api\("\/api\/me",\s*\{\s*method: "PUT"/);
   assert.match(server, /app\.put\("\/api\/me", requireAuth/);
@@ -609,10 +616,13 @@ test("admins invite members who set and reset their own password", async (t) => 
   const created = await jsonRequest(baseUrl, "/api/members", {
     method: "POST",
     cookie: adminLogin.cookie,
-    body: { name: "Nieuw Lid", email: "nieuw@example.nl", yearLayer: "2026", memberStatus: "actief" }
+    body: { name: "Nieuw Lid", email: "nieuw@example.nl", yearLayer: "2026", memberStatus: "actief", committee: "Feestcommissie" }
   });
   assert.equal(created.response.status, 201);
   assert.equal(created.data.member.accountStatus, "pending");
+  const committeeSearch = await jsonRequest(baseUrl, "/api/members?q=Feestcommissie", { cookie: adminLogin.cookie });
+  assert.equal(committeeSearch.response.status, 200);
+  assert.equal(committeeSearch.data.members.some((member) => member.id === created.data.member.id), true);
   assert.equal(created.data.invitation.purpose, "invite");
   const inviteToken = created.data.invitation.invitePath.split("#activate=")[1];
   assert.ok(inviteToken);

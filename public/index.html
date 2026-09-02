@@ -27,7 +27,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20260902-activity-archive" />
+    <link rel="stylesheet" href="styles.css?v=20260902-archive-filters" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -221,6 +221,9 @@
             <select id="memberYearFilter" class="filter-select" aria-label="Filter op lichting">
               <option value="">Alle lichtingen</option>
             </select>
+            <select id="memberCommitteeFilter" class="filter-select" aria-label="Filter op commissie">
+              <option value="">Alle commissies</option>
+            </select>
             <button id="clearMemberFilters" class="filter-clear" type="button">Filters wissen</button>
             <span id="memberResultCount" class="member-count"></span>
           </div>
@@ -370,6 +373,10 @@
               <p class="eyebrow">Activiteiten</p>
               <h2>Activiteitenarchief</h2>
               <p class="section-intro">Twee dagen na een activiteit verhuist zij automatisch hierheen. Alle aanmeldingen, afmeldingen en reacties blijven bewaard.</p>
+            </div>
+            <div class="activity-archive-filters" aria-label="Filter activiteitenarchief">
+              <select id="activityArchiveYearFilter" class="filter-select" aria-label="Filter archief op jaar"><option value="">Alle jaren</option></select>
+              <select id="activityArchiveMonthFilter" class="filter-select" aria-label="Filter archief op maand"><option value="">Alle maanden</option></select>
             </div>
           </div>
           <div id="activityArchiveList" class="activity-archive-list" aria-live="polite"></div>
@@ -714,6 +721,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260902-activity-archive"></script>
+    <script src="app.js?v=20260902-archive-filters"></script>
   </body>
 </html>

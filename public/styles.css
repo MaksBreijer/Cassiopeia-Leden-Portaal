@@ -2161,6 +2161,7 @@ label {
 }
 
 .activity-archive-module .section-head {
+  align-items: flex-end;
   margin-bottom: 4px;
 }
 
@@ -2171,6 +2172,21 @@ label {
 .activity-archive-list {
   display: grid;
   gap: 10px;
+  max-height: 560px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
+}
+
+.activity-archive-filters {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.activity-archive-filters .filter-select {
+  min-width: 142px;
 }
 
 .activity-archive-row {
@@ -3606,6 +3622,21 @@ dialog::backdrop {
 
   .activity-archive-row {
     grid-template-columns: 50px minmax(0, 1fr);
+  }
+
+  .activity-archive-module .section-head,
+  .activity-archive-filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .activity-archive-filters,
+  .activity-archive-filters .filter-select {
+    width: 100%;
+  }
+
+  .activity-archive-list {
+    max-height: 65vh;
   }
 
   .activity-archive-date {
