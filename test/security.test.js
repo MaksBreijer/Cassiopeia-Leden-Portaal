@@ -158,6 +158,7 @@ test("members can update their own address from their profile", () => {
   assert.match(adminSection, /id="documentUploadForm"/);
   assert.match(adminSection, /data-new-activity/);
   assert.match(adminSection, /data-new-member/);
+  assert.equal((adminSection.match(/class="admin-quick-action-icon"/g) || []).length, 4);
   assert.match(adminSection, /class="admin-section-nav"/);
   assert.match(adminSection, /data-admin-panel="overview"/);
   assert.match(adminSection, /data-admin-panel="activities"/);

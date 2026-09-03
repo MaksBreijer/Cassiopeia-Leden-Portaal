@@ -28,7 +28,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20260903-admin-workspace" />
+    <link rel="stylesheet" href="styles.css?v=20260903-admin-pluses" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -362,10 +362,10 @@
         <div id="admin-panel-overview" class="admin-panel" data-admin-panel-content="overview">
           <div class="admin-panel-heading"><div><p class="eyebrow">Vandaag beheren</p><h2>Waar wil je beginnen?</h2></div><p>Kies een snelle actie of open hierboven een onderdeel.</p></div>
           <nav class="admin-quick-actions" aria-label="Snelle beheeracties">
-            <button class="admin-quick-action" type="button" data-new-activity><span>Activiteiten</span><strong>Nieuwe activiteit</strong></button>
-            <button class="admin-quick-action" type="button" data-new-year-agenda-item><span>Planning</span><strong>Nieuw agendapunt</strong></button>
-            <button class="admin-quick-action" type="button" data-new-member><span>Leden</span><strong>Nieuw lid</strong></button>
-            <button class="admin-quick-action" type="button" data-import-members><span>Importeren</span><strong>PDF of CSV</strong></button>
+            <button class="admin-quick-action" type="button" data-new-activity><span class="admin-quick-action-label">Activiteiten</span><span class="admin-quick-action-row"><strong>Nieuwe activiteit</strong><span class="admin-quick-action-icon" aria-hidden="true">+</span></span></button>
+            <button class="admin-quick-action" type="button" data-new-year-agenda-item><span class="admin-quick-action-label">Planning</span><span class="admin-quick-action-row"><strong>Nieuw agendapunt</strong><span class="admin-quick-action-icon" aria-hidden="true">+</span></span></button>
+            <button class="admin-quick-action" type="button" data-new-member><span class="admin-quick-action-label">Leden</span><span class="admin-quick-action-row"><strong>Nieuw lid</strong><span class="admin-quick-action-icon" aria-hidden="true">+</span></span></button>
+            <button class="admin-quick-action" type="button" data-import-members><span class="admin-quick-action-label">Importeren</span><span class="admin-quick-action-row"><strong>PDF of CSV</strong><span class="admin-quick-action-icon" aria-hidden="true">+</span></span></button>
           </nav>
           <div class="admin-stat-grid" aria-label="Accountoverzicht">
             <article><span>Actief</span><strong id="adminActiveCount">0</strong></article>
@@ -764,6 +764,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260903-admin-workspace"></script>
+    <script src="app.js?v=20260903-admin-pluses"></script>
   </body>
 </html>

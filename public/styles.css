@@ -2257,7 +2257,7 @@ label {
   transform: translateY(-2px);
 }
 
-.admin-quick-action span {
+.admin-quick-action-label {
   color: var(--muted);
   font-size: 10px;
   font-weight: 850;
@@ -2265,8 +2265,36 @@ label {
   text-transform: uppercase;
 }
 
+.admin-quick-action-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
 .admin-quick-action strong {
   font-size: 15px;
+}
+
+.admin-quick-action-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--lavender-700);
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.admin-quick-action:hover .admin-quick-action-icon {
+  background: var(--orange-strong);
+  transform: rotate(90deg);
 }
 
 .admin-stat-grid {
