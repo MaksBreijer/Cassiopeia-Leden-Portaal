@@ -50,6 +50,10 @@ const mapView = {
 
 const API_BASE = location.protocol === "file:" || location.port === "5500" ? "http://127.0.0.1:3000" : "";
 const IS_ADMIN_PORTAL = location.pathname.replace(/\/+$/, "") === "/admin";
+const ADMIN_PANELS = ["overview", "activities", "agenda", "documents", "members", "website", "confessions"];
+let activeAdminPanel = ADMIN_PANELS.includes(sessionStorage.getItem("cassiopeiaAdminPanel"))
+  ? sessionStorage.getItem("cassiopeiaAdminPanel")
+  : "overview";
 
 const DEFAULT_YEAR_AGENDA_ITEMS = [
   ["Oktober 2025", 1, "2", "DispuBo"],
@@ -716,6 +720,26 @@ function syncScopedVisibility() {
   });
 }
 
+function showAdminPanel(panelName = "overview", { focus = false } = {}) {
+  if (!IS_ADMIN_PORTAL || !state.user?.isAdmin) return;
+  activeAdminPanel = ADMIN_PANELS.includes(panelName) ? panelName : "overview";
+  sessionStorage.setItem("cassiopeiaAdminPanel", activeAdminPanel);
+
+  document.querySelectorAll("[data-admin-panel-content]").forEach((panel) => {
+    panel.hidden = panel.dataset.adminPanelContent !== activeAdminPanel;
+  });
+
+  document.querySelectorAll("[data-admin-panel]").forEach((button) => {
+    const isActive = button.dataset.adminPanel === activeAdminPanel;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+    if (isActive && focus) {
+      button.focus({ preventScroll: true });
+      button.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  });
+}
+
 function setLoggedIn(user) {
   state.user = user;
   if (IS_ADMIN_PORTAL && !user.isAdmin) {
@@ -733,6 +757,7 @@ function setLoggedIn(user) {
   renderProfile();
   syncScopedVisibility();
   showPage(IS_ADMIN_PORTAL ? "beheer" : undefined);
+  if (IS_ADMIN_PORTAL) showAdminPanel(activeAdminPanel);
   return true;
 }
 
@@ -2263,6 +2288,7 @@ els.confirmMemberImport.addEventListener("click", async () => {
       body: JSON.stringify({ records: readyRecords })
     });
     els.memberImportDialog.close();
+    showAdminPanel("members");
     openBulkInvitationDialog(created);
     refreshPortal().catch((error) => showToast(error.message));
   } catch (error) {
@@ -2646,6 +2672,12 @@ els.bulkDeleteForm?.addEventListener("submit", async (event) => {
 });
 
 document.body.addEventListener("click", async (event) => {
+  const adminPanelButton = event.target.closest("[data-admin-panel]");
+  if (adminPanelButton) {
+    showAdminPanel(adminPanelButton.dataset.adminPanel, { focus: true });
+    return;
+  }
+
   const installAppButton = event.target.closest("[data-install-app]");
   if (installAppButton) return openInstallFlow();
 
@@ -2854,6 +2886,7 @@ els.memberForm.addEventListener("submit", async (event) => {
     });
     els.memberDialog.close();
     await refreshPortal();
+    showAdminPanel("members");
     if (response.invitation) {
       openInvitationDialog(response.member, response.invitation);
     } else {
@@ -2888,6 +2921,7 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
         els.yearAgendaDialog.close();
         renderYearAgenda();
         renderAdminYearAgenda();
+        showAdminPanel("agenda");
         return showToast(`${bulkItems.length} agendapunten opgeslagen.`);
       }
 
@@ -2912,6 +2946,7 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
       els.yearAgendaDialog.close();
       renderYearAgenda();
       renderAdminYearAgenda();
+      showAdminPanel("agenda");
       return showToast("Agendapunt opgeslagen.");
     }
 
@@ -2927,6 +2962,7 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
       );
       els.yearAgendaDialog.close();
       await loadYearAgenda();
+      showAdminPanel("agenda");
       return showToast(`${bulkItems.length} agendapunten opgeslagen.`);
     }
 
@@ -2937,6 +2973,7 @@ els.yearAgendaForm.addEventListener("submit", async (event) => {
     els.yearAgendaDialog.close();
     state.activeYearAgendaMonthIndex = Number(data.monthIndex) || state.activeYearAgendaMonthIndex;
     await loadYearAgenda();
+    showAdminPanel("agenda");
     showToast("Agendapunt opgeslagen.");
   } catch (error) {
     showToast(error.message);
@@ -3001,6 +3038,7 @@ els.activityForm.addEventListener("submit", async (event) => {
     }
     els.activityDialog.close();
     await refreshPortal();
+    showAdminPanel("activities");
     showToast("Activiteit opgeslagen.");
   } catch (error) {
     showToast(error.message);

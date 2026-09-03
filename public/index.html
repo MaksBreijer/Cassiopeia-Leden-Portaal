@@ -28,7 +28,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20260903-responsive-audit" />
+    <link rel="stylesheet" href="styles.css?v=20260903-admin-workspace" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -350,29 +350,41 @@
             <a class="secondary" href="/#home">Bekijk ledenportaal</a>
           </div>
         </div>
-        <nav class="admin-quick-actions" aria-label="Snelle beheeracties">
-          <button class="admin-quick-action" type="button" data-new-activity><span>Activiteiten</span><strong>Nieuwe activiteit</strong></button>
-          <button class="admin-quick-action" type="button" data-new-year-agenda-item><span>Planning</span><strong>Nieuw agendapunt</strong></button>
-          <button class="admin-quick-action" type="button" data-new-member><span>Leden</span><strong>Nieuw lid</strong></button>
-          <button class="admin-quick-action" type="button" data-import-members><span>Importeren</span><strong>PDF of CSV</strong></button>
+        <nav class="admin-section-nav" aria-label="Onderdelen van Admin">
+          <button class="admin-section-tab active" type="button" data-admin-panel="overview" aria-pressed="true" aria-controls="admin-panel-overview">Overzicht</button>
+          <button class="admin-section-tab" type="button" data-admin-panel="activities" aria-pressed="false" aria-controls="admin-panel-activities">Activiteiten</button>
+          <button class="admin-section-tab" type="button" data-admin-panel="agenda" aria-pressed="false" aria-controls="admin-panel-agenda">Agenda</button>
+          <button class="admin-section-tab" type="button" data-admin-panel="documents" aria-pressed="false" aria-controls="admin-panel-documents">Documenten</button>
+          <button class="admin-section-tab" type="button" data-admin-panel="members" aria-pressed="false" aria-controls="admin-panel-members">Leden</button>
+          <button class="admin-section-tab" type="button" data-admin-panel="website" aria-pressed="false" aria-controls="siteImagesForm">Website</button>
+          <button class="admin-section-tab" type="button" data-admin-panel="confessions" aria-pressed="false" aria-controls="admin-panel-confessions">Biechten</button>
         </nav>
-        <div class="admin-stat-grid" aria-label="Accountoverzicht">
-          <article><span>Actief</span><strong id="adminActiveCount">0</strong></article>
-          <article><span>Uitnodiging open</span><strong id="adminPendingCount">0</strong></article>
-          <article><span>Uitgeschakeld</span><strong id="adminDisabledCount">0</strong></article>
+        <div id="admin-panel-overview" class="admin-panel" data-admin-panel-content="overview">
+          <div class="admin-panel-heading"><div><p class="eyebrow">Vandaag beheren</p><h2>Waar wil je beginnen?</h2></div><p>Kies een snelle actie of open hierboven een onderdeel.</p></div>
+          <nav class="admin-quick-actions" aria-label="Snelle beheeracties">
+            <button class="admin-quick-action" type="button" data-new-activity><span>Activiteiten</span><strong>Nieuwe activiteit</strong></button>
+            <button class="admin-quick-action" type="button" data-new-year-agenda-item><span>Planning</span><strong>Nieuw agendapunt</strong></button>
+            <button class="admin-quick-action" type="button" data-new-member><span>Leden</span><strong>Nieuw lid</strong></button>
+            <button class="admin-quick-action" type="button" data-import-members><span>Importeren</span><strong>PDF of CSV</strong></button>
+          </nav>
+          <div class="admin-stat-grid" aria-label="Accountoverzicht">
+            <article><span>Actief</span><strong id="adminActiveCount">0</strong></article>
+            <article><span>Uitnodiging open</span><strong id="adminPendingCount">0</strong></article>
+            <article><span>Uitgeschakeld</span><strong id="adminDisabledCount">0</strong></article>
+          </div>
+          <div class="admin-summary">
+            <div><strong>Alles op één plek</strong><p>Wijzigingen die je hier opslaat zijn direct zichtbaar in het ledenportaal. Leden kiezen zelf hun wachtwoord via een veilige uitnodigingslink.</p></div>
+            <span aria-hidden="true">✓</span>
+          </div>
         </div>
-        <div class="admin-summary">
-          <div><strong>Alles op één plek</strong><p>Wijzigingen die je hier opslaat zijn direct zichtbaar in het ledenportaal. Leden kiezen zelf hun wachtwoord via een veilige uitnodigingslink.</p></div>
-          <span aria-hidden="true">✓</span>
-        </div>
-        <section class="content-module admin-management-module">
+        <section id="admin-panel-activities" class="content-module admin-management-module admin-panel" data-admin-panel-content="activities" hidden>
           <div class="section-head">
             <div><p class="eyebrow">Komende activiteiten</p><h2>Activiteiten beheren</h2><p class="section-intro">Maak activiteiten aan, bewerk de inschrijving en download de deelnemerslijst.</p></div>
             <button class="primary" type="button" data-new-activity>Nieuwe activiteit</button>
           </div>
           <div id="adminActivityList" class="activity-list admin-activity-list" aria-live="polite"></div>
         </section>
-        <section class="content-module admin-management-module">
+        <section id="admin-panel-agenda" class="content-module admin-management-module admin-panel" data-admin-panel-content="agenda" hidden>
           <div class="section-head">
             <div><p class="eyebrow">Jaarplanning</p><h2>Agenda beheren</h2><p id="adminAgendaSourceSummary" class="section-intro">Agenda laden…</p></div>
             <div class="section-actions">
@@ -382,7 +394,7 @@
           </div>
           <div id="adminYearAgendaList" class="admin-year-agenda-list" aria-live="polite"></div>
         </section>
-        <section class="content-module admin-management-module">
+        <section id="admin-panel-documents" class="content-module admin-management-module admin-panel" data-admin-panel-content="documents" hidden>
           <div class="section-head"><div><p class="eyebrow">Statuten, HR &amp; bestanden</p><h2>Documenten beheren</h2><p class="section-intro">Upload een nieuwe PDF of verwijder een verouderde versie.</p></div></div>
           <form id="documentUploadForm" class="admin-document-upload">
             <div class="form-grid"><label>Titel<input name="title" required placeholder="Bijv. Statuten 2026" /></label><label>Categorie<select name="category"><option value="statuten">Statuten</option><option value="hr">HR</option><option value="overig">Overig</option></select></label><label class="wide">PDF-bestand<input name="documentFile" type="file" accept="application/pdf,.pdf" required /></label></div>
@@ -390,11 +402,11 @@
           </form>
           <div id="adminDocumentList" class="document-list admin-document-list" aria-live="polite"></div>
         </section>
-        <section class="content-module admin-management-module">
+        <section id="admin-panel-confessions" class="content-module admin-management-module admin-panel" data-admin-panel-content="confessions" hidden>
           <div class="section-head"><div><p class="eyebrow">Moderatie</p><h2>Biechten beheren</h2><p class="section-intro">Bekijk de geplaatste biechten en verwijder alleen wat niet thuishoort.</p></div></div>
           <div id="adminConfessionList" class="confession-list admin-confession-list" aria-live="polite"></div>
         </section>
-        <section class="content-module activity-archive-module">
+        <section class="content-module activity-archive-module admin-panel" data-admin-panel-content="activities" hidden>
           <div class="section-head">
             <div>
               <p class="eyebrow">Activiteiten</p>
@@ -408,7 +420,7 @@
           </div>
           <div id="activityArchiveList" class="activity-archive-list" aria-live="polite"></div>
         </section>
-        <form id="siteImagesForm" class="admin-images-panel content-module">
+        <form id="siteImagesForm" class="admin-images-panel content-module admin-panel" data-admin-panel-content="website" hidden>
           <div class="section-head"><div><p class="eyebrow">Vormgeving</p><h2>Website-afbeeldingen</h2><p class="section-intro">Vervang het logo, de homefoto of het lustrumbeeld. PNG, JPG of WebP tot 5 MB.</p></div></div>
           <div class="admin-image-edit-grid">
             <article class="admin-image-edit-card">
@@ -426,16 +438,18 @@
           </div>
           <div class="dialog-actions"><button type="submit" class="primary">Afbeeldingen opslaan</button></div>
         </form>
-        <div class="admin-list-head">
-          <div><p class="eyebrow">Accounts</p><h2>Ledenbeheer</h2></div>
-          <div class="admin-member-actions"><label class="search-field"><span>Zoeken</span><input id="adminSearch" type="search" placeholder="Naam, e-mail, lichting of commissie" /></label><button class="secondary" type="button" data-import-members>Importeren</button><button class="primary" type="button" data-new-member>Nieuw lid</button></div>
-        </div>
-        <div class="admin-bulk-toolbar" aria-label="Bulkacties">
-          <label class="bulk-select-all"><input id="adminSelectAll" type="checkbox" /> <span>Selecteer alle zichtbare niet-adminleden</span></label>
-          <span id="adminSelectionCount" class="admin-selection-count" aria-live="polite">0 leden geselecteerd</span>
-          <button id="bulkDeleteMembers" class="danger" type="button" disabled>Verwijder selectie</button>
-        </div>
-        <div id="adminAccountList" class="admin-account-list" aria-live="polite"></div>
+        <section id="admin-panel-members" class="admin-members-panel admin-panel" data-admin-panel-content="members" hidden>
+          <div class="admin-list-head">
+            <div><p class="eyebrow">Accounts</p><h2>Ledenbeheer</h2><p class="section-intro">Zoek, voeg toe, importeer of pas een bestaand lid aan.</p></div>
+            <div class="admin-member-actions"><label class="search-field"><span>Zoeken</span><input id="adminSearch" type="search" placeholder="Naam, e-mail, lichting of commissie" /></label><button class="secondary" type="button" data-import-members>Importeren</button><button class="primary" type="button" data-new-member>Nieuw lid</button></div>
+          </div>
+          <div class="admin-bulk-toolbar" aria-label="Bulkacties">
+            <label class="bulk-select-all"><input id="adminSelectAll" type="checkbox" /> <span>Selecteer alle zichtbare niet-adminleden</span></label>
+            <span id="adminSelectionCount" class="admin-selection-count" aria-live="polite">0 leden geselecteerd</span>
+            <button id="bulkDeleteMembers" class="danger" type="button" disabled>Verwijder selectie</button>
+          </div>
+          <div id="adminAccountList" class="admin-account-list" aria-live="polite"></div>
+        </section>
       </section>
     </main>
 
@@ -750,6 +764,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260903-responsive-audit"></script>
+    <script src="app.js?v=20260903-admin-workspace"></script>
   </body>
 </html>

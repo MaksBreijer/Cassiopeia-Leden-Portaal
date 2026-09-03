@@ -158,6 +158,16 @@ test("members can update their own address from their profile", () => {
   assert.match(adminSection, /id="documentUploadForm"/);
   assert.match(adminSection, /data-new-activity/);
   assert.match(adminSection, /data-new-member/);
+  assert.match(adminSection, /class="admin-section-nav"/);
+  assert.match(adminSection, /data-admin-panel="overview"/);
+  assert.match(adminSection, /data-admin-panel="activities"/);
+  assert.match(adminSection, /data-admin-panel="agenda"/);
+  assert.match(adminSection, /data-admin-panel="documents"/);
+  assert.match(adminSection, /data-admin-panel="members"/);
+  assert.match(adminSection, /data-admin-panel="website"/);
+  assert.match(adminSection, /data-admin-panel="confessions"/);
+  assert.match(adminSection, /data-admin-panel-content="overview"/);
+  assert.match(adminSection, /data-admin-panel-content="members"/);
   assert.doesNotMatch(documentsSection, /id="documentUploadForm"/);
   assert.doesNotMatch(documentsSection, /data-delete-document/);
   assert.match(appScript, /api\("\/api\/activities\/archive"\)/);
@@ -175,6 +185,8 @@ test("members can update their own address from their profile", () => {
   assert.match(appScript, /location\.assign\("\/admin"\)/);
   assert.match(appScript, /location\.replace\("\/#home"\)/);
   assert.match(appScript, /function syncScopedVisibility\(\)/);
+  assert.match(appScript, /function showAdminPanel\(panelName = "overview"/);
+  assert.match(appScript, /sessionStorage\.setItem\("cassiopeiaAdminPanel"/);
   assert.match(appScript, /allowedForRole && allowedForPortal/);
   assert.match(appScript, /function renderAdminYearAgenda\(\)/);
   assert.match(appScript, /activityListHtml\(true\)/);
@@ -184,6 +196,8 @@ test("members can update their own address from their profile", () => {
   assert.match(styles, /\.activity-archive-list[\s\S]*max-height: 560px;[\s\S]*overflow-y: auto;/);
   assert.match(styles, /\.member-grid \{[\s\S]*max-height: 68vh;[\s\S]*overflow-y: auto;/);
   assert.match(styles, /\.admin-account-list \{[\s\S]*max-height: min\(720px, 70vh\);[\s\S]*overflow-y: auto;[\s\S]*scrollbar-gutter: stable;/);
+  assert.match(styles, /\.admin-section-nav \{[\s\S]*position: sticky;[\s\S]*overflow-x: auto;/);
+  assert.match(styles, /\[data-admin-panel-content\]\[hidden\] \{[\s\S]*display: none !important;/);
   assert.match(styles, /\.member-card-main \{[\s\S]*grid-template-columns: 64px minmax\(0, 1fr\);/);
   assert.match(styles, /\.document-viewer-dialog \{[\s\S]*position: fixed;[\s\S]*height: 100dvh;[\s\S]*margin: 0;/);
   assert.match(styles, /\.document-viewer-pages \{[\s\S]*overflow-y: auto;[\s\S]*touch-action: pan-y pinch-zoom;/);
