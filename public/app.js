@@ -706,6 +706,16 @@ function showPage(page = location.hash.slice(1) || "home") {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+function syncScopedVisibility() {
+  const isAdmin = Boolean(state.user?.isAdmin);
+  document.querySelectorAll(".admin-only, .member-portal-nav, .admin-portal-only").forEach((element) => {
+    const allowedForRole = !element.classList.contains("admin-only") || isAdmin;
+    const allowedForPortal = (!element.classList.contains("member-portal-nav") || !IS_ADMIN_PORTAL)
+      && (!element.classList.contains("admin-portal-only") || IS_ADMIN_PORTAL);
+    element.classList.toggle("hidden", !(allowedForRole && allowedForPortal));
+  });
+}
+
 function setLoggedIn(user) {
   state.user = user;
   if (IS_ADMIN_PORTAL && !user.isAdmin) {
@@ -721,9 +731,7 @@ function setLoggedIn(user) {
   els.loggedOutMembers.classList.add("hidden");
   els.memberGrid.classList.remove("hidden");
   renderProfile();
-  document.querySelectorAll(".admin-only").forEach((el) => el.classList.toggle("hidden", !user.isAdmin));
-  document.querySelectorAll(".member-portal-nav").forEach((el) => el.classList.toggle("hidden", IS_ADMIN_PORTAL));
-  document.querySelectorAll(".admin-portal-only").forEach((el) => el.classList.toggle("hidden", !IS_ADMIN_PORTAL));
+  syncScopedVisibility();
   showPage(IS_ADMIN_PORTAL ? "beheer" : undefined);
   return true;
 }
@@ -1864,7 +1872,7 @@ function renderAdminYearAgenda() {
 }
 
 function renderAdmin() {
-  document.querySelectorAll(".admin-only").forEach((el) => el.classList.toggle("hidden", !state.user?.isAdmin));
+  syncScopedVisibility();
   renderYearAgenda();
   renderAdminYearAgenda();
   renderPublicActivities();
@@ -2408,6 +2416,21 @@ els.yearAgendaNext.addEventListener("click", () => {
 els.menuToggle.addEventListener("click", () => {
   const isOpen = els.siteHeader.classList.toggle("menu-open");
   els.menuToggle.setAttribute("aria-expanded", String(isOpen));
+});
+
+document.addEventListener("click", (event) => {
+  if (els.siteHeader.classList.contains("menu-open") && !els.siteHeader.contains(event.target)) closeMobileMenu();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && els.siteHeader.classList.contains("menu-open")) {
+    closeMobileMenu();
+    els.menuToggle.focus();
+  }
+});
+
+window.addEventListener("resize", () => {
+  if (window.innerWidth > 1180) closeMobileMenu();
 });
 
 els.loginForm.addEventListener("submit", async (event) => {

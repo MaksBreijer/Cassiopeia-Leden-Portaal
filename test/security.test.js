@@ -174,6 +174,8 @@ test("members can update their own address from their profile", () => {
   assert.match(appScript, /const IS_ADMIN_PORTAL = location\.pathname/);
   assert.match(appScript, /location\.assign\("\/admin"\)/);
   assert.match(appScript, /location\.replace\("\/#home"\)/);
+  assert.match(appScript, /function syncScopedVisibility\(\)/);
+  assert.match(appScript, /allowedForRole && allowedForPortal/);
   assert.match(appScript, /function renderAdminYearAgenda\(\)/);
   assert.match(appScript, /activityListHtml\(true\)/);
   assert.match(appScript, /adminMode \? `<button class="danger" data-delete-document/);
@@ -186,6 +188,8 @@ test("members can update their own address from their profile", () => {
   assert.match(styles, /\.document-viewer-dialog \{[\s\S]*position: fixed;[\s\S]*height: 100dvh;[\s\S]*margin: 0;/);
   assert.match(styles, /\.document-viewer-pages \{[\s\S]*overflow-y: auto;[\s\S]*touch-action: pan-y pinch-zoom;/);
   assert.match(styles, /\.dialog-card \{[\s\S]*overflow-x: hidden;[\s\S]*overscroll-behavior: contain;/);
+  assert.match(styles, /\.site-nav \{[\s\S]*max-height: calc\(100dvh - 92px\);[\s\S]*overflow-y: auto;/);
+  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*input,[\s\S]*font-size: 16px;/);
   assert.match(appScript, /syncAddressFields\(els\.profileForm\)/);
   assert.match(appScript, /api\("\/api\/me",\s*\{\s*method: "PUT"/);
   assert.match(server, /app\.put\("\/api\/me", requireAuth/);

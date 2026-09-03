@@ -109,6 +109,7 @@ h2,
 h3 {
   font-family: var(--serif);
   letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
 }
 
 h1 {
@@ -3508,6 +3509,10 @@ dialog::backdrop {
     display: none;
     align-items: stretch;
     gap: 5px;
+    max-height: calc(100vh - 92px);
+    max-height: calc(100dvh - 92px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     border: 1px solid var(--line);
     border-radius: 16px;
     padding: 10px;
@@ -4101,6 +4106,23 @@ dialog::backdrop {
     max-height: 62dvh;
   }
 
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  .row-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .row-actions button,
+  .row-actions a {
+    width: 100%;
+  }
+
   .portal-hero-copy {
     padding: 30px 20px 32px;
   }
@@ -4118,6 +4140,10 @@ dialog::backdrop {
 
   .page-banner {
     padding: 28px 20px;
+  }
+
+  .page-banner h1 {
+    font-size: clamp(44px, 14vw, 58px);
   }
 
   .year-month {
@@ -4233,6 +4259,10 @@ dialog::backdrop {
   }
 
   .member-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .address-grid {
     grid-template-columns: 1fr;
   }
 
@@ -4521,11 +4551,12 @@ dialog::backdrop {
   .login-screen {
     place-items: start center;
     overflow-y: auto;
+    padding-top: max(58px, env(safe-area-inset-top));
   }
 
   .login-card {
     min-height: auto;
-    margin-block: 16px;
+    margin: 0 0 16px;
     padding-top: 48px;
     padding-bottom: 28px;
   }
