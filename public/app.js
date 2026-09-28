@@ -963,7 +963,7 @@ function showMapTooltip(marker) {
   const y = Math.max(18, Math.min(90, Number(marker.dataset.tooltipY)));
   tooltip.style.left = `${x}%`;
   tooltip.style.top = `${y}%`;
-  tooltip.innerHTML = `<strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.address)}</span><span class="map-directions">Klik op de marker voor de route in Google Maps</span>`;
+  tooltip.innerHTML = `<strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.address)}</span><a class="map-directions" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}" target="_blank" rel="noopener noreferrer">Klik voor route in Google Maps</a>`;
   tooltip.classList.add("is-visible");
 }
 
@@ -1030,7 +1030,7 @@ function renderCribMap() {
     const initials = escapeHtml((member.name || "C").split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase());
     const name = escapeHtml(member.name || "Cassio");
     const address = escapeHtml(member.address || "Adres onbekend");
-    return `<g class="crib-marker" tabindex="0" role="button" aria-label="${name}, ${address}" data-name="${name}" data-address="${address}" data-tooltip-x="${((x / 900) * 100).toFixed(2)}" data-tooltip-y="${((y / 500) * 100).toFixed(2)}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})"><circle r="18"></circle><circle class="crib-marker-core" r="12"></circle><text y="4" text-anchor="middle">${initials}</text></g>`;
+    return `<g class="crib-marker" tabindex="0" role="button" aria-label="${name}, ${address}. Klik voor route in Google Maps" data-name="${name}" data-address="${address}" data-tooltip-x="${((x / 900) * 100).toFixed(2)}" data-tooltip-y="${((y / 500) * 100).toFixed(2)}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})"><circle r="18"></circle><circle class="crib-marker-core" r="12"></circle><text y="4" text-anchor="middle">${initials}</text></g>`;
   }).join("");
   const emptyOverlay = hasMappedMembers ? "" : `<div class="map-empty-overlay"><span class="map-empty-icon">⌖</span><strong>Nog geen adressen op de kaart</strong><p>Vul je adres in via je profiel. Daarna verschijnt je Cassio Crib hier automatisch.</p><a class="secondary" href="#profiel">Naar mijn profiel</a></div>`;
   els.cribMap.innerHTML = `<svg class="crib-map-svg" viewBox="0 0 900 500" preserveAspectRatio="xMidYMid slice" aria-label="Cassio Cribs kaart">${tiles.join("")}${markers}</svg><div class="map-controls" aria-label="Kaartbediening"><button type="button" data-map-zoom-in aria-label="Inzoomen">+</button><button type="button" data-map-zoom-out aria-label="Uitzoomen">−</button><button type="button" data-map-reset aria-label="Toon alle markers">⌂</button></div><div class="map-tooltip" role="status"></div>${emptyOverlay}`;
@@ -1062,13 +1062,23 @@ if (els.cribMap) {
     if (marker) showMapTooltip(marker);
   });
   els.cribMap.addEventListener("mouseout", (event) => {
-    if (event.target.closest?.(".crib-marker")) hideMapTooltip();
+    if (event.target.closest?.(".crib-marker") && !event.relatedTarget?.closest?.(".map-tooltip")) hideMapTooltip();
+  });
+  els.cribMap.addEventListener("mouseout", (event) => {
+    if (event.target.closest?.(".map-tooltip") && !event.relatedTarget?.closest?.(".crib-marker, .map-tooltip")) hideMapTooltip();
   });
   els.cribMap.addEventListener("focusin", (event) => {
     const marker = event.target.closest?.(".crib-marker");
     if (marker) showMapTooltip(marker);
   });
   els.cribMap.addEventListener("focusout", hideMapTooltip);
+  els.cribMap.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const marker = event.target.closest?.(".crib-marker");
+    if (!marker) return;
+    event.preventDefault();
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}`, "_blank", "noopener");
+  });
 
   els.cribMap.addEventListener("wheel", (event) => {
     event.preventDefault();
