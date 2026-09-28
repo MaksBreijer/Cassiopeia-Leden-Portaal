@@ -909,7 +909,7 @@ main {
   font-size: 13px;
 }
 
-.map-tooltip span {
+.map-tooltip span, .map-directions {
   color: rgba(255, 255, 255, 0.78);
   font-size: 12px;
 }
