@@ -109,37 +109,10 @@
           </div>
         </div>
 
-        <div class="overview-grid" aria-label="Jouw overzicht">
-          <button class="overview-card overview-card-featured" type="button" data-scroll-target="activitiesOverview">
-            <span class="overview-index">01</span>
-            <span class="overview-label">Activiteiten</span>
-            <strong><span id="overviewActivityCount">0</span> gepland</strong>
-            <span class="overview-meta">Bekijk en schrijf je direct in</span>
-          </button>
-          <button class="overview-card" type="button" data-scroll-target="yearAgendaOverview">
-            <span class="overview-index">02</span>
-            <span class="overview-label">Jaarplanning</span>
-            <strong><span id="overviewAgendaCount">—</span> momenten</strong>
-            <span class="overview-meta">Het volledige lustrumjaar</span>
-          </button>
-          <a class="overview-card" href="#leden">
-            <span class="overview-index">03</span>
-            <span class="overview-label">Smoelenboek</span>
-            <strong id="overviewMemberCount">— leden</strong>
-            <span class="overview-meta">Van actief tot reünist</span>
-          </a>
-        </div>
-
-        <div id="birthdayOverview" class="content-module birthday-module">
-          <div class="section-head birthday-section-head">
-            <div>
-              <p class="eyebrow">Vandaag jarig</p>
-              <h2>Verjaardagen</h2>
-              <p id="birthdaySummary" class="section-intro">Verjaardagen van vandaag laden…</p>
-            </div>
-            <a class="secondary" href="#profiel">Mijn verjaardag instellen</a>
-          </div>
-          <div id="birthdayList" class="birthday-list" aria-live="polite"></div>
+        <div id="birthdayOverview" hidden>
+          <span>Vandaag jarig</span>
+          <p id="birthdaySummary"></p>
+          <div id="birthdayList"></div>
         </div>
 
         <div id="activitiesOverview" class="content-module">
@@ -296,7 +269,7 @@
               <div>
                 <p class="eyebrow">Ledenkaart</p>
                 <h2>Cassio Cribs</h2>
-                <p class="section-intro">Sleep over de kaart en zoom op je telefoon met twee vingers. Tik op een lila bolletje voor naam en adres.</p>
+                <p class="section-intro">Sleep over de kaart en zoom op je telefoon met twee vingers. Klik of tik op een lila bolletje voor de route in Google Maps.</p>
               </div>
               <span id="mapMemberCount" class="count-pill">Kaart laden…</span>
             </div>
@@ -764,6 +737,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260928-home-cleanup"></script>
+    <script src="app.js?v=20260928-cribs-route"></script>
   </body>
 </html>
