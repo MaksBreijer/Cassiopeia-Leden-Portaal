@@ -883,7 +883,7 @@ function renderMembers() {
               <h3>${escapeHtml(member.name)}</h3>
               <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Actief")}</p>
               ${member.committee ? `<p class="meta">Commissie: ${escapeHtml(member.committee)}</p>` : ""}
-              <div class="member-card-badges">
+              ${member.birthday ? `<p class="meta member-birthday">Verjaardag: ${escapeHtml(formatBirthday(member.birthday))}</p>` : ""} <div class="member-card-badges">
                 <span class="badge">${member.memberStatus === "oud" ? "Reünist" : "Actief"}</span>
                 ${member.isAdmin ? '<span class="badge">Admin</span>' : ""}
               </div>
@@ -963,7 +963,7 @@ function showMapTooltip(marker) {
   const y = Math.max(18, Math.min(90, Number(marker.dataset.tooltipY)));
   tooltip.style.left = `${x}%`;
   tooltip.style.top = `${y}%`;
-  tooltip.innerHTML = `<strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.address)}</span>`;
+  tooltip.innerHTML = `<strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.address)}</span><a class="map-directions" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}" target="_blank" rel="noopener noreferrer">Navigeer met Google Maps</a>`;
   tooltip.classList.add("is-visible");
 }
 
