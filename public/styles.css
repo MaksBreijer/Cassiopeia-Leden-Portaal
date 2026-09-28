@@ -885,7 +885,7 @@ main {
   color: #fff;
   background: rgba(57, 50, 62, 0.96);
   box-shadow: 0 12px 28px rgba(57, 50, 62, 0.28);
-  pointer-events: none;
+  pointer-events: auto;
   transform: translate(-50%, calc(-100% - 16px));
   transition: opacity 120ms ease, transform 120ms ease;
 }
