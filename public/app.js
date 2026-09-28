@@ -963,7 +963,7 @@ function showMapTooltip(marker) {
   const y = Math.max(18, Math.min(90, Number(marker.dataset.tooltipY)));
   tooltip.style.left = `${x}%`;
   tooltip.style.top = `${y}%`;
-  tooltip.innerHTML = `<strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.address)}</span><a class="map-directions" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}" target="_blank" rel="noopener noreferrer">Klik voor route in Google Maps</a>`;
+  tooltip.innerHTML = `<a class="map-directions" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}" target="_blank" rel="noopener noreferrer">Route ↗</a><strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.address)}</span>`;
   tooltip.classList.add("is-visible");
 }
 
@@ -1040,7 +1040,7 @@ if (els.cribMap) {
   els.cribMap.addEventListener("click", (event) => {
     if (Date.now() < mapView.ignoreClickUntil) return;
     const marker = event.target.closest?.(".crib-marker");
-    if (marker) return window.location.assign(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}`);
+    if (marker) return showMapTooltip(marker);
     if (event.target.closest?.("[data-map-zoom-in]")) {
       mapView.zoom = Math.min(17, mapView.zoom + 1);
       return renderCribMap();
@@ -1077,7 +1077,7 @@ if (els.cribMap) {
     const marker = event.target.closest?.(".crib-marker");
     if (!marker) return;
     event.preventDefault();
-    window.location.assign(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}`);
+    showMapTooltip(marker);
   });
 
   els.cribMap.addEventListener("wheel", (event) => {
