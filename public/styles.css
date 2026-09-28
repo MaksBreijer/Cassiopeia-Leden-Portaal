@@ -4916,3 +4916,8 @@ dialog::backdrop {
     top: max(14px, env(safe-area-inset-top));
   }
 }
+/* Homepagina: de overzichts- en verjaardagsblokken staan bij Leden. */
+#home .overview-grid,
+#home #birthdayOverview {
+  display: none;
+}
