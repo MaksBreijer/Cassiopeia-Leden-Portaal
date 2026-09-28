@@ -878,7 +878,7 @@ main {
   gap: 3px;
   width: max-content;
   max-width: min(280px, calc(100% - 28px));
-  padding: 10px 12px;
+  padding: 10px 88px 10px 12px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 12px;
   opacity: 0;
@@ -915,9 +915,20 @@ main {
 }
 
 .map-directions {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.16);
   color: #fff;
   font-weight: 700;
-  text-decoration: underline;
+  text-decoration: none;
+}
+
+.map-directions:hover,
+.map-directions:focus-visible {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .map-attribution {
