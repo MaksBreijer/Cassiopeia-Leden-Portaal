@@ -963,7 +963,7 @@ function showMapTooltip(marker) {
   const y = Math.max(18, Math.min(90, Number(marker.dataset.tooltipY)));
   tooltip.style.left = `${x}%`;
   tooltip.style.top = `${y}%`;
-  tooltip.innerHTML = `<strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.address)}</span><a class="map-directions" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}" target="_blank" rel="noopener noreferrer">Navigeer met Google Maps</a>`;
+  tooltip.innerHTML = `<strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.address)}</span><span class="map-directions">Klik op de marker voor de route in Google Maps</span>`;
   tooltip.classList.add("is-visible");
 }
 
