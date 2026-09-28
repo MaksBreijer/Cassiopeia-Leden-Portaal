@@ -1040,7 +1040,7 @@ if (els.cribMap) {
   els.cribMap.addEventListener("click", (event) => {
     if (Date.now() < mapView.ignoreClickUntil) return;
     const marker = event.target.closest?.(".crib-marker");
-    if (marker) return showMapTooltip(marker);
+    if (marker) return window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}`, "_blank", "noopener");
     if (event.target.closest?.("[data-map-zoom-in]")) {
       mapView.zoom = Math.min(17, mapView.zoom + 1);
       return renderCribMap();
