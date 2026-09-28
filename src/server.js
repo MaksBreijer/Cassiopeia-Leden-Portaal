@@ -24,11 +24,19 @@ const LOGIN_MAX_ATTEMPTS = 5;
 const MEMBER_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
 const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 const ACTIVITY_ARCHIVE_DELAY_MS = 2 * 24 * 60 * 60 * 1000;
+const CONFESSION_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const INDEX_HTML_PATH = path.join(__dirname, "..", "public", "index.html");
 const ACTIVITY_SHARE_IMAGE_URL = "https://www.dispuutcassiopeia.nl/assets/cassiopeia-activity-share.png?v=20260902-rsvp";
 const loginAttempts = new Map();
 const confessionAttempts = new Map();
 let googleCalendarCache = { url: "", feed: "", items: [], expiresAt: 0 };
+
+function purgeExpiredConfessions() {
+  db.prepare("DELETE FROM confessions WHERE created_at <= datetime('now', '-7 days')").run();
+}
+
+purgeExpiredConfessions();
+setInterval(purgeExpiredConfessions, CONFESSION_RETENTION_MS).unref();
 
 if (!SESSION_SECRET) {
   throw new Error("SESSION_SECRET is verplicht in productie.");
@@ -1226,6 +1234,7 @@ app.delete("/api/site-assets/:key", requireAuth, requireAdmin, (req, res) => {
 });
 
 app.get("/api/confessions", requireAuth, (req, res) => {
+  purgeExpiredConfessions();
   const rows = db.prepare("SELECT id, body, created_at FROM confessions ORDER BY created_at DESC, id DESC").all();
   res.json({ confessions: rows.map((row) => ({ id: row.id, body: row.body, createdAt: row.created_at })) });
 });
