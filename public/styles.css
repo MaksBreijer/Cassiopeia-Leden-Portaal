@@ -4577,17 +4577,29 @@ dialog::backdrop {
   user-select: none;
 }
 
+/* De woorden hangen aan de kaart zelf, zodat ze bij elke schermhoogte alleen over de rand vallen en nooit over tekst of knoppen. */
+.login-stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+}
+
+.login-stage .login-card {
+  padding-bottom: 92px;
+}
+
 .login-word-lef {
-  top: calc(50% - 265px);
-  left: calc(50% - 560px);
+  top: 64px;
+  right: calc(100% - 64px);
   transform: rotate(-14deg);
   font-size: clamp(76px, 9vw, 138px);
 }
 
 .login-word-lustrum {
+  top: 100%;
   left: 50%;
-  bottom: calc(50% - 285px);
-  transform: translateX(-50%) rotate(-6deg);
+  transform: translate(-50%, -62%) rotate(-6deg);
   font-size: clamp(52px, 6vw, 96px);
   white-space: nowrap;
 }
@@ -4732,12 +4744,14 @@ dialog::backdrop {
   }
 
   .login-word-lef {
-    top: calc(50% - 255px);
-    left: calc(50% - 345px);
+    top: auto;
+    right: auto;
+    bottom: calc(100% - 26px);
+    left: 8px;
+    font-size: clamp(64px, 10vw, 96px);
   }
 
   .login-word-lustrum {
-    bottom: calc(50% - 275px);
     font-size: clamp(48px, 7vw, 72px);
   }
 }
@@ -4766,19 +4780,26 @@ dialog::backdrop {
     height: 54px;
   }
 
+  .login-stage {
+    width: 100%;
+  }
+
+  .login-stage .login-card {
+    padding-bottom: 64px;
+  }
+
   .login-word-lef {
-    top: calc(50% - 260px);
-    left: 28px;
+    bottom: calc(100% - 22px);
+    left: 4px;
     font-size: 64px;
   }
 
   .login-word-lustrum {
-    bottom: calc(50% - 232px);
     font-size: clamp(34px, 10vw, 44px);
   }
 }
 
-@media (max-height: 650px) and (max-width: 900px) {
+@media (max-height: 700px) and (max-width: 900px) {
   .login-screen {
     place-items: start center;
     overflow-y: auto;
@@ -4789,6 +4810,10 @@ dialog::backdrop {
     min-height: auto;
     margin: 0 0 16px;
     padding-top: 48px;
+    padding-bottom: 28px;
+  }
+
+  .login-stage .login-card {
     padding-bottom: 28px;
   }
 

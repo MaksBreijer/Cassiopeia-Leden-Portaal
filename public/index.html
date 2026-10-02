@@ -32,20 +32,22 @@
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
-      <div class="login-word login-word-lef" aria-hidden="true">LEF</div>
-      <div class="login-word login-word-lustrum" aria-hidden="true">LUSTRUM III</div>
       <button class="install-app-button install-app-login hidden" type="button" data-install-app aria-label="Cassiopeia als app installeren">
         <span aria-hidden="true">↓</span> Installeer app
       </button>
-      <form id="loginForm" class="login-card">
-        <img class="login-crest" data-site-asset="logo" src="assets/cassiopeia-embleem.png?v=20260831-logo" alt="Embleem van Dameschdispuut Cassiopeia" />
-        <h1 id="loginTitle">Login Dameschdispuut Cassiopeia</h1>
-        <input name="email" type="email" autocomplete="email" placeholder="E-mailadres" aria-label="E-mail" required />
-        <input name="password" type="password" autocomplete="current-password" placeholder="Wachtwoord" aria-label="Wachtwoord" required />
-        <button type="submit" class="login-submit">Inloggen</button>
-        <p class="login-help">Nog geen wachtwoord? Vraag een beheerder om een persoonlijke uitnodigingslink.</p>
-        <p id="loginError" class="login-error" role="alert"></p>
-      </form>
+      <div class="login-stage">
+        <div class="login-word login-word-lef" aria-hidden="true">LEF</div>
+        <form id="loginForm" class="login-card">
+          <img class="login-crest" data-site-asset="logo" src="assets/cassiopeia-embleem.png?v=20260831-logo" alt="Embleem van Dameschdispuut Cassiopeia" />
+          <h1 id="loginTitle">Login Dameschdispuut Cassiopeia</h1>
+          <input name="email" type="email" autocomplete="email" placeholder="E-mailadres" aria-label="E-mail" required />
+          <input name="password" type="password" autocomplete="current-password" placeholder="Wachtwoord" aria-label="Wachtwoord" required />
+          <button type="submit" class="login-submit">Inloggen</button>
+          <p class="login-help">Nog geen wachtwoord? Vraag een beheerder om een persoonlijke uitnodigingslink.</p>
+          <p id="loginError" class="login-error" role="alert"></p>
+        </form>
+        <div class="login-word login-word-lustrum" aria-hidden="true">LUSTRUM III</div>
+      </div>
       <form id="activationForm" class="login-card hidden">
         <img class="login-crest" data-site-asset="logo" src="assets/cassiopeia-embleem.png?v=20260831-logo" alt="Embleem van Dameschdispuut Cassiopeia" />
         <p class="eyebrow">Persoonlijke uitnodiging</p>
