@@ -7,6 +7,7 @@ const session = require("express-session");
 const { db, initializeDatabase, ensureYearAgendaItems } = require("./db");
 const { createCalendarFeed, googleCalendarLinkFromIcsUrl, parseGoogleCalendarFeed, visibleCalendarItems } = require("./calendar-feed");
 const { MAX_IMPORT_ROWS, parseMemberImport, validateRecords } = require("./member-import");
+const { isMailConfigured, sendOnboardingMail } = require("./mailer");
 const { createSqliteSessionStore } = require("./session-store");
 
 initializeDatabase();
@@ -392,6 +393,25 @@ function createAccountToken(userId, purpose, createdBy) {
   return { invitePath: `/#activate=${encodeURIComponent(token)}`, expiresAt: new Date(expiresAt).toISOString(), purpose };
 }
 
+// Elk nieuw lid krijgt hooguit één onboardingmail; een mislukte verzending mag later opnieuw.
+function queueOnboardingMails(entries) {
+  if (!isMailConfigured() || !entries.length) return false;
+  const claim = db.prepare("UPDATE users SET onboarding_mail_sent_at = CURRENT_TIMESTAMP WHERE id = ? AND onboarding_mail_sent_at IS NULL");
+  const release = db.prepare("UPDATE users SET onboarding_mail_sent_at = NULL WHERE id = ?");
+  (async () => {
+    for (const { member, invitation } of entries) {
+      if (!claim.run(member.id).changes) continue;
+      try {
+        await sendOnboardingMail({ name: member.name, email: member.email, ...invitation });
+      } catch (error) {
+        release.run(member.id);
+        console.error(`Onboardingmail naar lid ${member.id} mislukt: ${error.message}`);
+      }
+    }
+  })();
+  return true;
+}
+
 function loginAttemptKey(req, email) {
   return `${req.ip}:${email}`;
 }
@@ -753,7 +773,7 @@ app.post("/api/members/import", requireAuth, requireAdmin, (req, res) => {
         };
       });
     })();
-    res.status(201).json({ created });
+    res.status(201).json({ created, onboardingMail: queueOnboardingMails(created) });
   } catch (error) {
     res.status(409).json({ error: "De import kon niet worden opgeslagen. Controleer of e-mailadressen uniek zijn." });
   }
@@ -781,7 +801,12 @@ app.post("/api/members", requireAuth, requireAdmin, async (req, res) => {
       .run({ ...member, ...coordinates, password_hash, account_status: "pending" });
     const created = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid);
     const invitation = createAccountToken(created.id, "invite", req.session.userId);
-    res.status(201).json({ member: publicUser(created), invitation });
+    const createdMember = publicUser(created);
+    res.status(201).json({
+      member: createdMember,
+      invitation,
+      onboardingMail: queueOnboardingMails([{ member: createdMember, invitation }])
+    });
   } catch (error) {
     res.status(409).json({ error: "Er bestaat al een lid met dit e-mailadres." });
   }

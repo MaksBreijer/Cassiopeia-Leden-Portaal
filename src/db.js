@@ -179,6 +179,7 @@ function initializeDatabase() {
   ensureColumn("users", "account_status", "TEXT NOT NULL DEFAULT 'active'");
   ensureColumn("users", "password_changed_at", "TEXT");
   ensureColumn("users", "last_login_at", "TEXT");
+  ensureColumn("users", "onboarding_mail_sent_at", "TEXT");
   ensureColumn("registrations", "cancelled_at", "TEXT");
   ensureColumn("registrations", "late_cancelled", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn("registrations", "cancellation_reason", "TEXT DEFAULT ''");

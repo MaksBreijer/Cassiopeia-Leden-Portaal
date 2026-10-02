@@ -618,9 +618,10 @@ function bulkInvitationRows() {
   ]);
 }
 
-function openBulkInvitationDialog(created) {
+function openBulkInvitationDialog(created, onboardingMail = false) {
   state.bulkInvitations = created;
-  els.bulkInvitationIntro.textContent = `${created.length} ${created.length === 1 ? "lid is" : "leden zijn"} toegevoegd met een openstaande uitnodiging.`;
+  const mailNote = onboardingMail ? " Iedereen krijgt de link ook per mail, met uitleg om een wachtwoord te kiezen en het profiel in te vullen." : "";
+  els.bulkInvitationIntro.textContent = `${created.length} ${created.length === 1 ? "lid is" : "leden zijn"} toegevoegd met een openstaande uitnodiging.${mailNote}`;
   els.bulkInvitationList.innerHTML = created
     .map(({ member, invitation }) => {
       const invitationUrl = new URL(invitation.invitePath, window.location.origin).toString();
@@ -1941,10 +1942,11 @@ function openMemberDialog(member = null) {
   els.memberDialog.showModal();
 }
 
-function openInvitationDialog(member, invitation) {
+function openInvitationDialog(member, invitation, onboardingMail = false) {
   const invitationUrl = new URL(invitation.invitePath, window.location.origin).toString();
   els.invitationDialogTitle.textContent = invitation.purpose === "invite" ? "Uitnodiging delen" : "Wachtwoordlink delen";
-  els.invitationDialogText.textContent = `Voor ${member.name}. Geldig tot ${formatDate(invitation.expiresAt)}.`;
+  const mailNote = onboardingMail ? " De link is ook per mail verstuurd." : "";
+  els.invitationDialogText.textContent = `Voor ${member.name}. Geldig tot ${formatDate(invitation.expiresAt)}.${mailNote}`;
   els.invitationUrl.value = invitationUrl;
   els.invitationDialog.showModal();
 }
@@ -2293,13 +2295,13 @@ els.confirmMemberImport.addEventListener("click", async () => {
   els.confirmMemberImport.textContent = "Importeren…";
   els.memberImportError.textContent = "";
   try {
-    const { created } = await api("/api/members/import", {
+    const { created, onboardingMail } = await api("/api/members/import", {
       method: "POST",
       body: JSON.stringify({ records: readyRecords })
     });
     els.memberImportDialog.close();
     showAdminPanel("members");
-    openBulkInvitationDialog(created);
+    openBulkInvitationDialog(created, onboardingMail);
     refreshPortal().catch((error) => showToast(error.message));
   } catch (error) {
     els.memberImportError.textContent = error.message;
@@ -2898,7 +2900,7 @@ els.memberForm.addEventListener("submit", async (event) => {
     await refreshPortal();
     showAdminPanel("members");
     if (response.invitation) {
-      openInvitationDialog(response.member, response.invitation);
+      openInvitationDialog(response.member, response.invitation, response.onboardingMail);
     } else {
       showToast("Lid opgeslagen.");
     }
