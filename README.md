@@ -34,7 +34,23 @@ Moderne website voor damesdispuut Cassiopeia met een besloten ledenomgeving.
 3. De admin deelt deze link privé met het betreffende lid.
 4. Het lid kiest zelf een wachtwoord van minimaal 12 tekens en wordt direct ingelogd.
 
-Voor een bestaand account kan een admin op dezelfde plek een nieuwe wachtwoordlink maken. Hiermee wordt het oude wachtwoord vervangen en worden oudere sessies ingetrokken. Er is nog geen maildienst gekoppeld; links worden daarom handmatig via een privékanaal gedeeld.
+Voor een bestaand account kan een admin op dezelfde plek een nieuwe wachtwoordlink maken. Hiermee wordt het oude wachtwoord vervangen en worden oudere sessies ingetrokken. Zonder maildienst deel je links handmatig via een privékanaal.
+
+## Onboardingmail
+
+Als er een maildienst is ingesteld, krijgt elk nieuw lid (los aangemaakt of via de import) precies één welkomstmail met de persoonlijke uitnodigingslink. In de mail staat dat het lid via de link een eigen wachtwoord kiest en daarna onder **Profiel** haar gegevens invult. Een nieuwe wachtwoordlink die een admin later maakt, wordt niet automatisch gemaild.
+
+```bash
+APP_BASE_URL="https://jouw-portaal.nl" \
+MAIL_FROM="Cassiopeia <bestuur@jouw-domein.nl>" \
+SMTP_HOST="smtp.jouw-provider.nl" \
+SMTP_PORT="587" \
+SMTP_USER="gebruikersnaam" \
+SMTP_PASSWORD="smtp-wachtwoord" \
+npm start
+```
+
+Zonder `APP_BASE_URL`, `MAIL_FROM` en `SMTP_HOST` wordt er niets gemaild en werkt alles zoals voorheen.
 
 ## Leden importeren
 

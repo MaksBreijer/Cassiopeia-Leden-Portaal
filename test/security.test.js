@@ -638,6 +638,7 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(bulkCreated.response.status, 201);
   assert.equal(bulkCreated.data.created.length, 1);
+  assert.equal(bulkCreated.data.onboardingMail, false);
   assert.equal(bulkCreated.data.created[0].member.email, "bulk@example.nl");
   assert.equal(bulkCreated.data.created[0].member.accountStatus, "pending");
   const bulkInviteToken = bulkCreated.data.created[0].invitation.invitePath.split("#activate=")[1];
@@ -874,4 +875,109 @@ test("admins invite members who set and reset their own password", async (t) => 
     body: { email: "onbekend@example.nl", password: "verkeerd-wachtwoord" }
   });
   assert.equal(limited.response.status, 429);
+});
+
+test("new members receive exactly one onboarding mail with their personal link", async (t) => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "cassiopeia-mail-test-"));
+  const outboxDir = path.join(dataDir, "outbox");
+  const port = await freePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  let serverError = "";
+  const child = spawn(process.execPath, ["src/server.js"], {
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      NODE_ENV: "test",
+      DATA_DIR: dataDir,
+      PORT: String(port),
+      APP_BASE_URL: "https://leden.example.nl/",
+      MAIL_FROM: "Cassiopeia <bestuur@example.nl>",
+      MAIL_OUTBOX_DIR: outboxDir,
+      BOOTSTRAP_ADMIN_EMAIL: "beheerder@example.nl",
+      BOOTSTRAP_ADMIN_PASSWORD: "een-uniek-veilig-wachtwoord"
+    },
+    stdio: ["ignore", "ignore", "pipe"]
+  });
+  child.stderr.on("data", (chunk) => {
+    serverError += chunk;
+  });
+  t.after(async () => {
+    if (child.exitCode === null) {
+      child.kill("SIGTERM");
+      await once(child, "exit");
+    }
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+  await waitForServer(baseUrl, child, () => serverError);
+
+  const adminLogin = await jsonRequest(baseUrl, "/api/login", {
+    method: "POST",
+    body: { email: "beheerder@example.nl", password: "een-uniek-veilig-wachtwoord" }
+  });
+  const imported = await jsonRequest(baseUrl, "/api/members/import", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: {
+      records: [
+        { name: "Nieuw Lid", email: "nieuw@example.nl", yearLayer: "2026" },
+        { name: "Tweede Lid", email: "tweede@example.nl", yearLayer: "2026" }
+      ]
+    }
+  });
+  assert.equal(imported.response.status, 201);
+  assert.equal(imported.data.onboardingMail, true);
+  const single = await jsonRequest(baseUrl, "/api/members", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { name: "Los Lid", email: "los@example.nl", yearLayer: "2026" }
+  });
+  assert.equal(single.data.onboardingMail, true);
+
+  const readOutbox = () => (fs.existsSync(outboxDir) ? fs.readdirSync(outboxDir) : [])
+    .map((file) => JSON.parse(fs.readFileSync(path.join(outboxDir, file), "utf8")));
+  for (let attempt = 0; attempt < 50 && readOutbox().length < 3; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  const mails = readOutbox();
+  assert.equal(mails.length, 3);
+  const mail = mails.find((message) => message.to[0].address === "nieuw@example.nl");
+  const invitePath = imported.data.created[0].invitation.invitePath;
+  assert.equal(mail.subject, "Welkom bij het ledenportaal van Cassiopeia");
+  assert.ok(mail.text.includes(`https://leden.example.nl${invitePath}`));
+  assert.match(mail.text, /Hoi Nieuw,/);
+  assert.match(mail.text, /wachtwoord/);
+  assert.match(mail.text, /Profiel/);
+
+  const resent = await jsonRequest(baseUrl, `/api/members/${imported.data.created[0].member.id}/invitations`, {
+    method: "POST",
+    cookie: adminLogin.cookie
+  });
+  assert.equal(resent.response.status, 201);
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  assert.equal(readOutbox().length, 3);
+});
+
+test("new members fill in address and birthday right after activating", () => {
+  const html = fs.readFileSync(path.join(projectRoot, "public", "index.html"), "utf8");
+  const appScript = fs.readFileSync(path.join(projectRoot, "public", "app.js"), "utf8");
+  const onboardingForm = html.match(/<form id="onboardingForm"[\s\S]*?<\/form>/)?.[0] || "";
+
+  assert.match(onboardingForm, /data-onboarding-step="address"[\s\S]*name="street"[\s\S]*name="postalCode"/);
+  assert.match(onboardingForm, /data-onboarding-step="birthday"[\s\S]*name="birthday" type="date"/);
+  assert.match(onboardingForm, /data-skip-onboarding/);
+  assert.match(appScript, /const ONBOARDING_STEPS = \["address", "birthday"\]/);
+  assert.match(appScript, /if \(isNewMember\) return startOnboarding\(user\)/);
+});
+
+test("the lichting is shown as 'Lichting 21' next to member names", () => {
+  const appScript = fs.readFileSync(path.join(projectRoot, "public", "app.js"), "utf8");
+  const source = appScript.match(/function formatLichting\(value\) \{[\s\S]*?\n\}/)?.[0];
+  const formatLichting = new Function(`${source}; return formatLichting;`)();
+
+  assert.equal(formatLichting("2021"), "Lichting 21");
+  assert.equal(formatLichting("2026"), "Lichting 26");
+  assert.equal(formatLichting("Oprichtster"), "Oprichtster");
+  assert.equal(formatLichting(""), "Lichting onbekend");
+  assert.match(appScript, /formatLichting\(member\.yearLayer\)\)\} · Vandaag!/);
+  assert.match(appScript, /data-lichting="\$\{lichting\}"/);
 });

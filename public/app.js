@@ -15,6 +15,9 @@ const state = {
   memberStatusFilter: "",
   openMemberId: null,
   activationToken: "",
+  activationPurpose: "",
+  onboardingUser: null,
+  onboardingStep: "",
   importRecords: [],
   bulkInvitations: [],
   selectedMemberIds: new Set()
@@ -150,6 +153,9 @@ const els = {
   activationTitle: document.querySelector("#activationTitle"),
   activationIntro: document.querySelector("#activationIntro"),
   activationError: document.querySelector("#activationError"),
+  onboardingForm: document.querySelector("#onboardingForm"),
+  onboardingStepLabel: document.querySelector("#onboardingStepLabel"),
+  onboardingError: document.querySelector("#onboardingError"),
   installAppDialog: document.querySelector("#installAppDialog"),
   installAppleInstructions: document.querySelector("#installAppleInstructions"),
   installBrowserInstructions: document.querySelector("#installBrowserInstructions"),
@@ -459,9 +465,9 @@ function formatLichting(value) {
   if (!year) return "Lichting onbekend";
 
   const match = year.match(/\d+/);
-  if (!match) return `Lichting '${year}`;
+  if (!match) return year.charAt(0).toUpperCase() + year.slice(1);
 
-  return `Lichting '${match[0].slice(-2)}`;
+  return `Lichting ${match[0].slice(-2)}`;
 }
 
 function sharedActivityId() {
@@ -509,7 +515,7 @@ function renderActivityParticipants(activity) {
         ${preview
           .map(
             (member) => `
-              <span class="participant-avatar avatar" title="${escapeHtml(member.name)}">
+              <span class="participant-avatar avatar" title="${escapeHtml(`${member.name} · ${formatLichting(member.yearLayer)}`)}">
                 ${avatarHtml(member)}
               </span>
             `
@@ -618,9 +624,10 @@ function bulkInvitationRows() {
   ]);
 }
 
-function openBulkInvitationDialog(created) {
+function openBulkInvitationDialog(created, onboardingMail = false) {
   state.bulkInvitations = created;
-  els.bulkInvitationIntro.textContent = `${created.length} ${created.length === 1 ? "lid is" : "leden zijn"} toegevoegd met een openstaande uitnodiging.`;
+  const mailNote = onboardingMail ? " Iedereen krijgt de link ook per mail, met uitleg om een wachtwoord te kiezen en het profiel in te vullen." : "";
+  els.bulkInvitationIntro.textContent = `${created.length} ${created.length === 1 ? "lid is" : "leden zijn"} toegevoegd met een openstaande uitnodiging.${mailNote}`;
   els.bulkInvitationList.innerHTML = created
     .map(({ member, invitation }) => {
       const invitationUrl = new URL(invitation.invitePath, window.location.origin).toString();
@@ -663,7 +670,7 @@ function renderBirthdays() {
   els.birthdayList.innerHTML = birthdays.map((member) => `
     <article class="birthday-card">
       <span class="birthday-avatar avatar">${avatarHtml(member)}</span>
-      <span class="birthday-copy"><strong>${escapeHtml(member.name)}</strong><small>Vandaag!</small></span>
+      <span class="birthday-copy"><strong>${escapeHtml(member.name)}</strong><small>${escapeHtml(formatLichting(member.yearLayer))} · Vandaag!</small></span>
       <time datetime="${escapeHtml(member.birthday)}">${escapeHtml(formatBirthday(member.birthday))}</time>
     </article>
   `).join("");
@@ -778,6 +785,7 @@ function setLoggedOut() {
   els.loginScreen.classList.remove("hidden");
   els.loginForm.classList.toggle("hidden", Boolean(state.activationToken));
   els.activationForm.classList.toggle("hidden", !state.activationToken);
+  els.onboardingForm.classList.add("hidden");
   els.siteHeader.classList.add("hidden");
   els.appMain.classList.add("hidden");
   els.logoutBtn.classList.add("hidden");
@@ -963,7 +971,7 @@ function showMapTooltip(marker) {
   const y = Math.max(18, Math.min(90, Number(marker.dataset.tooltipY)));
   tooltip.style.left = `${x}%`;
   tooltip.style.top = `${y}%`;
-  tooltip.innerHTML = `<a class="map-directions" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}" target="_blank" rel="noopener noreferrer">Route ↗</a><strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.address)}</span>`;
+  tooltip.innerHTML = `<a class="map-directions" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}" target="_blank" rel="noopener noreferrer">Route ↗</a><strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.lichting)}</span><span>${escapeHtml(marker.dataset.address)}</span>`;
   tooltip.classList.add("is-visible");
 }
 
@@ -979,7 +987,7 @@ function renderCribMap() {
   if (els.mapMemberCount) els.mapMemberCount.textContent = `${mappedMembers.length} van ${mappedMembers.length + unmappedMembers.length} op de kaart`;
   if (els.mapUnmapped) {
     els.mapUnmapped.innerHTML = unmappedMembers.length
-      ? `<p class="map-unmapped-title">Nog niet op de kaart</p><p>${unmappedMembers.map((member) => escapeHtml(member.name)).join(", ")}</p>`
+      ? `<p class="map-unmapped-title">Nog niet op de kaart</p><p>${unmappedMembers.map((member) => escapeHtml(`${member.name} (${formatLichting(member.yearLayer)})`)).join(", ")}</p>`
       : `<p class="map-ready">Alle actieve leden staan op de kaart.</p>`;
   }
   const hasMappedMembers = mappedMembers.length > 0;
@@ -1030,7 +1038,8 @@ function renderCribMap() {
     const initials = escapeHtml((member.name || "C").split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase());
     const name = escapeHtml(member.name || "Cassio");
     const address = escapeHtml(member.address || "Adres onbekend");
-    return `<g class="crib-marker" tabindex="0" role="button" aria-label="${name}, ${address}. Klik voor route in Google Maps" data-name="${name}" data-address="${address}" data-tooltip-x="${((x / 900) * 100).toFixed(2)}" data-tooltip-y="${((y / 500) * 100).toFixed(2)}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})"><circle r="18"></circle><circle class="crib-marker-core" r="12"></circle><text y="4" text-anchor="middle">${initials}</text></g>`;
+    const lichting = escapeHtml(formatLichting(member.yearLayer));
+    return `<g class="crib-marker" tabindex="0" role="button" aria-label="${name}, ${address}. Klik voor route in Google Maps" data-name="${name}" data-lichting="${lichting}" data-address="${address}" data-tooltip-x="${((x / 900) * 100).toFixed(2)}" data-tooltip-y="${((y / 500) * 100).toFixed(2)}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})"><circle r="18"></circle><circle class="crib-marker-core" r="12"></circle><text y="4" text-anchor="middle">${initials}</text></g>`;
   }).join("");
   const emptyOverlay = hasMappedMembers ? "" : `<div class="map-empty-overlay"><span class="map-empty-icon">⌖</span><strong>Nog geen adressen op de kaart</strong><p>Vul je adres in via je profiel. Daarna verschijnt je Cassio Crib hier automatisch.</p><a class="secondary" href="#profiel">Naar mijn profiel</a></div>`;
   els.cribMap.innerHTML = `<svg class="crib-map-svg" viewBox="0 0 900 500" preserveAspectRatio="xMidYMid slice" aria-label="Cassio Cribs kaart">${tiles.join("")}${markers}</svg><div class="map-controls" aria-label="Kaartbediening"><button type="button" data-map-zoom-in aria-label="Inzoomen">+</button><button type="button" data-map-zoom-out aria-label="Uitzoomen">−</button><button type="button" data-map-reset aria-label="Toon alle markers">⌂</button></div><div class="map-tooltip" role="status"></div>${emptyOverlay}`;
@@ -1941,10 +1950,11 @@ function openMemberDialog(member = null) {
   els.memberDialog.showModal();
 }
 
-function openInvitationDialog(member, invitation) {
+function openInvitationDialog(member, invitation, onboardingMail = false) {
   const invitationUrl = new URL(invitation.invitePath, window.location.origin).toString();
   els.invitationDialogTitle.textContent = invitation.purpose === "invite" ? "Uitnodiging delen" : "Wachtwoordlink delen";
-  els.invitationDialogText.textContent = `Voor ${member.name}. Geldig tot ${formatDate(invitation.expiresAt)}.`;
+  const mailNote = onboardingMail ? " De link is ook per mail verstuurd." : "";
+  els.invitationDialogText.textContent = `Voor ${member.name}. Geldig tot ${formatDate(invitation.expiresAt)}.${mailNote}`;
   els.invitationUrl.value = invitationUrl;
   els.invitationDialog.showModal();
 }
@@ -2177,6 +2187,7 @@ async function openActivation(token) {
       method: "POST",
       body: JSON.stringify({ token })
     });
+    state.activationPurpose = invitation.purpose;
     els.activationTitle.textContent = invitation.purpose === "invite" ? `Welkom ${invitation.name}` : "Nieuw wachtwoord instellen";
     els.activationIntro.textContent = `${invitation.email} · link geldig tot ${formatDate(invitation.expiresAt)}`;
   } catch (error) {
@@ -2293,13 +2304,13 @@ els.confirmMemberImport.addEventListener("click", async () => {
   els.confirmMemberImport.textContent = "Importeren…";
   els.memberImportError.textContent = "";
   try {
-    const { created } = await api("/api/members/import", {
+    const { created, onboardingMail } = await api("/api/members/import", {
       method: "POST",
       body: JSON.stringify({ records: readyRecords })
     });
     els.memberImportDialog.close();
     showAdminPanel("members");
-    openBulkInvitationDialog(created);
+    openBulkInvitationDialog(created, onboardingMail);
     refreshPortal().catch((error) => showToast(error.message));
   } catch (error) {
     els.memberImportError.textContent = error.message;
@@ -2504,15 +2515,81 @@ els.activationForm.addEventListener("submit", async (event) => {
       method: "POST",
       body: JSON.stringify({ token: state.activationToken, password })
     });
+    const isNewMember = state.activationPurpose === "invite";
     closeActivation();
-    if (!setLoggedIn(user)) return;
-    await refreshPortal();
-    location.hash = "#home";
-    showPage("home");
-    showToast("Je account is veilig geactiveerd.");
+    if (isNewMember) return startOnboarding(user);
+    await enterPortalAfterActivation(user);
   } catch (error) {
     els.activationError.textContent = error.message;
   }
+});
+
+async function enterPortalAfterActivation(user) {
+  if (!setLoggedIn(user)) return;
+  await refreshPortal();
+  location.hash = "#home";
+  showPage("home");
+  showToast("Je account is veilig geactiveerd.");
+}
+
+// Nieuwe leden vullen na het kiezen van hun wachtwoord in twee stappen adres en verjaardag in.
+const ONBOARDING_STEPS = ["address", "birthday"];
+
+function showOnboardingStep(step) {
+  state.onboardingStep = step;
+  els.onboardingError.textContent = "";
+  els.onboardingStepLabel.textContent = `Stap ${ONBOARDING_STEPS.indexOf(step) + 2} van ${ONBOARDING_STEPS.length + 1}`;
+  els.onboardingForm.querySelectorAll("[data-onboarding-step]").forEach((section) => {
+    section.classList.toggle("hidden", section.dataset.onboardingStep !== step);
+  });
+  els.onboardingForm.querySelector(`[data-onboarding-step="${step}"] input:not([type="hidden"])`)?.focus();
+}
+
+function startOnboarding(user) {
+  state.onboardingUser = user;
+  els.onboardingForm.reset();
+  fillAddressFields(els.onboardingForm, user.address || "");
+  els.onboardingForm.elements.birthday.value = user.birthday || "";
+  els.loginForm.classList.add("hidden");
+  els.onboardingForm.classList.remove("hidden");
+  showOnboardingStep(ONBOARDING_STEPS[0]);
+}
+
+async function nextOnboardingStep() {
+  const nextStep = ONBOARDING_STEPS[ONBOARDING_STEPS.indexOf(state.onboardingStep) + 1];
+  if (nextStep) return showOnboardingStep(nextStep);
+  const user = state.onboardingUser;
+  state.onboardingUser = null;
+  state.onboardingStep = "";
+  els.onboardingForm.classList.add("hidden");
+  await enterPortalAfterActivation(user);
+}
+
+els.onboardingForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  els.onboardingError.textContent = "";
+  const body = state.onboardingStep === "address"
+    ? { address: syncAddressFields(els.onboardingForm) }
+    : { birthday: els.onboardingForm.elements.birthday.value };
+  if (!Object.values(body)[0]) {
+    els.onboardingError.textContent = state.onboardingStep === "address" ? "Vul je adres in of kies Later invullen." : "Vul je verjaardag in of kies Later invullen.";
+    return;
+  }
+  const submitBtn = els.onboardingForm.querySelector("button[type='submit']");
+  submitBtn.disabled = true;
+  try {
+    const { user } = await api("/api/me", { method: "PUT", body: JSON.stringify(body) });
+    state.onboardingUser = user;
+    await nextOnboardingStep();
+  } catch (error) {
+    els.onboardingError.textContent = error.message;
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
+
+els.onboardingForm.querySelector("[data-skip-onboarding]").addEventListener("click", () => {
+  nextOnboardingStep().catch((error) => showToast(error.message));
 });
 
 els.copyInvitationBtn.addEventListener("click", async () => {
@@ -2898,7 +2975,7 @@ els.memberForm.addEventListener("submit", async (event) => {
     await refreshPortal();
     showAdminPanel("members");
     if (response.invitation) {
-      openInvitationDialog(response.member, response.invitation);
+      openInvitationDialog(response.member, response.invitation, response.onboardingMail);
     } else {
       showToast("Lid opgeslagen.");
     }
