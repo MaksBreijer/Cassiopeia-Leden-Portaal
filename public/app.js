@@ -48,7 +48,8 @@ const mapView = {
   pinchScale: 1,
   pinchAnchorLatitude: 52.2,
   pinchAnchorLongitude: 5.3,
-  ignoreClickUntil: 0
+  ignoreClickUntil: 0,
+  tooltipHideTimer: null
 };
 
 const API_BASE = location.protocol === "file:" || location.port === "5500" ? "http://127.0.0.1:3000" : "";
@@ -973,6 +974,7 @@ function fitMapToMembers(members) {
 function showMapTooltip(marker) {
   const tooltip = els.cribMap?.querySelector(".map-tooltip");
   if (!tooltip || !marker) return;
+  clearTimeout(mapView.tooltipHideTimer);
   const x = Math.max(12, Math.min(88, Number(marker.dataset.tooltipX)));
   const y = Math.max(18, Math.min(90, Number(marker.dataset.tooltipY)));
   tooltip.style.left = `${x}%`;
@@ -982,7 +984,14 @@ function showMapTooltip(marker) {
 }
 
 function hideMapTooltip() {
+  clearTimeout(mapView.tooltipHideTimer);
   els.cribMap?.querySelector(".map-tooltip")?.classList.remove("is-visible");
+}
+
+// Met de muis moet je van het bolletje naar de Route-knop kunnen bewegen zonder dat het venster verdwijnt.
+function scheduleHideMapTooltip() {
+  clearTimeout(mapView.tooltipHideTimer);
+  mapView.tooltipHideTimer = setTimeout(hideMapTooltip, 350);
 }
 
 function renderCribMap() {
@@ -1073,20 +1082,23 @@ if (els.cribMap) {
   });
 
   els.cribMap.addEventListener("mouseover", (event) => {
+    if (mapView.dragging) return;
     const marker = event.target.closest?.(".crib-marker");
     if (marker) showMapTooltip(marker);
+    if (event.target.closest?.(".map-tooltip")) clearTimeout(mapView.tooltipHideTimer);
   });
   els.cribMap.addEventListener("mouseout", (event) => {
-    if (event.target.closest?.(".crib-marker") && !event.relatedTarget?.closest?.(".map-tooltip")) hideMapTooltip();
-  });
-  els.cribMap.addEventListener("mouseout", (event) => {
-    if (event.target.closest?.(".map-tooltip") && !event.relatedTarget?.closest?.(".crib-marker, .map-tooltip")) hideMapTooltip();
+    if (!event.target.closest?.(".crib-marker, .map-tooltip")) return;
+    if (event.relatedTarget?.closest?.(".crib-marker, .map-tooltip")) return;
+    scheduleHideMapTooltip();
   });
   els.cribMap.addEventListener("focusin", (event) => {
     const marker = event.target.closest?.(".crib-marker");
     if (marker) showMapTooltip(marker);
   });
-  els.cribMap.addEventListener("focusout", hideMapTooltip);
+  els.cribMap.addEventListener("focusout", (event) => {
+    if (!event.relatedTarget?.closest?.(".map-tooltip")) hideMapTooltip();
+  });
   els.cribMap.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     const marker = event.target.closest?.(".crib-marker");
@@ -1106,7 +1118,7 @@ if (els.cribMap) {
   }, { passive: false });
 
   els.cribMap.addEventListener("pointerdown", (event) => {
-    if (event.target.closest?.("button")) return;
+    if (event.target.closest?.("button, .map-tooltip")) return;
     mapView.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     els.cribMap.setPointerCapture?.(event.pointerId);
     if (mapView.pointers.size >= 2) {
@@ -1171,6 +1183,8 @@ if (els.cribMap) {
       return;
     }
     if (!mapView.dragging || event.pointerId !== mapView.pointerId) return;
+    // Een klik met een paar pixels beweging is nog geen sleepbeweging.
+    if (Math.hypot(event.clientX - mapView.startClientX, event.clientY - mapView.startClientY) < 5) return;
     const rect = els.cribMap.getBoundingClientRect();
     const dragSensitivity = 0.55;
     const nextCenter = unprojectMapPoint(

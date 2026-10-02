@@ -901,6 +901,10 @@ main {
   transform: translate(-50%, -50%) rotate(45deg);
 }
 
+.map-tooltip:not(.is-visible) {
+  pointer-events: none;
+}
+
 .map-tooltip.is-visible {
   opacity: 1;
 }
