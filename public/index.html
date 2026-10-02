@@ -57,6 +57,27 @@
         <button type="button" class="ghost" data-cancel-activation>Terug naar inloggen</button>
         <p id="activationError" class="login-error" role="alert"></p>
       </form>
+      <form id="onboardingForm" class="login-card hidden" novalidate>
+        <img class="login-crest" data-site-asset="logo" src="assets/cassiopeia-embleem.png?v=20260831-logo" alt="Embleem van Dameschdispuut Cassiopeia" />
+        <p id="onboardingStepLabel" class="eyebrow">Stap 2 van 3</p>
+        <div data-onboarding-step="address">
+          <h1>Waar woon je?</h1>
+          <p class="login-help">Je adres zetten we op Cassio Cribs, de ledenkaart. Alleen ingelogde leden zien het.</p>
+          <input name="street" autocomplete="address-line1" placeholder="Straatnaam" aria-label="Straat" />
+          <input name="houseNumber" autocomplete="address-line2" autocapitalize="characters" maxlength="12" placeholder="Huisnummer, bijv. 153-1" aria-label="Huisnummer en verdieping" />
+          <input name="postalCode" autocomplete="postal-code" placeholder="Postcode" aria-label="Postcode" />
+          <input name="city" autocomplete="address-level2" placeholder="Woonplaats" aria-label="Woonplaats" />
+          <input type="hidden" name="address" />
+        </div>
+        <div data-onboarding-step="birthday" class="hidden">
+          <h1>Wanneer ben je jarig?</h1>
+          <p class="login-help">Dan zien de andere leden het als je jarig bent.</p>
+          <input name="birthday" type="date" autocomplete="bday" aria-label="Verjaardag" />
+        </div>
+        <button type="submit" class="login-submit">Opslaan en verder</button>
+        <button type="button" class="ghost" data-skip-onboarding>Later invullen</button>
+        <p id="onboardingError" class="login-error" role="alert"></p>
+      </form>
     </section>
 
     <header class="site-header hidden">

@@ -15,6 +15,9 @@ const state = {
   memberStatusFilter: "",
   openMemberId: null,
   activationToken: "",
+  activationPurpose: "",
+  onboardingUser: null,
+  onboardingStep: "",
   importRecords: [],
   bulkInvitations: [],
   selectedMemberIds: new Set()
@@ -150,6 +153,9 @@ const els = {
   activationTitle: document.querySelector("#activationTitle"),
   activationIntro: document.querySelector("#activationIntro"),
   activationError: document.querySelector("#activationError"),
+  onboardingForm: document.querySelector("#onboardingForm"),
+  onboardingStepLabel: document.querySelector("#onboardingStepLabel"),
+  onboardingError: document.querySelector("#onboardingError"),
   installAppDialog: document.querySelector("#installAppDialog"),
   installAppleInstructions: document.querySelector("#installAppleInstructions"),
   installBrowserInstructions: document.querySelector("#installBrowserInstructions"),
@@ -779,6 +785,7 @@ function setLoggedOut() {
   els.loginScreen.classList.remove("hidden");
   els.loginForm.classList.toggle("hidden", Boolean(state.activationToken));
   els.activationForm.classList.toggle("hidden", !state.activationToken);
+  els.onboardingForm.classList.add("hidden");
   els.siteHeader.classList.add("hidden");
   els.appMain.classList.add("hidden");
   els.logoutBtn.classList.add("hidden");
@@ -2179,6 +2186,7 @@ async function openActivation(token) {
       method: "POST",
       body: JSON.stringify({ token })
     });
+    state.activationPurpose = invitation.purpose;
     els.activationTitle.textContent = invitation.purpose === "invite" ? `Welkom ${invitation.name}` : "Nieuw wachtwoord instellen";
     els.activationIntro.textContent = `${invitation.email} · link geldig tot ${formatDate(invitation.expiresAt)}`;
   } catch (error) {
@@ -2506,15 +2514,81 @@ els.activationForm.addEventListener("submit", async (event) => {
       method: "POST",
       body: JSON.stringify({ token: state.activationToken, password })
     });
+    const isNewMember = state.activationPurpose === "invite";
     closeActivation();
-    if (!setLoggedIn(user)) return;
-    await refreshPortal();
-    location.hash = "#home";
-    showPage("home");
-    showToast("Je account is veilig geactiveerd.");
+    if (isNewMember) return startOnboarding(user);
+    await enterPortalAfterActivation(user);
   } catch (error) {
     els.activationError.textContent = error.message;
   }
+});
+
+async function enterPortalAfterActivation(user) {
+  if (!setLoggedIn(user)) return;
+  await refreshPortal();
+  location.hash = "#home";
+  showPage("home");
+  showToast("Je account is veilig geactiveerd.");
+}
+
+// Nieuwe leden vullen na het kiezen van hun wachtwoord in twee stappen adres en verjaardag in.
+const ONBOARDING_STEPS = ["address", "birthday"];
+
+function showOnboardingStep(step) {
+  state.onboardingStep = step;
+  els.onboardingError.textContent = "";
+  els.onboardingStepLabel.textContent = `Stap ${ONBOARDING_STEPS.indexOf(step) + 2} van ${ONBOARDING_STEPS.length + 1}`;
+  els.onboardingForm.querySelectorAll("[data-onboarding-step]").forEach((section) => {
+    section.classList.toggle("hidden", section.dataset.onboardingStep !== step);
+  });
+  els.onboardingForm.querySelector(`[data-onboarding-step="${step}"] input:not([type="hidden"])`)?.focus();
+}
+
+function startOnboarding(user) {
+  state.onboardingUser = user;
+  els.onboardingForm.reset();
+  fillAddressFields(els.onboardingForm, user.address || "");
+  els.onboardingForm.elements.birthday.value = user.birthday || "";
+  els.loginForm.classList.add("hidden");
+  els.onboardingForm.classList.remove("hidden");
+  showOnboardingStep(ONBOARDING_STEPS[0]);
+}
+
+async function nextOnboardingStep() {
+  const nextStep = ONBOARDING_STEPS[ONBOARDING_STEPS.indexOf(state.onboardingStep) + 1];
+  if (nextStep) return showOnboardingStep(nextStep);
+  const user = state.onboardingUser;
+  state.onboardingUser = null;
+  state.onboardingStep = "";
+  els.onboardingForm.classList.add("hidden");
+  await enterPortalAfterActivation(user);
+}
+
+els.onboardingForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  els.onboardingError.textContent = "";
+  const body = state.onboardingStep === "address"
+    ? { address: syncAddressFields(els.onboardingForm) }
+    : { birthday: els.onboardingForm.elements.birthday.value };
+  if (!Object.values(body)[0]) {
+    els.onboardingError.textContent = state.onboardingStep === "address" ? "Vul je adres in of kies Later invullen." : "Vul je verjaardag in of kies Later invullen.";
+    return;
+  }
+  const submitBtn = els.onboardingForm.querySelector("button[type='submit']");
+  submitBtn.disabled = true;
+  try {
+    const { user } = await api("/api/me", { method: "PUT", body: JSON.stringify(body) });
+    state.onboardingUser = user;
+    await nextOnboardingStep();
+  } catch (error) {
+    els.onboardingError.textContent = error.message;
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
+
+els.onboardingForm.querySelector("[data-skip-onboarding]").addEventListener("click", () => {
+  nextOnboardingStep().catch((error) => showToast(error.message));
 });
 
 els.copyInvitationBtn.addEventListener("click", async () => {

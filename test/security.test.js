@@ -956,3 +956,15 @@ test("new members receive exactly one onboarding mail with their personal link",
   await new Promise((resolve) => setTimeout(resolve, 200));
   assert.equal(readOutbox().length, 3);
 });
+
+test("new members fill in address and birthday right after activating", () => {
+  const html = fs.readFileSync(path.join(projectRoot, "public", "index.html"), "utf8");
+  const appScript = fs.readFileSync(path.join(projectRoot, "public", "app.js"), "utf8");
+  const onboardingForm = html.match(/<form id="onboardingForm"[\s\S]*?<\/form>/)?.[0] || "";
+
+  assert.match(onboardingForm, /data-onboarding-step="address"[\s\S]*name="street"[\s\S]*name="postalCode"/);
+  assert.match(onboardingForm, /data-onboarding-step="birthday"[\s\S]*name="birthday" type="date"/);
+  assert.match(onboardingForm, /data-skip-onboarding/);
+  assert.match(appScript, /const ONBOARDING_STEPS = \["address", "birthday"\]/);
+  assert.match(appScript, /if \(isNewMember\) return startOnboarding\(user\)/);
+});
