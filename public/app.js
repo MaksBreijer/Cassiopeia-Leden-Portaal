@@ -48,7 +48,8 @@ const mapView = {
   pinchScale: 1,
   pinchAnchorLatitude: 52.2,
   pinchAnchorLongitude: 5.3,
-  ignoreClickUntil: 0
+  ignoreClickUntil: 0,
+  tooltipHideTimer: null
 };
 
 const API_BASE = location.protocol === "file:" || location.port === "5500" ? "http://127.0.0.1:3000" : "";
@@ -270,6 +271,14 @@ const els = {
   bulkDeleteDialog: document.querySelector("#bulkDeleteDialog"),
   bulkDeleteIntro: document.querySelector("#bulkDeleteIntro"),
   bulkDeleteForm: document.querySelector("#bulkDeleteForm"),
+  inviteMailDialog: document.querySelector("#inviteMailDialog"),
+  inviteMailForm: document.querySelector("#inviteMailForm"),
+  inviteMailIntro: document.querySelector("#inviteMailIntro"),
+  inviteMailSelectAll: document.querySelector("#inviteMailSelectAll"),
+  inviteMailList: document.querySelector("#inviteMailList"),
+  inviteMailProgress: document.querySelector("#inviteMailProgress"),
+  inviteMailError: document.querySelector("#inviteMailError"),
+  sendInviteMails: document.querySelector("#sendInviteMails"),
   toast: document.querySelector("#toast")
 };
 
@@ -642,6 +651,95 @@ function openBulkInvitationDialog(created, onboardingMail = false) {
   els.bulkInvitationDialog.showModal();
 }
 
+function formatMailedAt(value) {
+  if (!value) return "nog niet gemaild";
+  const date = new Date(`${String(value).replace(" ", "T")}Z`);
+  if (Number.isNaN(date.getTime())) return "";
+  return `gemaild ${new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(date)}`;
+}
+
+function inviteMailSelectedIds() {
+  return [...(els.inviteMailList?.querySelectorAll("input[data-invite-mail]:checked") || [])].map((input) => Number(input.dataset.inviteMail));
+}
+
+function syncInviteMailSelection() {
+  const boxes = [...els.inviteMailList.querySelectorAll("input[data-invite-mail]")];
+  const count = inviteMailSelectedIds().length;
+  const running = Boolean(state.inviteMails?.job?.running);
+  els.inviteMailSelectAll.checked = boxes.length > 0 && count === boxes.length;
+  els.inviteMailSelectAll.indeterminate = count > 0 && count < boxes.length;
+  els.inviteMailSelectAll.disabled = running || !boxes.length;
+  els.sendInviteMails.disabled = running || !count || !state.inviteMails?.mailConfigured;
+  els.sendInviteMails.textContent = running ? "Bezig met versturen…" : `Verstuur naar ${count} ${count === 1 ? "lid" : "leden"}`;
+}
+
+function renderInviteMails() {
+  const status = state.inviteMails;
+  if (!status || !els.inviteMailList) return;
+  const { job, pending, mailConfigured } = status;
+  const previous = new Set(inviteMailSelectedIds());
+  const firstRender = !els.inviteMailList.dataset.rendered;
+  const failedIds = new Set((job.failed || []).map((entry) => entry.id));
+  if (!mailConfigured) {
+    els.inviteMailIntro.textContent = "Er is nog geen mailaccount gekoppeld aan de website, dus versturen kan nog niet. Je kunt wel per lid een uitnodigingslink kopiëren.";
+  } else if (!pending.length) {
+    els.inviteMailIntro.textContent = "Alle leden hebben hun account al geactiveerd. Er hoeft niemand een uitnodiging te krijgen.";
+  } else {
+    els.inviteMailIntro.textContent = `${pending.length} ${pending.length === 1 ? "lid heeft" : "leden hebben"} nog niet ingelogd. Vink aan wie een mail krijgt met een persoonlijke link om in te loggen.`;
+  }
+  els.inviteMailList.innerHTML = pending
+    .map((member) => {
+      const checked = firstRender ? !member.lastMailedAt : previous.has(member.id);
+      return `
+        <label class="bulk-invitation-row invite-mail-row${failedIds.has(member.id) ? " is-failed" : ""}">
+          <input type="checkbox" data-invite-mail="${member.id}" ${checked ? "checked" : ""} ${job.running ? "disabled" : ""} />
+          <div><strong>${escapeHtml(member.name)}</strong><span>${escapeHtml(member.email)}</span></div>
+          <em>${failedIds.has(member.id) ? "mislukt" : escapeHtml(formatMailedAt(member.lastMailedAt))}</em>
+        </label>
+      `;
+    })
+    .join("");
+  els.inviteMailList.dataset.rendered = "true";
+  if (job.running) {
+    els.inviteMailProgress.textContent = `Bezig: ${job.sent + job.failed.length} van ${job.total} verwerkt.`;
+  } else if (job.finishedAt) {
+    const failedNote = job.failed.length ? ` Mislukt bij ${job.failed.length}: ${job.failed.map((entry) => entry.name).join(", ")}.` : "";
+    els.inviteMailProgress.textContent = `Laatste ronde: ${job.sent} van ${job.total} mails verstuurd.${failedNote}`;
+  } else {
+    els.inviteMailProgress.textContent = "";
+  }
+  syncInviteMailSelection();
+}
+
+async function loadInviteMails() {
+  const wasRunning = Boolean(state.inviteMails?.job?.running);
+  state.inviteMails = await api("/api/members/invitation-mails");
+  // Na een verzendronde staan alleen leden die nog geen mail kregen weer aangevinkt.
+  if (wasRunning && !state.inviteMails.job.running) delete els.inviteMailList.dataset.rendered;
+  renderInviteMails();
+  clearTimeout(state.inviteMailTimer);
+  if (state.inviteMails.job.running && els.inviteMailDialog.open) {
+    state.inviteMailTimer = setTimeout(() => loadInviteMails().catch((error) => { els.inviteMailError.textContent = error.message; }), 1500);
+  } else if (wasRunning) {
+    loadMembers().catch(() => {});
+  }
+}
+
+async function openInviteMailDialog() {
+  els.inviteMailError.textContent = "";
+  delete els.inviteMailList.dataset.rendered;
+  els.inviteMailList.innerHTML = "";
+  els.inviteMailProgress.textContent = "";
+  els.inviteMailIntro.textContent = "Leden laden…";
+  els.sendInviteMails.disabled = true;
+  els.inviteMailDialog.showModal();
+  try {
+    await loadInviteMails();
+  } catch (error) {
+    els.inviteMailError.textContent = error.message;
+  }
+}
+
 function renderProfile() {
   if (!state.user) return;
   els.profileAvatar.innerHTML = avatarHtml(state.user);
@@ -973,6 +1071,7 @@ function fitMapToMembers(members) {
 function showMapTooltip(marker) {
   const tooltip = els.cribMap?.querySelector(".map-tooltip");
   if (!tooltip || !marker) return;
+  clearTimeout(mapView.tooltipHideTimer);
   const x = Math.max(12, Math.min(88, Number(marker.dataset.tooltipX)));
   const y = Math.max(18, Math.min(90, Number(marker.dataset.tooltipY)));
   tooltip.style.left = `${x}%`;
@@ -982,7 +1081,14 @@ function showMapTooltip(marker) {
 }
 
 function hideMapTooltip() {
+  clearTimeout(mapView.tooltipHideTimer);
   els.cribMap?.querySelector(".map-tooltip")?.classList.remove("is-visible");
+}
+
+// Met de muis moet je van het bolletje naar de Route-knop kunnen bewegen zonder dat het venster verdwijnt.
+function scheduleHideMapTooltip() {
+  clearTimeout(mapView.tooltipHideTimer);
+  mapView.tooltipHideTimer = setTimeout(hideMapTooltip, 350);
 }
 
 function renderCribMap() {
@@ -1073,20 +1179,23 @@ if (els.cribMap) {
   });
 
   els.cribMap.addEventListener("mouseover", (event) => {
+    if (mapView.dragging) return;
     const marker = event.target.closest?.(".crib-marker");
     if (marker) showMapTooltip(marker);
+    if (event.target.closest?.(".map-tooltip")) clearTimeout(mapView.tooltipHideTimer);
   });
   els.cribMap.addEventListener("mouseout", (event) => {
-    if (event.target.closest?.(".crib-marker") && !event.relatedTarget?.closest?.(".map-tooltip")) hideMapTooltip();
-  });
-  els.cribMap.addEventListener("mouseout", (event) => {
-    if (event.target.closest?.(".map-tooltip") && !event.relatedTarget?.closest?.(".crib-marker, .map-tooltip")) hideMapTooltip();
+    if (!event.target.closest?.(".crib-marker, .map-tooltip")) return;
+    if (event.relatedTarget?.closest?.(".crib-marker, .map-tooltip")) return;
+    scheduleHideMapTooltip();
   });
   els.cribMap.addEventListener("focusin", (event) => {
     const marker = event.target.closest?.(".crib-marker");
     if (marker) showMapTooltip(marker);
   });
-  els.cribMap.addEventListener("focusout", hideMapTooltip);
+  els.cribMap.addEventListener("focusout", (event) => {
+    if (!event.relatedTarget?.closest?.(".map-tooltip")) hideMapTooltip();
+  });
   els.cribMap.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     const marker = event.target.closest?.(".crib-marker");
@@ -1106,7 +1215,7 @@ if (els.cribMap) {
   }, { passive: false });
 
   els.cribMap.addEventListener("pointerdown", (event) => {
-    if (event.target.closest?.("button")) return;
+    if (event.target.closest?.("button, .map-tooltip")) return;
     mapView.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     els.cribMap.setPointerCapture?.(event.pointerId);
     if (mapView.pointers.size >= 2) {
@@ -1171,6 +1280,8 @@ if (els.cribMap) {
       return;
     }
     if (!mapView.dragging || event.pointerId !== mapView.pointerId) return;
+    // Een klik met een paar pixels beweging is nog geen sleepbeweging.
+    if (Math.hypot(event.clientX - mapView.startClientX, event.clientY - mapView.startClientY) < 5) return;
     const rect = els.cribMap.getBoundingClientRect();
     const dragSensitivity = 0.55;
     const nextCenter = unprojectMapPoint(
@@ -2743,6 +2854,34 @@ els.confessionForm?.addEventListener("submit", async (event) => {
   }
 });
 
+els.inviteMailList?.addEventListener("change", syncInviteMailSelection);
+els.inviteMailSelectAll?.addEventListener("change", () => {
+  els.inviteMailList.querySelectorAll("input[data-invite-mail]").forEach((input) => {
+    input.checked = els.inviteMailSelectAll.checked;
+  });
+  syncInviteMailSelection();
+});
+els.inviteMailDialog?.addEventListener("close", () => clearTimeout(state.inviteMailTimer));
+els.inviteMailForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const memberIds = inviteMailSelectedIds();
+  if (!memberIds.length) return;
+  if (!confirm(`Weet je zeker dat je ${memberIds.length} ${memberIds.length === 1 ? "lid" : "leden"} nu een uitnodiging mailt?`)) return;
+  els.inviteMailError.textContent = "";
+  els.sendInviteMails.disabled = true;
+  try {
+    state.inviteMails = await api("/api/members/invitation-mails", {
+      method: "POST",
+      body: JSON.stringify({ memberIds })
+    });
+    renderInviteMails();
+    await loadInviteMails();
+  } catch (error) {
+    els.inviteMailError.textContent = error.message;
+    syncInviteMailSelection();
+  }
+});
+
 els.bulkDeleteForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const ids = [...state.selectedMemberIds];
@@ -2807,6 +2946,9 @@ document.body.addEventListener("click", async (event) => {
 
   const importMembersButton = event.target.closest("[data-import-members]");
   if (importMembersButton) return openMemberImportDialog();
+
+  const inviteMailsButton = event.target.closest("[data-invite-mails]");
+  if (inviteMailsButton) return openInviteMailDialog();
 
   const closeBtn = event.target.closest("[data-close]");
   if (closeBtn) return closeBtn.closest("dialog").close();
