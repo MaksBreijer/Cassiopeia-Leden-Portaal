@@ -7,7 +7,6 @@ const session = require("express-session");
 const { db, initializeDatabase, ensureYearAgendaItems } = require("./db");
 const { createCalendarFeed, googleCalendarLinkFromIcsUrl, parseGoogleCalendarFeed, visibleCalendarItems } = require("./calendar-feed");
 const { MAX_IMPORT_ROWS, parseMemberImport, validateRecords } = require("./member-import");
-const { isMailConfigured, sendOnboardingMail } = require("./mailer");
 const { createSqliteSessionStore } = require("./session-store");
 
 initializeDatabase();
@@ -393,55 +392,6 @@ function createAccountToken(userId, purpose, createdBy) {
   return { invitePath: `/#activate=${encodeURIComponent(token)}`, expiresAt: new Date(expiresAt).toISOString(), purpose };
 }
 
-// Uitnodigingsmails gaan alleen weg als een beheerder op de knop drukt; er loopt hooguit één ronde tegelijk.
-const inviteMailJob = { running: false, total: 0, sent: 0, failed: [], startedAt: null, finishedAt: null };
-
-function pendingInviteMembers() {
-  return db.prepare("SELECT * FROM users WHERE account_status = 'pending' ORDER BY name COLLATE NOCASE").all();
-}
-
-function inviteMailStatus() {
-  return {
-    mailConfigured: isMailConfigured(),
-    pending: pendingInviteMembers().map((member) => ({
-      id: member.id,
-      name: member.name,
-      email: member.email,
-      yearLayer: member.year_layer,
-      lastMailedAt: member.onboarding_mail_sent_at
-    })),
-    job: { ...inviteMailJob, failed: inviteMailJob.failed.map((entry) => ({ ...entry })) }
-  };
-}
-
-function startInviteMailJob(members, createdBy) {
-  Object.assign(inviteMailJob, {
-    running: true,
-    total: members.length,
-    sent: 0,
-    failed: [],
-    startedAt: new Date().toISOString(),
-    finishedAt: null
-  });
-  const markSent = db.prepare("UPDATE users SET onboarding_mail_sent_at = CURRENT_TIMESTAMP WHERE id = ?");
-  (async () => {
-    for (const member of members) {
-      try {
-        // Een nieuwe link maakt eerdere links van dit lid ongeldig, zodat alleen de gemailde link werkt.
-        const invitation = createAccountToken(member.id, "invite", createdBy);
-        await sendOnboardingMail({ name: member.name, email: member.email, ...invitation });
-        markSent.run(member.id);
-        inviteMailJob.sent += 1;
-      } catch (error) {
-        inviteMailJob.failed.push({ id: member.id, name: member.name, email: member.email });
-        console.error(`Uitnodigingsmail naar lid ${member.id} mislukt: ${error.message}`);
-      }
-    }
-    inviteMailJob.running = false;
-    inviteMailJob.finishedAt = new Date().toISOString();
-  })();
-}
-
 function loginAttemptKey(req, email) {
   return `${req.ip}:${email}`;
 }
@@ -712,22 +662,6 @@ app.get("/api/map-members", requireAuth, async (req, res) => {
     ORDER BY name ASC
   `).all();
   res.json({ members: members.map(publicUser) });
-});
-
-app.get("/api/members/invitation-mails", requireAuth, requireAdmin, (req, res) => {
-  res.json(inviteMailStatus());
-});
-
-app.post("/api/members/invitation-mails", requireAuth, requireAdmin, (req, res) => {
-  if (!isMailConfigured()) {
-    return res.status(503).json({ error: "Er is nog geen mailaccount gekoppeld, dus er kan niets worden verstuurd." });
-  }
-  if (inviteMailJob.running) return res.status(409).json({ error: "De uitnodigingen worden al verstuurd." });
-  const memberIds = new Set((Array.isArray(req.body.memberIds) ? req.body.memberIds : []).map(Number));
-  const members = pendingInviteMembers().filter((member) => memberIds.has(member.id));
-  if (!members.length) return res.status(400).json({ error: "Kies minimaal één lid dat zijn account nog niet heeft geactiveerd." });
-  startInviteMailJob(members, req.session.userId);
-  res.status(202).json(inviteMailStatus());
 });
 
 app.get("/api/members/:id", requireAuth, (req, res) => {

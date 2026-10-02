@@ -34,25 +34,7 @@ Moderne website voor damesdispuut Cassiopeia met een besloten ledenomgeving.
 3. De admin deelt deze link privé met het betreffende lid.
 4. Het lid kiest zelf een wachtwoord van minimaal 12 tekens en wordt direct ingelogd.
 
-Voor een bestaand account kan een admin op dezelfde plek een nieuwe wachtwoordlink maken. Hiermee wordt het oude wachtwoord vervangen en worden oudere sessies ingetrokken. Zonder maildienst deel je links handmatig via een privékanaal.
-
-## Uitnodigingen mailen
-
-Er wordt nooit automatisch gemaild. Een admin opent **Beheer → Leden → Uitnodigingen mailen**, vinkt aan wie een mail krijgt (standaard iedereen die nog niet heeft ingelogd en nog geen mail kreeg) en drukt op **Verstuur**. Elk gekozen lid krijgt een welkomstmail met een nieuwe persoonlijke link om een wachtwoord te kiezen en daarna onder **Profiel** de gegevens in te vullen. De link werkt één keer en is 48 uur geldig; een eerder gedeelde link van hetzelfde lid vervalt.
-
-Met Gmail (maak eerst een app-wachtwoord aan via Google-account → Beveiliging → App-wachtwoorden; daarvoor moet verificatie in twee stappen aan staan):
-
-```bash
-APP_BASE_URL="https://www.dispuutcassiopeia.nl" \
-MAIL_FROM="Cassiopeia <jouw-adres@gmail.com>" \
-SMTP_HOST="smtp.gmail.com" \
-SMTP_PORT="465" \
-SMTP_USER="jouw-adres@gmail.com" \
-SMTP_PASSWORD="app-wachtwoord-van-16-tekens" \
-npm start
-```
-
-Zonder `APP_BASE_URL`, `MAIL_FROM` en `SMTP_HOST` kan de knop niets versturen; uitnodigingslinks per lid kopiëren blijft gewoon werken.
+Voor een bestaand account kan een admin op dezelfde plek een nieuwe wachtwoordlink maken. Hiermee wordt het oude wachtwoord vervangen en worden oudere sessies ingetrokken. Deel links handmatig via een privékanaal.
 
 ## Leden importeren
 
