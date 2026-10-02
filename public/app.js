@@ -652,6 +652,12 @@ function renderProfile() {
   if (els.welcomeName) els.welcomeName.textContent = state.user.name.split(/\s+/)[0] || "Cassiopeia";
   if (els.profileForm.elements.birthday) els.profileForm.elements.birthday.value = state.user.birthday || "";
   fillAddressFields(els.profileForm, state.user.address || "");
+  updateProfilePhotoName();
+}
+
+function updateProfilePhotoName() {
+  const label = document.querySelector("#profilePhotoName");
+  if (label) label.textContent = els.profileForm.elements.profilePhoto.files[0]?.name || "Geen foto gekozen";
 }
 
 function renderBirthdays() {
@@ -889,7 +895,7 @@ function renderMembers() {
             <div class="avatar">${avatarHtml(member)}</div>
             <div class="member-card-copy">
               <h3>${escapeHtml(member.name)}</h3>
-              <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Actief")}</p>
+              <p class="meta">${escapeHtml([formatLichting(member.yearLayer), member.roleTitle].filter(Boolean).join(" · "))}</p>
               ${member.committee ? `<p class="meta">Commissie: ${escapeHtml(member.committee)}</p>` : ""}
               ${member.birthday ? `<p class="meta member-birthday">Verjaardag: ${escapeHtml(formatBirthday(member.birthday))}</p>` : ""} <div class="member-card-badges">
                 <span class="badge">${member.memberStatus === "oud" ? "Reünist" : "Actief"}</span>
@@ -1305,7 +1311,7 @@ async function showMemberDetail(id) {
       <div>
         <p class="eyebrow">${member.isAdmin ? "Admin" : "Lidprofiel"}</p>
         <h2>${escapeHtml(member.name)}</h2>
-        <p class="meta">${escapeHtml(formatLichting(member.yearLayer))} · ${escapeHtml(member.roleTitle || "Actief")}</p>
+        <p class="meta">${escapeHtml([formatLichting(member.yearLayer), member.roleTitle].filter(Boolean).join(" · "))}</p>
         <p class="meta">${member.memberStatus === "oud" ? "Reünist" : "Actief"}${member.committee ? ` · Commissie: ${escapeHtml(member.committee)}` : ""}</p>
       </div>
     </div>
@@ -1622,7 +1628,7 @@ function activityListHtml(adminMode = false) {
                   <span class="activity-state ${activity.lateCancelled ? "activity-state-late" : activity.isRegistered ? "activity-state-registered" : ""}">${registrationState}</span>
                 </div>
                 <h3>${escapeHtml(activity.title)}</h3>
-                <p>${escapeHtml(activity.description || "Geen beschrijving ingevuld.")}</p>
+                ${activity.description ? `<p>${escapeHtml(activity.description)}</p>` : ""}
               </div>
               ${activity.hasImage ? `<img class="activity-card-image" src="/api/activities/${activity.id}/image" alt="" loading="lazy" />` : ""}
             </div>
@@ -2247,6 +2253,7 @@ async function readProfilePhoto(file) {
 }
 
 els.profileForm.elements.profilePhoto.addEventListener("change", async () => {
+  updateProfilePhotoName();
   try {
     const avatar = await readProfilePhoto(els.profileForm.elements.profilePhoto.files[0]);
     if (avatar) els.profileAvatar.innerHTML = avatarHtml({ avatar, name: state.user?.name || "Cassiopeia" });

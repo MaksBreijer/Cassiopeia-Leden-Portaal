@@ -32,20 +32,22 @@
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
-      <div class="login-word login-word-lef" aria-hidden="true">LEF</div>
-      <div class="login-word login-word-lustrum" aria-hidden="true">LUSTRUM III</div>
       <button class="install-app-button install-app-login hidden" type="button" data-install-app aria-label="Cassiopeia als app installeren">
         <span aria-hidden="true">↓</span> Installeer app
       </button>
-      <form id="loginForm" class="login-card">
-        <img class="login-crest" data-site-asset="logo" src="assets/cassiopeia-embleem.png?v=20260831-logo" alt="Embleem van Dameschdispuut Cassiopeia" />
-        <h1 id="loginTitle">Login Dameschdispuut Cassiopeia</h1>
-        <input name="email" type="email" autocomplete="email" placeholder="E-mailadres" aria-label="E-mail" required />
-        <input name="password" type="password" autocomplete="current-password" placeholder="Wachtwoord" aria-label="Wachtwoord" required />
-        <button type="submit" class="login-submit">Inloggen</button>
-        <p class="login-help">Nog geen wachtwoord? Vraag een beheerder om een persoonlijke uitnodigingslink.</p>
-        <p id="loginError" class="login-error" role="alert"></p>
-      </form>
+      <div class="login-stage">
+        <div class="login-word login-word-lef" aria-hidden="true">LEF</div>
+        <form id="loginForm" class="login-card">
+          <img class="login-crest" data-site-asset="logo" src="assets/cassiopeia-embleem.png?v=20260831-logo" alt="Embleem van Dameschdispuut Cassiopeia" />
+          <h1 id="loginTitle">Login Dameschdispuut Cassiopeia</h1>
+          <input name="email" type="email" autocomplete="email" placeholder="E-mailadres" aria-label="E-mail" required />
+          <input name="password" type="password" autocomplete="current-password" placeholder="Wachtwoord" aria-label="Wachtwoord" required />
+          <button type="submit" class="login-submit">Inloggen</button>
+          <p class="login-help">Nog geen wachtwoord? Vraag een beheerder om een persoonlijke uitnodigingslink.</p>
+          <p id="loginError" class="login-error" role="alert"></p>
+        </form>
+        <div class="login-word login-word-lustrum" aria-hidden="true">LUSTRUM III</div>
+      </div>
       <form id="activationForm" class="login-card hidden">
         <img class="login-crest" data-site-asset="logo" src="assets/cassiopeia-embleem.png?v=20260831-logo" alt="Embleem van Dameschdispuut Cassiopeia" />
         <p class="eyebrow">Persoonlijke uitnodiging</p>
@@ -238,7 +240,7 @@
             <h1>Profiel</h1>
             <p>Werk hier zelf je adres, profielfoto en wachtwoord bij.</p>
           </div>
-          <span class="page-number" aria-hidden="true">03</span>
+          <span class="page-number" aria-hidden="true">06</span>
         </div>
         <div class="profile-layout">
           <aside class="profile-sidebar">
@@ -267,7 +269,10 @@
                 <input type="hidden" name="address" />
                 <span class="form-help">Gebruik voor een verdieping bijvoorbeeld <strong>153-1</strong> of <strong>153-2</strong>. Na opslaan wordt je positie op Cassio Cribs automatisch bijgewerkt.</span>
               </fieldset>
-              <label class="wide">Profielfoto wijzigen<input id="profilePhoto" name="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+              <label class="wide photo-picker">Profielfoto wijzigen
+                <span class="photo-picker-row"><span class="secondary photo-picker-button">Foto kiezen</span><span id="profilePhotoName" class="photo-picker-name">Geen foto gekozen</span></span>
+                <input id="profilePhoto" name="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp" />
+              </label>
             </div>
             <div class="form-section-heading"><span>Wachtwoord wijzigen</span><p>Laat leeg als je alleen je profiel bijwerkt.</p></div>
             <div class="form-grid">
@@ -283,8 +288,13 @@
       </section>
 
       <section id="plattegrond" class="section page-view hidden">
-        <div class="map-intro">
-          <div><p class="eyebrow">Cassio Cribs</p><h1>De plattegrond</h1><p>Bekijk waar onze huizen liggen. Je marker verhuist automatisch mee zodra je je adres bijwerkt.</p></div>
+        <div class="page-banner">
+          <div class="page-banner-copy">
+            <p class="eyebrow">Cassio Cribs</p>
+            <h1>De plattegrond</h1>
+            <p>Bekijk waar onze huizen liggen. Je marker verhuist automatisch mee zodra je je adres bijwerkt.</p>
+          </div>
+          <span class="page-number" aria-hidden="true">03</span>
         </div>
         <div class="map-layout">
           <div class="content-module map-module">

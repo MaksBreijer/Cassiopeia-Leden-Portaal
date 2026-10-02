@@ -56,7 +56,7 @@ app.use((req, res, next) => {
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   res.setHeader(
     "Content-Security-Policy",
-    `default-src 'self'; img-src 'self' data: https:; style-src 'self'; script-src 'self'; connect-src ${connectSources}; frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`
+    `default-src 'self'; img-src 'self' data: https:; style-src 'self'; script-src 'self'; connect-src ${connectSources}; frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`
   );
   if (process.env.NODE_ENV === "production") {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
@@ -650,7 +650,7 @@ app.get("/api/members", requireAuth, (req, res) => {
       SELECT * FROM users
       WHERE (name LIKE ? OR email LIKE ? OR year_layer LIKE ? OR role_title LIKE ? OR committee LIKE ?)
         AND (account_status = 'active' OR ? = 1)
-      ORDER BY year_layer DESC, name ASC
+      ORDER BY CASE WHEN year_layer GLOB '[0-9]*' THEN 0 ELSE 1 END, year_layer DESC, name ASC
     `)
     .all(q, q, q, q, q, currentUser?.is_admin ? 1 : 0);
   res.json({ members: rows.map(publicUser) });
