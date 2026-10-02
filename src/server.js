@@ -960,13 +960,13 @@ function activityRows(userId, scope = "active") {
   const filesByActivity = new Map();
   const participants = db
     .prepare(`
-      SELECT r.activity_id, u.id, u.name, u.avatar
+      SELECT r.activity_id, u.id, u.name, u.avatar, u.year_layer
       FROM registrations r
       JOIN users u ON u.id = r.user_id
       JOIN activities a ON a.id = r.activity_id
       WHERE r.cancelled_at IS NULL AND u.account_status = 'active' AND u.is_admin = 0 AND a.response_mode = 'signup'
       UNION ALL
-      SELECT a.id AS activity_id, u.id, u.name, u.avatar
+      SELECT a.id AS activity_id, u.id, u.name, u.avatar, u.year_layer
       FROM activities a
       CROSS JOIN users u
       WHERE a.response_mode = 'optout' AND u.account_status = 'active' AND u.is_admin = 0

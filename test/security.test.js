@@ -968,3 +968,16 @@ test("new members fill in address and birthday right after activating", () => {
   assert.match(appScript, /const ONBOARDING_STEPS = \["address", "birthday"\]/);
   assert.match(appScript, /if \(isNewMember\) return startOnboarding\(user\)/);
 });
+
+test("the lichting is shown as 'Lichting 21' next to member names", () => {
+  const appScript = fs.readFileSync(path.join(projectRoot, "public", "app.js"), "utf8");
+  const source = appScript.match(/function formatLichting\(value\) \{[\s\S]*?\n\}/)?.[0];
+  const formatLichting = new Function(`${source}; return formatLichting;`)();
+
+  assert.equal(formatLichting("2021"), "Lichting 21");
+  assert.equal(formatLichting("2026"), "Lichting 26");
+  assert.equal(formatLichting("Oprichtster"), "Oprichtster");
+  assert.equal(formatLichting(""), "Lichting onbekend");
+  assert.match(appScript, /formatLichting\(member\.yearLayer\)\} · Vandaag!/);
+  assert.match(appScript, /data-lichting="\$\{lichting\}"/);
+});

@@ -465,9 +465,9 @@ function formatLichting(value) {
   if (!year) return "Lichting onbekend";
 
   const match = year.match(/\d+/);
-  if (!match) return `Lichting '${year}`;
+  if (!match) return year.charAt(0).toUpperCase() + year.slice(1);
 
-  return `Lichting '${match[0].slice(-2)}`;
+  return `Lichting ${match[0].slice(-2)}`;
 }
 
 function sharedActivityId() {
@@ -515,7 +515,7 @@ function renderActivityParticipants(activity) {
         ${preview
           .map(
             (member) => `
-              <span class="participant-avatar avatar" title="${escapeHtml(member.name)}">
+              <span class="participant-avatar avatar" title="${escapeHtml(`${member.name} · ${formatLichting(member.yearLayer)}`)}">
                 ${avatarHtml(member)}
               </span>
             `
@@ -670,7 +670,7 @@ function renderBirthdays() {
   els.birthdayList.innerHTML = birthdays.map((member) => `
     <article class="birthday-card">
       <span class="birthday-avatar avatar">${avatarHtml(member)}</span>
-      <span class="birthday-copy"><strong>${escapeHtml(member.name)}</strong><small>Vandaag!</small></span>
+      <span class="birthday-copy"><strong>${escapeHtml(member.name)}</strong><small>${escapeHtml(formatLichting(member.yearLayer))} · Vandaag!</small></span>
       <time datetime="${escapeHtml(member.birthday)}">${escapeHtml(formatBirthday(member.birthday))}</time>
     </article>
   `).join("");
@@ -971,7 +971,7 @@ function showMapTooltip(marker) {
   const y = Math.max(18, Math.min(90, Number(marker.dataset.tooltipY)));
   tooltip.style.left = `${x}%`;
   tooltip.style.top = `${y}%`;
-  tooltip.innerHTML = `<a class="map-directions" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}" target="_blank" rel="noopener noreferrer">Route ↗</a><strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.address)}</span>`;
+  tooltip.innerHTML = `<a class="map-directions" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(marker.dataset.address || "")}" target="_blank" rel="noopener noreferrer">Route ↗</a><strong>${escapeHtml(marker.dataset.name)}</strong><span>${escapeHtml(marker.dataset.lichting)}</span><span>${escapeHtml(marker.dataset.address)}</span>`;
   tooltip.classList.add("is-visible");
 }
 
@@ -987,7 +987,7 @@ function renderCribMap() {
   if (els.mapMemberCount) els.mapMemberCount.textContent = `${mappedMembers.length} van ${mappedMembers.length + unmappedMembers.length} op de kaart`;
   if (els.mapUnmapped) {
     els.mapUnmapped.innerHTML = unmappedMembers.length
-      ? `<p class="map-unmapped-title">Nog niet op de kaart</p><p>${unmappedMembers.map((member) => escapeHtml(member.name)).join(", ")}</p>`
+      ? `<p class="map-unmapped-title">Nog niet op de kaart</p><p>${unmappedMembers.map((member) => escapeHtml(`${member.name} (${formatLichting(member.yearLayer)})`)).join(", ")}</p>`
       : `<p class="map-ready">Alle actieve leden staan op de kaart.</p>`;
   }
   const hasMappedMembers = mappedMembers.length > 0;
@@ -1038,7 +1038,8 @@ function renderCribMap() {
     const initials = escapeHtml((member.name || "C").split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase());
     const name = escapeHtml(member.name || "Cassio");
     const address = escapeHtml(member.address || "Adres onbekend");
-    return `<g class="crib-marker" tabindex="0" role="button" aria-label="${name}, ${address}. Klik voor route in Google Maps" data-name="${name}" data-address="${address}" data-tooltip-x="${((x / 900) * 100).toFixed(2)}" data-tooltip-y="${((y / 500) * 100).toFixed(2)}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})"><circle r="18"></circle><circle class="crib-marker-core" r="12"></circle><text y="4" text-anchor="middle">${initials}</text></g>`;
+    const lichting = escapeHtml(formatLichting(member.yearLayer));
+    return `<g class="crib-marker" tabindex="0" role="button" aria-label="${name}, ${address}. Klik voor route in Google Maps" data-name="${name}" data-lichting="${lichting}" data-address="${address}" data-tooltip-x="${((x / 900) * 100).toFixed(2)}" data-tooltip-y="${((y / 500) * 100).toFixed(2)}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)})"><circle r="18"></circle><circle class="crib-marker-core" r="12"></circle><text y="4" text-anchor="middle">${initials}</text></g>`;
   }).join("");
   const emptyOverlay = hasMappedMembers ? "" : `<div class="map-empty-overlay"><span class="map-empty-icon">⌖</span><strong>Nog geen adressen op de kaart</strong><p>Vul je adres in via je profiel. Daarna verschijnt je Cassio Crib hier automatisch.</p><a class="secondary" href="#profiel">Naar mijn profiel</a></div>`;
   els.cribMap.innerHTML = `<svg class="crib-map-svg" viewBox="0 0 900 500" preserveAspectRatio="xMidYMid slice" aria-label="Cassio Cribs kaart">${tiles.join("")}${markers}</svg><div class="map-controls" aria-label="Kaartbediening"><button type="button" data-map-zoom-in aria-label="Inzoomen">+</button><button type="button" data-map-zoom-out aria-label="Uitzoomen">−</button><button type="button" data-map-reset aria-label="Toon alle markers">⌂</button></div><div class="map-tooltip" role="status"></div>${emptyOverlay}`;
