@@ -271,6 +271,14 @@ const els = {
   bulkDeleteDialog: document.querySelector("#bulkDeleteDialog"),
   bulkDeleteIntro: document.querySelector("#bulkDeleteIntro"),
   bulkDeleteForm: document.querySelector("#bulkDeleteForm"),
+  inviteMailDialog: document.querySelector("#inviteMailDialog"),
+  inviteMailForm: document.querySelector("#inviteMailForm"),
+  inviteMailIntro: document.querySelector("#inviteMailIntro"),
+  inviteMailSelectAll: document.querySelector("#inviteMailSelectAll"),
+  inviteMailList: document.querySelector("#inviteMailList"),
+  inviteMailProgress: document.querySelector("#inviteMailProgress"),
+  inviteMailError: document.querySelector("#inviteMailError"),
+  sendInviteMails: document.querySelector("#sendInviteMails"),
   toast: document.querySelector("#toast")
 };
 
@@ -641,6 +649,95 @@ function openBulkInvitationDialog(created, onboardingMail = false) {
     })
     .join("");
   els.bulkInvitationDialog.showModal();
+}
+
+function formatMailedAt(value) {
+  if (!value) return "nog niet gemaild";
+  const date = new Date(`${String(value).replace(" ", "T")}Z`);
+  if (Number.isNaN(date.getTime())) return "";
+  return `gemaild ${new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(date)}`;
+}
+
+function inviteMailSelectedIds() {
+  return [...(els.inviteMailList?.querySelectorAll("input[data-invite-mail]:checked") || [])].map((input) => Number(input.dataset.inviteMail));
+}
+
+function syncInviteMailSelection() {
+  const boxes = [...els.inviteMailList.querySelectorAll("input[data-invite-mail]")];
+  const count = inviteMailSelectedIds().length;
+  const running = Boolean(state.inviteMails?.job?.running);
+  els.inviteMailSelectAll.checked = boxes.length > 0 && count === boxes.length;
+  els.inviteMailSelectAll.indeterminate = count > 0 && count < boxes.length;
+  els.inviteMailSelectAll.disabled = running || !boxes.length;
+  els.sendInviteMails.disabled = running || !count || !state.inviteMails?.mailConfigured;
+  els.sendInviteMails.textContent = running ? "Bezig met versturen…" : `Verstuur naar ${count} ${count === 1 ? "lid" : "leden"}`;
+}
+
+function renderInviteMails() {
+  const status = state.inviteMails;
+  if (!status || !els.inviteMailList) return;
+  const { job, pending, mailConfigured } = status;
+  const previous = new Set(inviteMailSelectedIds());
+  const firstRender = !els.inviteMailList.dataset.rendered;
+  const failedIds = new Set((job.failed || []).map((entry) => entry.id));
+  if (!mailConfigured) {
+    els.inviteMailIntro.textContent = "Er is nog geen mailaccount gekoppeld aan de website, dus versturen kan nog niet. Je kunt wel per lid een uitnodigingslink kopiëren.";
+  } else if (!pending.length) {
+    els.inviteMailIntro.textContent = "Alle leden hebben hun account al geactiveerd. Er hoeft niemand een uitnodiging te krijgen.";
+  } else {
+    els.inviteMailIntro.textContent = `${pending.length} ${pending.length === 1 ? "lid heeft" : "leden hebben"} nog niet ingelogd. Vink aan wie een mail krijgt met een persoonlijke link om in te loggen.`;
+  }
+  els.inviteMailList.innerHTML = pending
+    .map((member) => {
+      const checked = firstRender ? !member.lastMailedAt : previous.has(member.id);
+      return `
+        <label class="bulk-invitation-row invite-mail-row${failedIds.has(member.id) ? " is-failed" : ""}">
+          <input type="checkbox" data-invite-mail="${member.id}" ${checked ? "checked" : ""} ${job.running ? "disabled" : ""} />
+          <div><strong>${escapeHtml(member.name)}</strong><span>${escapeHtml(member.email)}</span></div>
+          <em>${failedIds.has(member.id) ? "mislukt" : escapeHtml(formatMailedAt(member.lastMailedAt))}</em>
+        </label>
+      `;
+    })
+    .join("");
+  els.inviteMailList.dataset.rendered = "true";
+  if (job.running) {
+    els.inviteMailProgress.textContent = `Bezig: ${job.sent + job.failed.length} van ${job.total} verwerkt.`;
+  } else if (job.finishedAt) {
+    const failedNote = job.failed.length ? ` Mislukt bij ${job.failed.length}: ${job.failed.map((entry) => entry.name).join(", ")}.` : "";
+    els.inviteMailProgress.textContent = `Laatste ronde: ${job.sent} van ${job.total} mails verstuurd.${failedNote}`;
+  } else {
+    els.inviteMailProgress.textContent = "";
+  }
+  syncInviteMailSelection();
+}
+
+async function loadInviteMails() {
+  const wasRunning = Boolean(state.inviteMails?.job?.running);
+  state.inviteMails = await api("/api/members/invitation-mails");
+  // Na een verzendronde staan alleen leden die nog geen mail kregen weer aangevinkt.
+  if (wasRunning && !state.inviteMails.job.running) delete els.inviteMailList.dataset.rendered;
+  renderInviteMails();
+  clearTimeout(state.inviteMailTimer);
+  if (state.inviteMails.job.running && els.inviteMailDialog.open) {
+    state.inviteMailTimer = setTimeout(() => loadInviteMails().catch((error) => { els.inviteMailError.textContent = error.message; }), 1500);
+  } else if (wasRunning) {
+    loadMembers().catch(() => {});
+  }
+}
+
+async function openInviteMailDialog() {
+  els.inviteMailError.textContent = "";
+  delete els.inviteMailList.dataset.rendered;
+  els.inviteMailList.innerHTML = "";
+  els.inviteMailProgress.textContent = "";
+  els.inviteMailIntro.textContent = "Leden laden…";
+  els.sendInviteMails.disabled = true;
+  els.inviteMailDialog.showModal();
+  try {
+    await loadInviteMails();
+  } catch (error) {
+    els.inviteMailError.textContent = error.message;
+  }
 }
 
 function renderProfile() {
@@ -2757,6 +2854,34 @@ els.confessionForm?.addEventListener("submit", async (event) => {
   }
 });
 
+els.inviteMailList?.addEventListener("change", syncInviteMailSelection);
+els.inviteMailSelectAll?.addEventListener("change", () => {
+  els.inviteMailList.querySelectorAll("input[data-invite-mail]").forEach((input) => {
+    input.checked = els.inviteMailSelectAll.checked;
+  });
+  syncInviteMailSelection();
+});
+els.inviteMailDialog?.addEventListener("close", () => clearTimeout(state.inviteMailTimer));
+els.inviteMailForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const memberIds = inviteMailSelectedIds();
+  if (!memberIds.length) return;
+  if (!confirm(`Weet je zeker dat je ${memberIds.length} ${memberIds.length === 1 ? "lid" : "leden"} nu een uitnodiging mailt?`)) return;
+  els.inviteMailError.textContent = "";
+  els.sendInviteMails.disabled = true;
+  try {
+    state.inviteMails = await api("/api/members/invitation-mails", {
+      method: "POST",
+      body: JSON.stringify({ memberIds })
+    });
+    renderInviteMails();
+    await loadInviteMails();
+  } catch (error) {
+    els.inviteMailError.textContent = error.message;
+    syncInviteMailSelection();
+  }
+});
+
 els.bulkDeleteForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const ids = [...state.selectedMemberIds];
@@ -2821,6 +2946,9 @@ document.body.addEventListener("click", async (event) => {
 
   const importMembersButton = event.target.closest("[data-import-members]");
   if (importMembersButton) return openMemberImportDialog();
+
+  const inviteMailsButton = event.target.closest("[data-invite-mails]");
+  if (inviteMailsButton) return openInviteMailDialog();
 
   const closeBtn = event.target.closest("[data-close]");
   if (closeBtn) return closeBtn.closest("dialog").close();

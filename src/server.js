@@ -393,23 +393,53 @@ function createAccountToken(userId, purpose, createdBy) {
   return { invitePath: `/#activate=${encodeURIComponent(token)}`, expiresAt: new Date(expiresAt).toISOString(), purpose };
 }
 
-// Elk nieuw lid krijgt hooguit één onboardingmail; een mislukte verzending mag later opnieuw.
-function queueOnboardingMails(entries) {
-  if (!isMailConfigured() || !entries.length) return false;
-  const claim = db.prepare("UPDATE users SET onboarding_mail_sent_at = CURRENT_TIMESTAMP WHERE id = ? AND onboarding_mail_sent_at IS NULL");
-  const release = db.prepare("UPDATE users SET onboarding_mail_sent_at = NULL WHERE id = ?");
+// Uitnodigingsmails gaan alleen weg als een beheerder op de knop drukt; er loopt hooguit één ronde tegelijk.
+const inviteMailJob = { running: false, total: 0, sent: 0, failed: [], startedAt: null, finishedAt: null };
+
+function pendingInviteMembers() {
+  return db.prepare("SELECT * FROM users WHERE account_status = 'pending' ORDER BY name COLLATE NOCASE").all();
+}
+
+function inviteMailStatus() {
+  return {
+    mailConfigured: isMailConfigured(),
+    pending: pendingInviteMembers().map((member) => ({
+      id: member.id,
+      name: member.name,
+      email: member.email,
+      yearLayer: member.year_layer,
+      lastMailedAt: member.onboarding_mail_sent_at
+    })),
+    job: { ...inviteMailJob, failed: inviteMailJob.failed.map((entry) => ({ ...entry })) }
+  };
+}
+
+function startInviteMailJob(members, createdBy) {
+  Object.assign(inviteMailJob, {
+    running: true,
+    total: members.length,
+    sent: 0,
+    failed: [],
+    startedAt: new Date().toISOString(),
+    finishedAt: null
+  });
+  const markSent = db.prepare("UPDATE users SET onboarding_mail_sent_at = CURRENT_TIMESTAMP WHERE id = ?");
   (async () => {
-    for (const { member, invitation } of entries) {
-      if (!claim.run(member.id).changes) continue;
+    for (const member of members) {
       try {
+        // Een nieuwe link maakt eerdere links van dit lid ongeldig, zodat alleen de gemailde link werkt.
+        const invitation = createAccountToken(member.id, "invite", createdBy);
         await sendOnboardingMail({ name: member.name, email: member.email, ...invitation });
+        markSent.run(member.id);
+        inviteMailJob.sent += 1;
       } catch (error) {
-        release.run(member.id);
-        console.error(`Onboardingmail naar lid ${member.id} mislukt: ${error.message}`);
+        inviteMailJob.failed.push({ id: member.id, name: member.name, email: member.email });
+        console.error(`Uitnodigingsmail naar lid ${member.id} mislukt: ${error.message}`);
       }
     }
+    inviteMailJob.running = false;
+    inviteMailJob.finishedAt = new Date().toISOString();
   })();
-  return true;
 }
 
 function loginAttemptKey(req, email) {
@@ -684,6 +714,22 @@ app.get("/api/map-members", requireAuth, async (req, res) => {
   res.json({ members: members.map(publicUser) });
 });
 
+app.get("/api/members/invitation-mails", requireAuth, requireAdmin, (req, res) => {
+  res.json(inviteMailStatus());
+});
+
+app.post("/api/members/invitation-mails", requireAuth, requireAdmin, (req, res) => {
+  if (!isMailConfigured()) {
+    return res.status(503).json({ error: "Er is nog geen mailaccount gekoppeld, dus er kan niets worden verstuurd." });
+  }
+  if (inviteMailJob.running) return res.status(409).json({ error: "De uitnodigingen worden al verstuurd." });
+  const memberIds = new Set((Array.isArray(req.body.memberIds) ? req.body.memberIds : []).map(Number));
+  const members = pendingInviteMembers().filter((member) => memberIds.has(member.id));
+  if (!members.length) return res.status(400).json({ error: "Kies minimaal één lid dat zijn account nog niet heeft geactiveerd." });
+  startInviteMailJob(members, req.session.userId);
+  res.status(202).json(inviteMailStatus());
+});
+
 app.get("/api/members/:id", requireAuth, (req, res) => {
   const member = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);
   if (!member) return res.status(404).json({ error: "Lid niet gevonden." });
@@ -773,7 +819,7 @@ app.post("/api/members/import", requireAuth, requireAdmin, (req, res) => {
         };
       });
     })();
-    res.status(201).json({ created, onboardingMail: queueOnboardingMails(created) });
+    res.status(201).json({ created });
   } catch (error) {
     res.status(409).json({ error: "De import kon niet worden opgeslagen. Controleer of e-mailadressen uniek zijn." });
   }
@@ -802,11 +848,7 @@ app.post("/api/members", requireAuth, requireAdmin, async (req, res) => {
     const created = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid);
     const invitation = createAccountToken(created.id, "invite", req.session.userId);
     const createdMember = publicUser(created);
-    res.status(201).json({
-      member: createdMember,
-      invitation,
-      onboardingMail: queueOnboardingMails([{ member: createdMember, invitation }])
-    });
+    res.status(201).json({ member: createdMember, invitation });
   } catch (error) {
     res.status(409).json({ error: "Er bestaat al een lid met dit e-mailadres." });
   }

@@ -447,7 +447,7 @@
         <section id="admin-panel-members" class="admin-members-panel admin-panel" data-admin-panel-content="members" hidden>
           <div class="admin-list-head">
             <div><p class="eyebrow">Accounts</p><h2>Ledenbeheer</h2><p class="section-intro">Zoek, voeg toe, importeer of pas een bestaand lid aan.</p></div>
-            <div class="admin-member-actions"><label class="search-field"><span>Zoeken</span><input id="adminSearch" type="search" placeholder="Naam, e-mail, lichting of commissie" /></label><button class="secondary" type="button" data-import-members>Importeren</button><button class="primary" type="button" data-new-member>Nieuw lid</button></div>
+            <div class="admin-member-actions"><label class="search-field"><span>Zoeken</span><input id="adminSearch" type="search" placeholder="Naam, e-mail, lichting of commissie" /></label><button class="secondary" type="button" data-import-members>Importeren</button><button class="secondary" type="button" data-invite-mails>Uitnodigingen mailen</button><button class="primary" type="button" data-new-member>Nieuw lid</button></div>
           </div>
           <div class="admin-bulk-toolbar" aria-label="Bulkacties">
             <label class="bulk-select-all"><input id="adminSelectAll" type="checkbox" /> <span>Selecteer alle zichtbare niet-adminleden</span></label>
@@ -519,6 +519,25 @@
           <button id="copyBulkInvitations" type="button" class="primary">Kopieer alle links</button>
         </div>
       </div>
+    </dialog>
+
+    <dialog id="inviteMailDialog">
+      <form id="inviteMailForm" method="dialog" class="dialog-card bulk-invitation-card">
+        <div class="dialog-heading">
+          <p class="eyebrow">Ledenbeheer</p>
+          <h3>Uitnodigingen mailen</h3>
+          <p id="inviteMailIntro">Kies wie een mail krijgt met een persoonlijke link om in te loggen.</p>
+        </div>
+        <label class="bulk-select-all"><input id="inviteMailSelectAll" type="checkbox" /> <span>Selecteer iedereen</span></label>
+        <div id="inviteMailList" class="bulk-invitation-list invite-mail-list"></div>
+        <p id="inviteMailProgress" class="form-help" aria-live="polite"></p>
+        <p class="form-help">Elke link werkt één keer en is 48 uur geldig. Een eerder gedeelde link van dezelfde persoon werkt daarna niet meer.</p>
+        <p id="inviteMailError" class="error" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" data-close>Sluiten</button>
+          <button id="sendInviteMails" type="submit" class="primary" disabled>Verstuur</button>
+        </div>
+      </form>
     </dialog>
 
     <dialog id="bulkDeleteDialog">
