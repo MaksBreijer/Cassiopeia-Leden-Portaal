@@ -49,7 +49,8 @@ const mapView = {
   pinchAnchorLatitude: 52.2,
   pinchAnchorLongitude: 5.3,
   ignoreClickUntil: 0,
-  tooltipHideTimer: null
+  tooltipHideTimer: null,
+  tooltipPressedAt: 0
 };
 
 const API_BASE = location.protocol === "file:" || location.port === "5500" ? "http://127.0.0.1:3000" : "";
@@ -1061,6 +1062,14 @@ function renderCribMap() {
 
 if (els.cribMap) {
   els.cribMap.addEventListener("click", (event) => {
+    // Open de route zelf, zodat het niet uitmaakt of de browser de link bij een klik focus geeft.
+    const directions = event.target.closest?.(".map-directions");
+    if (directions) {
+      event.preventDefault();
+      window.open(directions.href, "_blank", "noopener");
+      return;
+    }
+    if (event.target.closest?.(".map-tooltip")) return;
     if (Date.now() < mapView.ignoreClickUntil) return;
     const marker = event.target.closest?.(".crib-marker");
     if (marker) return showMapTooltip(marker);
@@ -1096,7 +1105,10 @@ if (els.cribMap) {
     if (marker) showMapTooltip(marker);
   });
   els.cribMap.addEventListener("focusout", (event) => {
-    if (!event.relatedTarget?.closest?.(".map-tooltip")) hideMapTooltip();
+    // Safari en Firefox op de Mac geven een aangeklikte link geen focus: verberg pas na een korte pauze.
+    if (event.relatedTarget?.closest?.(".map-tooltip")) return;
+    if (Date.now() - mapView.tooltipPressedAt < 600) return;
+    scheduleHideMapTooltip();
   });
   els.cribMap.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -1117,7 +1129,12 @@ if (els.cribMap) {
   }, { passive: false });
 
   els.cribMap.addEventListener("pointerdown", (event) => {
-    if (event.target.closest?.("button, .map-tooltip")) return;
+    if (event.target.closest?.(".map-tooltip")) {
+      mapView.tooltipPressedAt = Date.now();
+      clearTimeout(mapView.tooltipHideTimer);
+      return;
+    }
+    if (event.target.closest?.("button")) return;
     mapView.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     els.cribMap.setPointerCapture?.(event.pointerId);
     if (mapView.pointers.size >= 2) {
