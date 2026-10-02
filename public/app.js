@@ -279,6 +279,8 @@ const els = {
   inviteMailProgress: document.querySelector("#inviteMailProgress"),
   inviteMailError: document.querySelector("#inviteMailError"),
   sendInviteMails: document.querySelector("#sendInviteMails"),
+  freshInviteLinks: document.querySelector("#freshInviteLinks"),
+  bulkInvitationEyebrow: document.querySelector("#bulkInvitationEyebrow"),
   toast: document.querySelector("#toast")
 };
 
@@ -633,10 +635,13 @@ function bulkInvitationRows() {
   ]);
 }
 
-function openBulkInvitationDialog(created, onboardingMail = false) {
+function openBulkInvitationDialog(created, onboardingMail = false, { fresh = false } = {}) {
   state.bulkInvitations = created;
   const mailNote = onboardingMail ? " Iedereen krijgt de link ook per mail, met uitleg om een wachtwoord te kiezen en het profiel in te vullen." : "";
-  els.bulkInvitationIntro.textContent = `${created.length} ${created.length === 1 ? "lid is" : "leden zijn"} toegevoegd met een openstaande uitnodiging.${mailNote}`;
+  if (els.bulkInvitationEyebrow) els.bulkInvitationEyebrow.textContent = fresh ? "Nieuwe links" : "Import voltooid";
+  els.bulkInvitationIntro.textContent = fresh
+    ? `${created.length} nieuwe ${created.length === 1 ? "link" : "links"} voor iedereen die nog niet heeft ingelogd. Oudere links werken niet meer. Download de CSV of kopieer de lijst om in de groep te zetten.`
+    : `${created.length} ${created.length === 1 ? "lid is" : "leden zijn"} toegevoegd met een openstaande uitnodiging.${mailNote}`;
   els.bulkInvitationList.innerHTML = created
     .map(({ member, invitation }) => {
       const invitationUrl = new URL(invitation.invitePath, window.location.origin).toString();
@@ -671,6 +676,7 @@ function syncInviteMailSelection() {
   els.inviteMailSelectAll.disabled = running || !boxes.length;
   els.inviteMailSelectAll.closest("label").classList.toggle("hidden", !state.inviteMails?.mailConfigured);
   els.sendInviteMails.classList.toggle("hidden", !state.inviteMails?.mailConfigured);
+  if (els.freshInviteLinks) els.freshInviteLinks.disabled = running || !state.inviteMails?.pending.length;
   els.sendInviteMails.disabled = running || !count || !state.inviteMails?.mailConfigured;
   els.sendInviteMails.textContent = running ? "Bezig met versturen…" : `Verstuur naar ${count} ${count === 1 ? "lid" : "leden"}`;
 }
@@ -2520,7 +2526,7 @@ els.downloadBulkInvitations.addEventListener("click", () => {
 
 els.copyBulkInvitations.addEventListener("click", async () => {
   const text = bulkInvitationRows()
-    .map(([name, email, url]) => `${name} (${email})\n${url}`)
+    .map(([name, , url]) => `${name}\n${url}`)
     .join("\n\n");
   try {
     await navigator.clipboard.writeText(text);
@@ -2920,6 +2926,22 @@ els.confessionForm?.addEventListener("submit", async (event) => {
 });
 
 els.inviteMailList?.addEventListener("change", syncInviteMailSelection);
+els.freshInviteLinks?.addEventListener("click", async () => {
+  const count = state.inviteMails?.pending.length || 0;
+  if (!count) return;
+  if (!confirm(`Nieuwe links maken voor ${count} ${count === 1 ? "lid" : "leden"}? Links die je eerder hebt gedeeld werken daarna niet meer.`)) return;
+  els.freshInviteLinks.disabled = true;
+  els.inviteMailError.textContent = "";
+  try {
+    const { created } = await api("/api/members/invitation-links", { method: "POST" });
+    els.inviteMailDialog.close();
+    openBulkInvitationDialog(created, false, { fresh: true });
+  } catch (error) {
+    els.inviteMailError.textContent = error.message;
+  } finally {
+    els.freshInviteLinks.disabled = false;
+  }
+});
 els.inviteMailList?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-share-invite]");
   if (button) shareInvite(button);

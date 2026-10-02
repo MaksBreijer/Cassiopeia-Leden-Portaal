@@ -730,6 +730,17 @@ app.post("/api/members/invitation-mails", requireAuth, requireAdmin, (req, res) 
   res.status(202).json(inviteMailStatus());
 });
 
+// Nieuwe links voor alle leden die nog niet hebben ingelogd, bijvoorbeeld om als lijst te delen.
+app.post("/api/members/invitation-links", requireAuth, requireAdmin, (req, res) => {
+  const members = pendingInviteMembers();
+  if (!members.length) return res.status(400).json({ error: "Alle leden hebben hun account al geactiveerd." });
+  const created = members.map((member) => ({
+    member: publicUser(member),
+    invitation: createAccountToken(member.id, "invite", req.session.userId)
+  }));
+  res.status(201).json({ created });
+});
+
 app.get("/api/members/:id", requireAuth, (req, res) => {
   const member = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);
   if (!member) return res.status(404).json({ error: "Lid niet gevonden." });

@@ -1001,6 +1001,13 @@ test("invitation mails only go out to the members an admin picks", async (t) => 
   assert.equal(shared.response.status, 201);
   const afterShare = await jsonRequest(baseUrl, "/api/members/invitation-mails", { cookie: adminLogin.cookie });
   assert.ok(afterShare.data.pending.find((entry) => entry.id === tweede.id).lastMailedAt, "gedeeld via WhatsApp telt als verstuurd");
+
+  const fresh = await jsonRequest(baseUrl, "/api/members/invitation-links", { method: "POST", cookie: adminLogin.cookie });
+  assert.equal(fresh.response.status, 201);
+  assert.equal(fresh.data.created.length, 3);
+  const freshToken = decodeURIComponent(fresh.data.created.find((entry) => entry.member.id === nieuw.id).invitation.invitePath.split("#activate=")[1]);
+  assert.equal((await jsonRequest(baseUrl, "/api/account-token/inspect", { method: "POST", body: { token: freshToken } })).response.status, 200);
+  assert.notEqual((await jsonRequest(baseUrl, "/api/account-token/inspect", { method: "POST", body: { token: mailedToken } })).response.status, 200);
 });
 
 test("new members fill in address and birthday right after activating", () => {

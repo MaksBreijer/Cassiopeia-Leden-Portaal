@@ -507,7 +507,7 @@
     <dialog id="bulkInvitationDialog">
       <div class="dialog-card bulk-invitation-card">
         <div class="dialog-heading">
-          <p class="eyebrow">Import voltooid</p>
+          <p id="bulkInvitationEyebrow" class="eyebrow">Import voltooid</p>
           <h3>Uitnodigingen staan klaar</h3>
           <p id="bulkInvitationIntro">De leden zijn toegevoegd met een openstaande uitnodiging.</p>
         </div>
@@ -535,6 +535,7 @@
         <p id="inviteMailError" class="error" role="alert"></p>
         <div class="dialog-actions">
           <button type="button" class="ghost" data-close>Sluiten</button>
+          <button id="freshInviteLinks" type="button" class="secondary">Nieuwe links voor iedereen</button>
           <button id="sendInviteMails" type="submit" class="primary" disabled>Verstuur</button>
         </div>
       </form>
