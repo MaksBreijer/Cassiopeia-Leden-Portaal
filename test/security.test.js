@@ -978,6 +978,6 @@ test("the lichting is shown as 'Lichting 21' next to member names", () => {
   assert.equal(formatLichting("2026"), "Lichting 26");
   assert.equal(formatLichting("Oprichtster"), "Oprichtster");
   assert.equal(formatLichting(""), "Lichting onbekend");
-  assert.match(appScript, /formatLichting\(member\.yearLayer\)\} · Vandaag!/);
+  assert.match(appScript, /formatLichting\(member\.yearLayer\)\)\} · Vandaag!/);
   assert.match(appScript, /data-lichting="\$\{lichting\}"/);
 });
