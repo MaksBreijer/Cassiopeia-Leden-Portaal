@@ -64,8 +64,10 @@
           <h1>Waar woon je?</h1>
           <p class="login-help">Je adres zetten we op Cassio Cribs, de ledenkaart. Alleen ingelogde leden zien het.</p>
           <input name="street" autocomplete="address-line1" placeholder="Straatnaam" aria-label="Straat" />
-          <input name="houseNumber" autocomplete="address-line2" autocapitalize="characters" maxlength="12" placeholder="Huisnummer, bijv. 153-1" aria-label="Huisnummer en verdieping" />
-          <input name="postalCode" autocomplete="postal-code" placeholder="Postcode" aria-label="Postcode" />
+          <div class="onboarding-address-row">
+            <input name="houseNumber" autocomplete="address-line2" autocapitalize="characters" maxlength="12" placeholder="Huisnr." aria-label="Huisnummer en verdieping" />
+            <input name="postalCode" autocomplete="postal-code" placeholder="Postcode" aria-label="Postcode" />
+          </div>
           <input name="city" autocomplete="address-level2" placeholder="Woonplaats" aria-label="Woonplaats" />
           <input type="hidden" name="address" />
         </div>

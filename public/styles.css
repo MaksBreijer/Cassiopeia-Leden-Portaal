@@ -4686,12 +4686,38 @@ dialog::backdrop {
   font-weight: 750;
 }
 
-#activationForm {
+#activationForm .eyebrow,
+#onboardingForm .eyebrow {
+  margin: 0;
+}
+
+#activationForm,
+#onboardingForm {
   gap: 18px;
 }
 
-#activationForm .eyebrow {
-  margin: 0;
+#onboardingForm [data-onboarding-step] {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+
+#onboardingForm [data-onboarding-step] .login-help {
+  margin: -4px 0 4px;
+}
+
+.onboarding-address-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* De decoratieve woorden zijn afgestemd op het inlogvenster en vallen anders over de hogere activatie- en onboardingkaarten. */
+.login-screen:has(#activationForm:not(.hidden)) .login-word,
+.login-screen:has(#onboardingForm:not(.hidden)) .login-word {
+  display: none;
 }
 
 @media (max-width: 850px) {
