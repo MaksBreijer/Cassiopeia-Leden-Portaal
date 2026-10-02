@@ -1298,6 +1298,7 @@ main {
 }
 
 .participants-label {
+  white-space: nowrap;
   color: var(--orange-strong);
   font-size: 11px;
   font-weight: 850;
@@ -1945,7 +1946,9 @@ label {
 }
 
 .member-card-main {
+  height: 100%;
   display: grid;
+  align-content: start;
   gap: 16px;
   border: 0;
   padding: 0;
@@ -4988,4 +4991,52 @@ dialog::backdrop {
 #home .overview-grid,
 #home #birthdayOverview {
   display: none;
+}
+
+/* Afwerking: zoekveld even groot als de filters en een Nederlandstalige fotokiezer. */
+.search-field input {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.photo-picker {
+  position: relative;
+  cursor: pointer;
+}
+
+.photo-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.photo-picker-button {
+  flex: none;
+}
+
+.photo-picker-name {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.photo-picker input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  opacity: 0;
+}
+
+.photo-picker:focus-within .photo-picker-button {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(230, 123, 69, 0.14);
 }
