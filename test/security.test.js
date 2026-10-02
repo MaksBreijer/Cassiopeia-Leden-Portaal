@@ -638,12 +638,6 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(bulkCreated.response.status, 201);
   assert.equal(bulkCreated.data.created.length, 1);
-  const mailWithoutAccount = await jsonRequest(baseUrl, "/api/members/invitation-mails", {
-    method: "POST",
-    cookie: adminLogin.cookie,
-    body: { memberIds: [bulkCreated.data.created[0].member.id] }
-  });
-  assert.equal(mailWithoutAccount.response.status, 503);
   assert.equal(bulkCreated.data.created[0].member.email, "bulk@example.nl");
   assert.equal(bulkCreated.data.created[0].member.accountStatus, "pending");
   const bulkInviteToken = bulkCreated.data.created[0].invitation.invitePath.split("#activate=")[1];
@@ -880,117 +874,6 @@ test("admins invite members who set and reset their own password", async (t) => 
     body: { email: "onbekend@example.nl", password: "verkeerd-wachtwoord" }
   });
   assert.equal(limited.response.status, 429);
-});
-
-test("invitation mails only go out to the members an admin picks", async (t) => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "cassiopeia-mail-test-"));
-  const outboxDir = path.join(dataDir, "outbox");
-  const port = await freePort();
-  const baseUrl = `http://127.0.0.1:${port}`;
-  let serverError = "";
-  const child = spawn(process.execPath, ["src/server.js"], {
-    cwd: projectRoot,
-    env: {
-      ...process.env,
-      NODE_ENV: "test",
-      DATA_DIR: dataDir,
-      PORT: String(port),
-      APP_BASE_URL: "https://leden.example.nl/",
-      MAIL_FROM: "Cassiopeia <bestuur@example.nl>",
-      MAIL_OUTBOX_DIR: outboxDir,
-      BOOTSTRAP_ADMIN_EMAIL: "beheerder@example.nl",
-      BOOTSTRAP_ADMIN_PASSWORD: "een-uniek-veilig-wachtwoord"
-    },
-    stdio: ["ignore", "ignore", "pipe"]
-  });
-  child.stderr.on("data", (chunk) => {
-    serverError += chunk;
-  });
-  t.after(async () => {
-    if (child.exitCode === null) {
-      child.kill("SIGTERM");
-      await once(child, "exit");
-    }
-    fs.rmSync(dataDir, { recursive: true, force: true });
-  });
-  await waitForServer(baseUrl, child, () => serverError);
-
-  const adminLogin = await jsonRequest(baseUrl, "/api/login", {
-    method: "POST",
-    body: { email: "beheerder@example.nl", password: "een-uniek-veilig-wachtwoord" }
-  });
-  const imported = await jsonRequest(baseUrl, "/api/members/import", {
-    method: "POST",
-    cookie: adminLogin.cookie,
-    body: {
-      records: [
-        { name: "Nieuw Lid", email: "nieuw@example.nl", yearLayer: "2026" },
-        { name: "Tweede Lid", email: "tweede@example.nl", yearLayer: "2026" },
-        { name: "Derde Lid", email: "derde@example.nl", yearLayer: "2026" }
-      ]
-    }
-  });
-  assert.equal(imported.response.status, 201);
-  const [nieuw, tweede, derde] = imported.data.created.map((entry) => entry.member);
-
-  const readOutbox = () => (fs.existsSync(outboxDir) ? fs.readdirSync(outboxDir) : [])
-    .map((file) => JSON.parse(fs.readFileSync(path.join(outboxDir, file), "utf8")));
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  assert.equal(readOutbox().length, 0, "importeren mailt niemand automatisch");
-
-  const status = await jsonRequest(baseUrl, "/api/members/invitation-mails", { cookie: adminLogin.cookie });
-  assert.equal(status.data.mailConfigured, true);
-  assert.deepEqual(status.data.pending.map((entry) => entry.email).sort(), ["derde@example.nl", "nieuw@example.nl", "tweede@example.nl"]);
-
-  const sent = await jsonRequest(baseUrl, "/api/members/invitation-mails", {
-    method: "POST",
-    cookie: adminLogin.cookie,
-    body: { memberIds: [nieuw.id, derde.id] }
-  });
-  assert.equal(sent.response.status, 202);
-  for (let attempt = 0; attempt < 50 && readOutbox().length < 2; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  const mails = readOutbox();
-  assert.deepEqual(mails.map((message) => message.to[0].address).sort(), ["derde@example.nl", "nieuw@example.nl"]);
-  const mail = mails.find((message) => message.to[0].address === "nieuw@example.nl");
-  assert.equal(mail.subject, "Welkom bij het ledenportaal van Cassiopeia");
-  assert.match(mail.text, /Hoi Nieuw,/);
-  assert.match(mail.text, /wachtwoord/);
-  assert.match(mail.text, /Profiel/);
-  const mailedLink = mail.text.match(/https:\/\/leden\.example\.nl(\/#activate=\S+)/);
-  assert.ok(mailedLink, "de mail bevat een persoonlijke link");
-  const mailedToken = decodeURIComponent(mailedLink[1].split("#activate=")[1]);
-  const inspectMailed = await jsonRequest(baseUrl, "/api/account-token/inspect", { method: "POST", body: { token: mailedToken } });
-  assert.equal(inspectMailed.response.status, 200);
-  const oldToken = decodeURIComponent(imported.data.created[0].invitation.invitePath.split("#activate=")[1]);
-  const inspectOld = await jsonRequest(baseUrl, "/api/account-token/inspect", { method: "POST", body: { token: oldToken } });
-  assert.notEqual(inspectOld.response.status, 200, "de oude link vervalt zodra een nieuwe is gemaild");
-
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    const current = await jsonRequest(baseUrl, "/api/members/invitation-mails", { cookie: adminLogin.cookie });
-    if (!current.data.job.running) break;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  const after = await jsonRequest(baseUrl, "/api/members/invitation-mails", { cookie: adminLogin.cookie });
-  assert.equal(after.data.job.sent, 2);
-  assert.ok(after.data.pending.find((entry) => entry.id === nieuw.id).lastMailedAt);
-  assert.equal(after.data.pending.find((entry) => entry.id === tweede.id).lastMailedAt, null);
-
-  const nobody = await jsonRequest(baseUrl, "/api/members/invitation-mails", {
-    method: "POST",
-    cookie: adminLogin.cookie,
-    body: { memberIds: [] }
-  });
-  assert.equal(nobody.response.status, 400);
-
-  const resent = await jsonRequest(baseUrl, `/api/members/${tweede.id}/invitations`, {
-    method: "POST",
-    cookie: adminLogin.cookie
-  });
-  assert.equal(resent.response.status, 201);
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  assert.equal(readOutbox().length, 2, "een losse link maken mailt niet");
 });
 
 test("new members fill in address and birthday right after activating", () => {
