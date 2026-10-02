@@ -36,9 +36,11 @@ Moderne website voor damesdispuut Cassiopeia met een besloten ledenomgeving.
 
 Voor een bestaand account kan een admin op dezelfde plek een nieuwe wachtwoordlink maken. Hiermee wordt het oude wachtwoord vervangen en worden oudere sessies ingetrokken. Zonder maildienst deel je links handmatig via een privékanaal.
 
-## Uitnodigingen mailen
+## Uitnodigingen versturen
 
-Er wordt nooit automatisch gemaild. Een admin opent **Beheer → Leden → Uitnodigingen mailen**, vinkt aan wie een mail krijgt (standaard iedereen die nog niet heeft ingelogd en nog geen mail kreeg) en drukt op **Verstuur**. Elk gekozen lid krijgt een welkomstmail met een nieuwe persoonlijke link om een wachtwoord te kiezen en daarna onder **Profiel** de gegevens in te vullen. De link werkt één keer en is 48 uur geldig; een eerder gedeelde link van hetzelfde lid vervalt.
+Onder **Beheer → Leden → Uitnodigingen versturen** staat iedereen die nog niet heeft ingelogd. Zonder mailaccount op de server tik je per lid op **WhatsApp** of **Mail**: je eigen WhatsApp of mailapp opent met een kant-en-klaar bericht en een nieuwe persoonlijke link, en jij drukt op verzenden. Het scherm onthoudt wie al een bericht kreeg.
+
+Met een mailaccount op de server kan het ook in één keer. Er wordt nooit automatisch gemaild: een admin vinkt aan wie een mail krijgt (standaard iedereen die nog niet heeft ingelogd en nog geen mail kreeg) en drukt op **Verstuur**. Elk gekozen lid krijgt een welkomstmail met een nieuwe persoonlijke link om een wachtwoord te kiezen en daarna onder **Profiel** de gegevens in te vullen. De link werkt één keer en is 48 uur geldig; een eerder gedeelde link van hetzelfde lid vervalt.
 
 Met Gmail (maak eerst een app-wachtwoord aan via Google-account → Beveiliging → App-wachtwoorden; daarvoor moet verificatie in twee stappen aan staan):
 

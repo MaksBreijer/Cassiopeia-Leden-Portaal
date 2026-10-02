@@ -991,6 +991,16 @@ test("invitation mails only go out to the members an admin picks", async (t) => 
   assert.equal(resent.response.status, 201);
   await new Promise((resolve) => setTimeout(resolve, 200));
   assert.equal(readOutbox().length, 2, "een losse link maken mailt niet");
+  const notShared = await jsonRequest(baseUrl, "/api/members/invitation-mails", { cookie: adminLogin.cookie });
+  assert.equal(notShared.data.pending.find((entry) => entry.id === tweede.id).lastMailedAt, null);
+  const shared = await jsonRequest(baseUrl, `/api/members/${tweede.id}/invitations`, {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { sharedVia: "whatsapp" }
+  });
+  assert.equal(shared.response.status, 201);
+  const afterShare = await jsonRequest(baseUrl, "/api/members/invitation-mails", { cookie: adminLogin.cookie });
+  assert.ok(afterShare.data.pending.find((entry) => entry.id === tweede.id).lastMailedAt, "gedeeld via WhatsApp telt als verstuurd");
 });
 
 test("new members fill in address and birthday right after activating", () => {

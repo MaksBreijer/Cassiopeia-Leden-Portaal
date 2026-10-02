@@ -652,10 +652,10 @@ function openBulkInvitationDialog(created, onboardingMail = false) {
 }
 
 function formatMailedAt(value) {
-  if (!value) return "nog niet gemaild";
+  if (!value) return "nog niet verstuurd";
   const date = new Date(`${String(value).replace(" ", "T")}Z`);
   if (Number.isNaN(date.getTime())) return "";
-  return `gemaild ${new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(date)}`;
+  return `verstuurd ${new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(date)}`;
 }
 
 function inviteMailSelectedIds() {
@@ -669,6 +669,8 @@ function syncInviteMailSelection() {
   els.inviteMailSelectAll.checked = boxes.length > 0 && count === boxes.length;
   els.inviteMailSelectAll.indeterminate = count > 0 && count < boxes.length;
   els.inviteMailSelectAll.disabled = running || !boxes.length;
+  els.inviteMailSelectAll.closest("label").classList.toggle("hidden", !state.inviteMails?.mailConfigured);
+  els.sendInviteMails.classList.toggle("hidden", !state.inviteMails?.mailConfigured);
   els.sendInviteMails.disabled = running || !count || !state.inviteMails?.mailConfigured;
   els.sendInviteMails.textContent = running ? "Bezig met versturen…" : `Verstuur naar ${count} ${count === 1 ? "lid" : "leden"}`;
 }
@@ -681,21 +683,26 @@ function renderInviteMails() {
   const firstRender = !els.inviteMailList.dataset.rendered;
   const failedIds = new Set((job.failed || []).map((entry) => entry.id));
   if (!mailConfigured) {
-    els.inviteMailIntro.textContent = "Er is nog geen mailaccount gekoppeld aan de website, dus versturen kan nog niet. Je kunt wel per lid een uitnodigingslink kopiëren.";
-  } else if (!pending.length) {
+    els.inviteMailIntro.textContent = `${pending.length} ${pending.length === 1 ? "lid heeft" : "leden hebben"} nog niet ingelogd. Tik per lid op WhatsApp of Mail: het bericht met een persoonlijke link staat dan klaar en jij drukt alleen op verzenden.`;
+  }
+  if (!pending.length) {
     els.inviteMailIntro.textContent = "Alle leden hebben hun account al geactiveerd. Er hoeft niemand een uitnodiging te krijgen.";
-  } else {
-    els.inviteMailIntro.textContent = `${pending.length} ${pending.length === 1 ? "lid heeft" : "leden hebben"} nog niet ingelogd. Vink aan wie een mail krijgt met een persoonlijke link om in te loggen.`;
+  } else if (mailConfigured) {
+    els.inviteMailIntro.textContent = `${pending.length} ${pending.length === 1 ? "lid heeft" : "leden hebben"} nog niet ingelogd. Vink aan wie een mail krijgt, of stuur iemand los een link via WhatsApp of je eigen mail.`;
   }
   els.inviteMailList.innerHTML = pending
     .map((member) => {
       const checked = firstRender ? !member.lastMailedAt : previous.has(member.id);
       return `
-        <label class="bulk-invitation-row invite-mail-row${failedIds.has(member.id) ? " is-failed" : ""}">
-          <input type="checkbox" data-invite-mail="${member.id}" ${checked ? "checked" : ""} ${job.running ? "disabled" : ""} />
+        <div class="bulk-invitation-row invite-mail-row${mailConfigured ? "" : " is-share-only"}${failedIds.has(member.id) ? " is-failed" : ""}" data-invite-row="${member.id}">
+          ${mailConfigured ? `<input type="checkbox" data-invite-mail="${member.id}" aria-label="Mail ${escapeHtml(member.name)}" ${checked ? "checked" : ""} ${job.running ? "disabled" : ""} />` : ""}
           <div><strong>${escapeHtml(member.name)}</strong><span>${escapeHtml(member.email)}</span></div>
           <em>${failedIds.has(member.id) ? "mislukt" : escapeHtml(formatMailedAt(member.lastMailedAt))}</em>
-        </label>
+          <div class="invite-share-actions">
+            <button type="button" class="secondary" data-share-invite="whatsapp" data-member-id="${member.id}">WhatsApp</button>
+            <button type="button" class="secondary" data-share-invite="mail" data-member-id="${member.id}">Mail</button>
+          </div>
+        </div>
       `;
     })
     .join("");
@@ -709,6 +716,64 @@ function renderInviteMails() {
     els.inviteMailProgress.textContent = "";
   }
   syncInviteMailSelection();
+}
+
+function inviteShareMessage(member, invitation) {
+  const firstName = String(member.name || "").trim().split(/\s+/)[0] || "lid";
+  const link = new URL(invitation.invitePath, window.location.origin).toString();
+  return [
+    `Hoi ${firstName}!`,
+    "",
+    "Het ledenportaal van Cassiopeia staat live. Via jouw persoonlijke link kies je een eigen wachtwoord en vul je je gegevens aan:",
+    link,
+    "",
+    "De link werkt één keer en is 48 uur geldig. Deel hem met niemand, want hij geeft toegang tot jouw account."
+  ].join("\n");
+}
+
+async function shareInvite(button) {
+  const via = button.dataset.shareInvite;
+  const member = state.inviteMails?.pending.find((entry) => entry.id === Number(button.dataset.memberId));
+  if (!member) return;
+  // Het venster moet direct bij de klik open, anders blokkeert de browser het.
+  const popup = via === "whatsapp" ? window.open("", "_blank") : null;
+  els.inviteMailError.textContent = "";
+  button.disabled = true;
+  try {
+    const { invitation } = await api(`/api/members/${member.id}/invitations`, {
+      method: "POST",
+      body: JSON.stringify({ sharedVia: via })
+    });
+    const message = inviteShareMessage(member, invitation);
+    if (via === "whatsapp") {
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      if (popup) {
+        popup.opener = null;
+        popup.location.href = whatsappUrl;
+      } else {
+        window.location.href = whatsappUrl;
+      }
+    } else {
+      window.location.href = `mailto:${encodeURIComponent(member.email)}?subject=${encodeURIComponent("Jouw inloglink voor het ledenportaal van Cassiopeia")}&body=${encodeURIComponent(message)}`;
+    }
+    member.lastMailedAt = new Date().toISOString().slice(0, 19).replace("T", " ");
+    renderInviteMails();
+    const rows = [...els.inviteMailList.querySelectorAll("[data-invite-row]")];
+    const index = rows.findIndex((row) => Number(row.dataset.inviteRow) === member.id);
+    const next = rows.slice(index + 1).find((row) => {
+      const entry = state.inviteMails.pending.find((candidate) => candidate.id === Number(row.dataset.inviteRow));
+      return entry && !entry.lastMailedAt;
+    }) || rows[index + 1];
+    const nextButton = next?.querySelector(`[data-share-invite="${via}"]`);
+    if (nextButton) {
+      nextButton.focus();
+      next.scrollIntoView({ block: "nearest" });
+    }
+  } catch (error) {
+    popup?.close();
+    els.inviteMailError.textContent = error.message;
+    button.disabled = false;
+  }
 }
 
 async function loadInviteMails() {
@@ -2855,6 +2920,10 @@ els.confessionForm?.addEventListener("submit", async (event) => {
 });
 
 els.inviteMailList?.addEventListener("change", syncInviteMailSelection);
+els.inviteMailList?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-share-invite]");
+  if (button) shareInvite(button);
+});
 els.inviteMailSelectAll?.addEventListener("change", () => {
   els.inviteMailList.querySelectorAll("input[data-invite-mail]").forEach((input) => {
     input.checked = els.inviteMailSelectAll.checked;

@@ -958,6 +958,10 @@ app.post("/api/members/:id/invitations", requireAuth, requireAdmin, (req, res) =
   }
   const purpose = user.account_status === "pending" ? "invite" : "reset";
   const invitation = createAccountToken(user.id, purpose, req.session.userId);
+  // Gedeeld via WhatsApp of de eigen mailapp van de beheerder: onthoud dat dit lid zijn link heeft gekregen.
+  if (["whatsapp", "mail"].includes(req.body?.sharedVia)) {
+    db.prepare("UPDATE users SET onboarding_mail_sent_at = CURRENT_TIMESTAMP WHERE id = ?").run(user.id);
+  }
   res.status(201).json({ invitation, member: publicUser(user) });
 });
 
