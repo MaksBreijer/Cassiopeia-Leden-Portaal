@@ -287,6 +287,7 @@ async function api(path, options = {}) {
     throw new Error("Login werkt alleen via de lokale server. Start npm start in de map Cassio website en open daarna http://127.0.0.1:3000.");
   }
   const data = await response.json().catch(() => ({}));
+  if (response.status === 413 && !data.error) throw new Error("Het bestand is te groot om te uploaden.");
   if (!response.ok) throw new Error(data.error || "Er ging iets mis.");
   return data;
 }
@@ -563,6 +564,42 @@ function fileAsBase64(file) {
     reader.addEventListener("error", () => reject(new Error("Het bestand kon niet worden gelezen.")));
     reader.readAsDataURL(file);
   });
+}
+
+function fileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "")));
+    reader.addEventListener("error", () => reject(new Error("Het bestand kon niet worden gelezen.")));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Grote foto's (bijv. van een telefoon) worden verkleind voordat ze worden geüpload,
+// zodat ze niet stranden op de uploadlimiet van de server.
+async function siteImageUpload(key, file) {
+  const original = { fileName: file.name, mimeType: file.type, data: await fileAsBase64(file) };
+  const maxSide = key === "herobackground" ? 2400 : 1200;
+  let image;
+  try {
+    image = await loadImageFromFile(file);
+  } catch (error) {
+    return original;
+  }
+  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+  if (scale === 1 && file.size <= 700 * 1024) return original;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+  // Foto's worden JPEG; logo's en lustrumbeelden houden hun transparantie.
+  const encoded = canvas.toDataURL(key === "herobackground" || file.type === "image/jpeg" ? "image/jpeg" : file.type, 0.85);
+  const mimeType = encoded.slice(5, encoded.indexOf(";"));
+  const data = encoded.split(",")[1] || "";
+  if (!data || !["image/png", "image/jpeg", "image/webp"].includes(mimeType) || data.length >= original.data.length) return original;
+  const extension = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" }[mimeType];
+  const fileName = `${file.name.replace(/\.[^.]+$/, "") || "afbeelding"}.${extension}`;
+  return { fileName, mimeType, data };
 }
 
 function resetMemberImportPreview() {
@@ -2232,19 +2269,14 @@ async function openActivation(token) {
   }
 }
 
-function loadImageFromFile(file) {
+// Via een data:-URL i.p.v. blob:, want de Content-Security-Policy (img-src) blokkeert blob:-afbeeldingen.
+async function loadImageFromFile(file) {
+  const src = await fileAsDataUrl(file);
   return new Promise((resolve, reject) => {
     const image = new Image();
-    const objectUrl = URL.createObjectURL(file);
-    image.addEventListener("load", () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve(image);
-    });
-    image.addEventListener("error", () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("De afbeelding kon niet gelezen worden."));
-    });
-    image.src = objectUrl;
+    image.addEventListener("load", () => resolve(image));
+    image.addEventListener("error", () => reject(new Error("De afbeelding kon niet gelezen worden.")));
+    image.src = src;
   });
 }
 
@@ -2733,13 +2765,16 @@ els.siteImagesForm?.addEventListener("submit", async (event) => {
     const uploads = ["logo", "hero", "herobackground"].map((key) => ({ key, file: els.siteImagesForm.elements[key].files[0] })).filter((item) => item.file);
     if (!uploads.length) return showToast("Kies minimaal één afbeelding.");
     for (const { key, file } of uploads) {
-      await api(`/api/site-assets/${key}`, { method: "PUT", body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: await fileAsBase64(file) }) });
+      await api(`/api/site-assets/${key}`, { method: "PUT", body: JSON.stringify(await siteImageUpload(key, file)) });
     }
     els.siteImagesForm.reset();
     await loadSiteAssets();
     showToast("Afbeeldingen opgeslagen.");
   } catch (error) {
-    showToast(error.message);
+    // Laat het voorbeeld niet een foto tonen die niet is opgeslagen.
+    els.siteImagesForm.reset();
+    await loadSiteAssets().catch(() => {});
+    showToast(`Niet opgeslagen: ${error.message}`);
   }
 });
 
@@ -2754,9 +2789,10 @@ els.siteImagesForm?.addEventListener("submit", async (event) => {
     if (!file) return;
     const preview = document.querySelector(`[data-admin-image-preview="${key}"]`);
     if (!preview) return;
-    const objectUrl = URL.createObjectURL(file);
-    preview.src = objectUrl;
-    preview.addEventListener("load", () => URL.revokeObjectURL(objectUrl), { once: true });
+    // Geen blob:-URL: die blokkeert de Content-Security-Policy (img-src).
+    fileAsDataUrl(file).then((src) => {
+      preview.src = src;
+    }).catch(() => {});
   });
 });
 
