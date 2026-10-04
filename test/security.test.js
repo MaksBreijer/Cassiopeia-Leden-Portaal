@@ -547,6 +547,22 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.match(activityShareHtml, /Activiteit · Dameschdispuut Cassiopeia/);
   assert.match(activityShareHtml, /cassiopeia-activity-share\.png\?v=20260902-rsvp/);
   assert.ok(activityShareHtml.includes(`property="og:url" content="https://www.dispuutcassiopeia.nl/activity/${activity.data.activity.id}"`));
+  assert.doesNotMatch(activityShareHtml, /preview\.jpg/);
+  const shareKey = activitiesWithImage.data.activities.find((item) => item.id === activity.data.activity.id).shareKey;
+  assert.match(shareKey, /^[A-Za-z0-9_-]{16}$/);
+  const signedSharePage = await fetch(`${baseUrl}/activity/${activity.data.activity.id}?s=${shareKey}`);
+  const signedShareHtml = await signedSharePage.text();
+  assert.ok(signedShareHtml.includes(`property="og:title" content="${activity.data.activity.title} · Dameschdispuut Cassiopeia"`));
+  assert.ok(signedShareHtml.includes(`/activity/${activity.data.activity.id}/preview.jpg?s=${shareKey}&v=`));
+  assert.match(signedShareHtml, /og:image:type" content="image\/jpeg"/);
+  const wrongKeyPage = await (await fetch(`${baseUrl}/activity/${activity.data.activity.id}?s=${"x".repeat(16)}`)).text();
+  assert.doesNotMatch(wrongKeyPage, /preview\.jpg/);
+  const previewImage = await fetch(`${baseUrl}/activity/${activity.data.activity.id}/preview.jpg?s=${shareKey}`);
+  assert.equal(previewImage.status, 200);
+  assert.equal(previewImage.headers.get("content-type"), "image/jpeg");
+  assert.deepEqual([...new Uint8Array(await previewImage.arrayBuffer()).slice(0, 2)], [0xff, 0xd8]);
+  const unsignedPreview = await fetch(`${baseUrl}/activity/${activity.data.activity.id}/preview.jpg`);
+  assert.equal(unsignedPreview.status, 404);
   const registration = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
     method: "POST",
     cookie: adminLogin.cookie

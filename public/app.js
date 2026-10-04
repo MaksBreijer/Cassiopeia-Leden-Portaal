@@ -479,8 +479,9 @@ function sharedActivityId() {
   return id && /^\d+$/.test(id) ? id : "";
 }
 
-function activityShareUrl(activityId) {
-  const url = new URL(`/activity/${activityId}`, window.location.origin);
+function activityShareUrl(activity) {
+  const url = new URL(`/activity/${activity.id}`, window.location.origin);
+  if (activity.shareKey) url.searchParams.set("s", activity.shareKey);
   url.hash = "home";
   return url.toString();
 }
@@ -2995,7 +2996,7 @@ document.body.addEventListener("click", async (event) => {
   const whatsappActivityBtn = event.target.closest("[data-whatsapp-activity]");
   if (whatsappActivityBtn) {
     const activity = state.activities.find((item) => item.id === Number(whatsappActivityBtn.dataset.whatsappActivity));
-    const text = `Schrijf je in voor ${activity.title}: ${activityShareUrl(activity.id)}`;
+    const text = `Schrijf je in voor ${activity.title}: ${activityShareUrl(activity)}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
     return;
   }

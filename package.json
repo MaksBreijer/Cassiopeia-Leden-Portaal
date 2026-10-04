@@ -9,10 +9,12 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.10.0",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
+    "jpeg-js": "^0.4.4",
     "pdfjs-dist": "5.4.624"
   },
   "devDependencies": {

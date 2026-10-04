@@ -8,6 +8,7 @@ const { db, initializeDatabase, ensureYearAgendaItems } = require("./db");
 const { createCalendarFeed, googleCalendarLinkFromIcsUrl, parseGoogleCalendarFeed, visibleCalendarItems } = require("./calendar-feed");
 const { MAX_IMPORT_ROWS, parseMemberImport, validateRecords } = require("./member-import");
 const { createSqliteSessionStore } = require("./session-store");
+const { renderActivityShareImage } = require("./activity-share-image");
 
 initializeDatabase();
 const SQLiteSessionStore = createSqliteSessionStore(session, db);
@@ -109,31 +110,77 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
-function sendActivitySharePage(activityId, res, next) {
+function activityShareKey(activityId) {
+  return crypto.createHmac("sha256", SESSION_SECRET).update(`activity-share:${activityId}`).digest("base64url").slice(0, 16);
+}
+
+// Alleen een link met geldige sleutel (zoals de WhatsApp-knop maakt) toont de naam van de activiteit,
+// zodat je activiteiten niet kunt opvragen door id's te raden.
+function sharedActivity(activityId, key) {
+  if (!/^\d+$/.test(activityId) || typeof key !== "string" || key.length !== 16) return null;
+  const expected = Buffer.from(activityShareKey(activityId));
+  const given = Buffer.from(key);
+  if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return null;
+  return db.prepare("SELECT id, title FROM activities WHERE id = ?").get(activityId) || null;
+}
+
+function escapeHtmlAttribute(value) {
+  return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("$", "&#36;");
+}
+
+function sendActivitySharePage(activityId, key, res, next) {
   if (!/^\d+$/.test(activityId)) return next();
 
-  const shareUrl = `https://www.dispuutcassiopeia.nl/activity/${activityId}`;
-  const html = fs.readFileSync(INDEX_HTML_PATH, "utf8")
-    .replace('<meta property="og:title" content="Dameschdispuut Cassiopeia · Lustrum III" />', '<meta property="og:title" content="Activiteit · Dameschdispuut Cassiopeia" />')
+  const activity = sharedActivity(activityId, key);
+  const title = activity ? `${escapeHtmlAttribute(activity.title)} · Dameschdispuut Cassiopeia` : "Activiteit · Dameschdispuut Cassiopeia";
+  const shareUrl = activity
+    ? `https://www.dispuutcassiopeia.nl/activity/${activityId}?s=${key}`
+    : `https://www.dispuutcassiopeia.nl/activity/${activityId}`;
+  const imageUrl = activity
+    ? `https://www.dispuutcassiopeia.nl/activity/${activityId}/preview.jpg?s=${key}&v=${crypto.createHash("sha256").update(activity.title).digest("hex").slice(0, 10)}`
+    : ACTIVITY_SHARE_IMAGE_URL;
+  const imageAlt = activity
+    ? `${escapeHtmlAttribute(activity.title)} · schrijf je in bij Dameschdispuut Cassiopeia`
+    : "Schrijf je nu in voor een activiteit van Dameschdispuut Cassiopeia";
+  let html = fs.readFileSync(INDEX_HTML_PATH, "utf8")
+    .replace('<meta property="og:title" content="Dameschdispuut Cassiopeia · Lustrum III" />', `<meta property="og:title" content="${title}" />`)
     .replace('<meta property="og:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />', '<meta property="og:description" content="Log in en schrijf je in voor deze activiteit." />')
-    .replace(/<meta property="og:image" content="[^"]+" \/>/, `<meta property="og:image" content="${ACTIVITY_SHARE_IMAGE_URL}" />`)
-    .replace('<meta property="og:image:alt" content="Logo van Dameschdispuut Cassiopeia" />', '<meta property="og:image:alt" content="Schrijf je nu in voor een activiteit van Dameschdispuut Cassiopeia" />')
+    .replace(/<meta property="og:image" content="[^"]+" \/>/, `<meta property="og:image" content="${imageUrl}" />`)
+    .replace('<meta property="og:image:alt" content="Logo van Dameschdispuut Cassiopeia" />', `<meta property="og:image:alt" content="${imageAlt}" />`)
     .replace('<meta property="og:url" content="https://www.dispuutcassiopeia.nl/" />', `<meta property="og:url" content="${shareUrl}" />`)
-    .replace('<meta name="twitter:title" content="Dameschdispuut Cassiopeia · Lustrum III" />', '<meta name="twitter:title" content="Activiteit · Dameschdispuut Cassiopeia" />')
+    .replace('<meta name="twitter:title" content="Dameschdispuut Cassiopeia · Lustrum III" />', `<meta name="twitter:title" content="${title}" />`)
     .replace('<meta name="twitter:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />', '<meta name="twitter:description" content="Log in en schrijf je in voor deze activiteit." />')
-    .replace(/<meta name="twitter:image" content="[^"]+" \/>/, `<meta name="twitter:image" content="${ACTIVITY_SHARE_IMAGE_URL}" />`)
-    .replace('<meta name="twitter:image:alt" content="Logo van Dameschdispuut Cassiopeia" />', '<meta name="twitter:image:alt" content="Schrijf je nu in voor een activiteit van Dameschdispuut Cassiopeia" />');
+    .replace(/<meta name="twitter:image" content="[^"]+" \/>/, `<meta name="twitter:image" content="${imageUrl}" />`)
+    .replace('<meta name="twitter:image:alt" content="Logo van Dameschdispuut Cassiopeia" />', `<meta name="twitter:image:alt" content="${imageAlt}" />`);
+  if (activity) {
+    html = html
+      .replace('<meta property="og:image:type" content="image/png" />', '<meta property="og:image:type" content="image/jpeg" />')
+      .replace('<meta property="og:image:width" content="1730" />', '<meta property="og:image:width" content="1200" />')
+      .replace('<meta property="og:image:height" content="909" />', '<meta property="og:image:height" content="630" />');
+  }
 
   res.setHeader("Cache-Control", "no-store");
   res.type("html").send(html);
 }
 
 app.get("/", (req, res, next) => {
-  sendActivitySharePage(String(req.query.activity || "").trim(), res, next);
+  sendActivitySharePage(String(req.query.activity || "").trim(), req.query.s, res, next);
 });
 
 app.get("/activity/:activityId", (req, res, next) => {
-  sendActivitySharePage(String(req.params.activityId || "").trim(), res, next);
+  sendActivitySharePage(String(req.params.activityId || "").trim(), req.query.s, res, next);
+});
+
+app.get("/activity/:activityId/preview.jpg", (req, res, next) => {
+  const activity = sharedActivity(String(req.params.activityId || "").trim(), req.query.s);
+  if (!activity) return res.status(404).end();
+  try {
+    const image = renderActivityShareImage(activity.title, `${activity.id}:${activity.title}`);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.type("jpeg").send(image);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get(/^\/admin\/+$/, (req, res) => res.redirect(308, "/admin"));
@@ -980,6 +1027,7 @@ function activityRows(userId, scope = "active") {
       capacity: row.capacity,
       responseMode,
       hasImage: Boolean(row.has_image),
+      shareKey: activityShareKey(row.id),
       registrationCount: participants.length,
       registrationDeadline: deadline?.toISOString() || null,
       registrationOverride: row.registration_override || "automatic",
