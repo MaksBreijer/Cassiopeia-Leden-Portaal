@@ -459,7 +459,9 @@ function activityRegistrationIsOpen(activity) {
 function formatActivityDeadline(activity) {
   const deadline = activityRegistrationDeadline(activity);
   if (!deadline || Number.isNaN(deadline.getTime())) return "deadline onbekend";
-  return new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "long", year: "numeric" }).format(deadline);
+  const options = { day: "numeric", month: "long", year: "numeric" };
+  if (activity.customRegistrationDeadline) Object.assign(options, { hour: "2-digit", minute: "2-digit" });
+  return new Intl.DateTimeFormat("nl-NL", options).format(deadline);
 }
 
 function formatLichting(value) {
@@ -2003,6 +2005,7 @@ function openActivityDialog(activity = null) {
   fields.startsAt.value = activity?.startsAt || "";
   fields.capacity.value = activity?.capacity || "";
   fields.responseMode.value = activity?.responseMode || "signup";
+  fields.registrationDeadline.value = toDateTimeLocalValue(activity?.customRegistrationDeadline);
   fields.registrationOverride.value = activity?.registrationOverride || "open";
   fields.location.value = activity?.location || "";
   fields.description.value = activity?.description || "";
@@ -2013,6 +2016,14 @@ function openActivityDialog(activity = null) {
   imagePreview.src = activity?.hasImage ? `/api/activities/${activity.id}/image` : "";
   if (fields.activityFiles) fields.activityFiles.value = "";
   els.activityDialog.showModal();
+}
+
+function toDateTimeLocalValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (number) => String(number).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function openCancellationDialog(activity) {
@@ -2444,6 +2455,11 @@ els.activityForm.elements.activityImage.addEventListener("change", async () => {
     els.activityForm.elements.activityImage.value = "";
     showToast(error.message);
   }
+});
+
+els.activityForm.elements.registrationDeadline.addEventListener("change", () => {
+  const fields = els.activityForm.elements;
+  if (fields.registrationDeadline.value && fields.registrationOverride.value === "open") fields.registrationOverride.value = "automatic";
 });
 
 els.activityForm.querySelector("[data-remove-activity-image]").addEventListener("click", () => {

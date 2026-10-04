@@ -28,7 +28,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20261002-route-safari" />
+    <link rel="stylesheet" href="styles.css?v=20261004-afmelddeadline" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -645,9 +645,12 @@
             </select>
             <span class="form-help">Bij afmelden kan een lid een privéreden delen. Alleen beheerders kunnen die reden bekijken.</span>
           </label>
+          <label class="wide">Deadline voor aan- en afmelden<input name="registrationDeadline" type="datetime-local" />
+            <span class="form-help">Leeg laten = de 1e van de maand van de activiteit. Wie zich na de deadline afmeldt, wordt als ‘te laat afgemeld’ gemarkeerd.</span>
+          </label>
           <label class="wide">Inschrijving
             <select name="registrationOverride">
-              <option value="automatic">Automatisch — sluit op de 1e van de maand</option>
+              <option value="automatic">Automatisch — sluit op de deadline</option>
               <option value="open">Handmatig open</option>
               <option value="closed">Handmatig gesloten</option>
             </select>
@@ -770,6 +773,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20261002-route-safari"></script>
+    <script src="app.js?v=20261004-afmelddeadline"></script>
   </body>
 </html>
