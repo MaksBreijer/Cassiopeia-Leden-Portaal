@@ -47,6 +47,7 @@ function initializeDatabase() {
       capacity INTEGER,
       response_mode TEXT NOT NULL DEFAULT 'signup',
       registration_override TEXT NOT NULL DEFAULT 'automatic',
+      registration_deadline TEXT,
       created_by INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -185,6 +186,7 @@ function initializeDatabase() {
   ensureColumn("registrations", "cancellation_reason", "TEXT DEFAULT ''");
   ensureColumn("activities", "response_mode", "TEXT NOT NULL DEFAULT 'signup'");
   ensureColumn("activities", "registration_override", "TEXT NOT NULL DEFAULT 'automatic'");
+  ensureColumn("activities", "registration_deadline", "TEXT");
   ensureColumn("year_agenda_items", "time_label", "TEXT DEFAULT ''");
   revokeExposedCredentials();
   bootstrapAdmin();

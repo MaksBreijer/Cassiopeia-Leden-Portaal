@@ -596,6 +596,42 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(reopenedRegistration.response.status, 403);
 
+  const customDeadlineStart = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+  const futureDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const customDeadlineActivity = await jsonRequest(baseUrl, "/api/activities", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { title: "Eigen deadline", startsAt: customDeadlineStart.toISOString(), registrationDeadline: futureDeadline.toISOString(), registrationOverride: "automatic" }
+  });
+  assert.equal(customDeadlineActivity.response.status, 201);
+  assert.equal(customDeadlineActivity.data.activity.registrationDeadline, futureDeadline.toISOString());
+  assert.equal(customDeadlineActivity.data.activity.registrationOpen, true);
+  const pastDeadline = new Date(Date.now() - 60 * 60 * 1000);
+  const passedDeadlineActivity = await jsonRequest(baseUrl, `/api/activities/${customDeadlineActivity.data.activity.id}`, {
+    method: "PUT",
+    cookie: adminLogin.cookie,
+    body: { title: "Eigen deadline", startsAt: customDeadlineStart.toISOString(), registrationDeadline: pastDeadline.toISOString() }
+  });
+  assert.equal(passedDeadlineActivity.data.activity.registrationOpen, false);
+  const keptDeadlineActivity = await jsonRequest(baseUrl, `/api/activities/${customDeadlineActivity.data.activity.id}`, {
+    method: "PUT",
+    cookie: adminLogin.cookie,
+    body: { title: "Eigen deadline", startsAt: customDeadlineStart.toISOString(), registrationOverride: "closed" }
+  });
+  assert.equal(keptDeadlineActivity.data.activity.customRegistrationDeadline, pastDeadline.toISOString());
+  const clearedDeadlineActivity = await jsonRequest(baseUrl, `/api/activities/${customDeadlineActivity.data.activity.id}`, {
+    method: "PUT",
+    cookie: adminLogin.cookie,
+    body: { title: "Eigen deadline", startsAt: customDeadlineStart.toISOString(), registrationDeadline: "", registrationOverride: "automatic" }
+  });
+  assert.equal(clearedDeadlineActivity.data.activity.customRegistrationDeadline, null);
+  const invalidDeadlineActivity = await jsonRequest(baseUrl, "/api/activities", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { title: "Foute deadline", startsAt: customDeadlineStart.toISOString(), registrationDeadline: "geen datum" }
+  });
+  assert.equal(invalidDeadlineActivity.response.status, 400);
+
   const document = await jsonRequest(baseUrl, "/api/documents", {
     method: "POST",
     cookie: adminLogin.cookie,
