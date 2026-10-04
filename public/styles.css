@@ -1312,7 +1312,11 @@ main {
 
 .participant-avatars {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  row-gap: 6px;
+  min-width: 0;
+  padding-left: 7px;
 }
 
 .participant-avatar,
@@ -1324,10 +1328,6 @@ main {
   border-radius: 10px;
   box-shadow: 0 5px 12px rgba(52, 43, 61, 0.12);
   font-size: 11px;
-}
-
-.participant-avatar:first-child {
-  margin-left: 0;
 }
 
 .participant-more {
@@ -3764,7 +3764,7 @@ dialog::backdrop {
   }
 
   .activity-card {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .activity-actions {
