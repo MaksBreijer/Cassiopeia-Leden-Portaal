@@ -1826,7 +1826,7 @@ function activityListHtml(adminMode = false) {
   return state.activities
     .map((activity) => {
       const optOut = activity.responseMode === "optout";
-      const canParticipate = Boolean(state.user);
+      const canParticipate = Boolean(state.user && state.user.takesPart !== false);
       const full = !optOut && activity.capacity && activity.registrationCount >= activity.capacity;
       const registrationOpen = activityRegistrationIsOpen(activity);
       const canRegister = Boolean(canParticipate && (optOut ? activity.wasCancelled : !activity.isRegistered && registrationOpen && !full));
@@ -1883,7 +1883,7 @@ function activityListHtml(adminMode = false) {
             ${renderActivityParticipants(activity)}
           </div>
           <div class="activity-actions ${adminMode ? "activity-actions-admin-only" : ""}">
-            <div class="activity-member-actions ${adminMode ? "hidden" : ""}">
+            <div class="activity-member-actions ${adminMode || !canParticipate ? "hidden" : ""}">
               <span class="module-label">Jouw deelname</span>
               <button class="primary" data-register="${activity.id}" data-registration-action="join" ${canRegister ? "" : "disabled"}>${optOut ? "Afmelding intrekken" : "Inschrijven"}</button>
               <button class="secondary" data-register="${activity.id}" data-registration-action="cancel" ${canCancel ? "" : "disabled"}>${optOut ? "Ik kan niet" : "Afmelden"}</button>
@@ -2193,6 +2193,7 @@ function openMemberDialog(member = null) {
   fields.avatar.value = editableInitials;
   fields.bio.value = member?.bio || "";
   fields.isAdmin.checked = Boolean(member?.isAdmin);
+  fields.takesPart.checked = member?.takesPart !== false;
   fields.accountStatus.value = member?.accountStatus || "pending";
   fields.accountStatus.disabled = !member;
   els.memberDialog.showModal();

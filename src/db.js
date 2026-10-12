@@ -180,6 +180,7 @@ function initializeDatabase() {
   ensureColumn("users", "password_changed_at", "TEXT");
   ensureColumn("users", "last_login_at", "TEXT");
   ensureColumn("users", "onboarding_mail_sent_at", "TEXT");
+  ensureColumn("users", "takes_part", "INTEGER NOT NULL DEFAULT 1");
   ensureColumn("registrations", "cancelled_at", "TEXT");
   ensureColumn("registrations", "late_cancelled", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn("registrations", "cancellation_reason", "TEXT DEFAULT ''");
@@ -188,6 +189,7 @@ function initializeDatabase() {
   ensureColumn("year_agenda_items", "time_label", "TEXT DEFAULT ''");
   revokeExposedCredentials();
   bootstrapAdmin();
+  excludeManagementAccountsFromActivities();
   purgeExistingNonAdminMembers();
   seedYearAgenda();
   syncCsvYearAgendaData();
@@ -273,11 +275,25 @@ function bootstrapAdmin() {
       `).run(passwordHash, existing.id);
     } else {
       db.prepare(`
-        INSERT INTO users (name, email, password_hash, year_layer, role_title, avatar, member_status, committee, is_admin)
-        VALUES (?, ?, ?, ?, 'Admin', 'C', 'actief', 'Bestuur', 1)
+        INSERT INTO users (name, email, password_hash, year_layer, role_title, avatar, member_status, committee, is_admin, takes_part)
+        VALUES (?, ?, ?, ?, 'Admin', 'C', 'actief', 'Bestuur', 1, 0)
       `).run(name, email, passwordHash, String(new Date().getFullYear()));
     }
     db.prepare("INSERT INTO app_settings (key, value) VALUES (?, 'complete')").run(bootstrapKey);
+  })();
+}
+
+// Admin accounts take part in activities since October 2026, except the shared
+// management account (e.g. "Cassio admin"), which is not a member.
+function excludeManagementAccountsFromActivities() {
+  const migrationKey = "exclude_management_accounts_from_activities_2026_10_12_v1";
+  if (db.prepare("SELECT 1 FROM app_settings WHERE key = ?").get(migrationKey)) return;
+  db.transaction(() => {
+    db.prepare(`
+      UPDATE users SET takes_part = 0
+      WHERE is_admin = 1 AND (name LIKE '%admin%' OR name LIKE '%beheer%')
+    `).run();
+    db.prepare("INSERT INTO app_settings (key, value) VALUES (?, 'complete')").run(migrationKey);
   })();
 }
 
