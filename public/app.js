@@ -12,6 +12,8 @@ const state = {
   yearAgendaUsesLocalData: false,
   yearAgendaSource: { type: "local", label: "Cassiopeia" },
   activeYearAgendaMonthIndex: null,
+  agendaMonth: null,
+  agendaSelectedDay: "",
   memberStatusFilter: "",
   openMemberId: null,
   activationToken: "",
@@ -178,6 +180,17 @@ const els = {
   yearAgendaSourceTitle: document.querySelector("#yearAgendaSourceTitle"),
   yearAgendaSourceLabel: document.querySelector("#yearAgendaSourceLabel"),
   publicActivityList: document.querySelector("#publicActivityList"),
+  agendaMonthTitle: document.querySelector("#agendaMonthTitle"),
+  agendaPrevMonth: document.querySelector("#agendaPrevMonth"),
+  agendaNextMonth: document.querySelector("#agendaNextMonth"),
+  agendaToday: document.querySelector("#agendaToday"),
+  agendaCalendarGrid: document.querySelector("#agendaCalendarGrid"),
+  agendaDayTitle: document.querySelector("#agendaDayTitle"),
+  agendaDayList: document.querySelector("#agendaDayList"),
+  activityDetailsDialog: document.querySelector("#activityDetailsDialog"),
+  activityDetailsDate: document.querySelector("#activityDetailsDate"),
+  activityDetailsTitle: document.querySelector("#activityDetailsTitle"),
+  activityDetailsBody: document.querySelector("#activityDetailsBody"),
   adminActivityList: document.querySelector("#adminActivityList"),
   adminYearAgendaList: document.querySelector("#adminYearAgendaList"),
   adminAgendaSourceSummary: document.querySelector("#adminAgendaSourceSummary"),
@@ -507,13 +520,14 @@ function avatarHtml(user) {
 
 function renderActivityParticipants(activity) {
   const participants = activity.participants || [];
+  const detailsHint = `<span class="participants-details-hint">Wie komen er? <span aria-hidden="true">→</span></span>`;
   if (!participants.length) {
-    return `<div class="activity-participants empty">${activity.responseMode === "optout" ? "Niemand staat op aanwezig" : "Nog niemand ingeschreven"}</div>`;
+    return `<button type="button" class="activity-participants empty" data-activity-details="${activity.id}">${activity.responseMode === "optout" ? "Niemand staat op aanwezig" : "Nog niemand ingeschreven"}${detailsHint}</button>`;
   }
   const preview = participants.slice(0, 8);
   const extra = participants.length - preview.length;
   return `
-    <div class="activity-participants" aria-label="Wie gaan er mee">
+    <button type="button" class="activity-participants" data-activity-details="${activity.id}" aria-label="Bekijk wie er komen bij ${escapeHtml(activity.title)}">
       <span class="participants-label">Gaan mee</span>
       <div class="participant-avatars">
         ${preview
@@ -527,8 +541,166 @@ function renderActivityParticipants(activity) {
           .join("")}
         ${extra > 0 ? `<span class="participant-more">+${extra}</span>` : ""}
       </div>
+      ${detailsHint}
+    </button>
+  `;
+}
+
+function activityDetailsPeople(members, emptyText) {
+  if (!members.length) return `<p class="registration-empty">${emptyText}</p>`;
+  return members.map((member) => `
+    <article class="registration-person">
+      <span class="registration-avatar avatar">${avatarHtml(member)}</span>
+      <div class="registration-person-copy">
+        <strong>${escapeHtml(member.name)}</strong>
+        <p class="meta">${escapeHtml(formatLichting(member.yearLayer))}</p>
+      </div>
+    </article>
+  `).join("");
+}
+
+function openActivityDetails(activityId) {
+  const activity = state.activities.find((item) => item.id === Number(activityId));
+  if (!activity) return showToast("Deze activiteit is niet meer te vinden.");
+  const optOut = activity.responseMode === "optout";
+  const coming = activity.participants || [];
+  const notComing = activity.absentees || [];
+  els.activityDetailsDate.textContent = formatDate(activity.startsAt);
+  els.activityDetailsTitle.textContent = activity.title;
+  els.activityDetailsBody.innerHTML = `
+    <div class="activity-details-facts">
+      <span><strong>Locatie</strong>${escapeHtml(activity.location || "Volgt")}</span>
+      <span><strong>${optOut ? "Afmelddeadline" : "Inschrijfdeadline"}</strong>${formatActivityDeadline(activity)}</span>
+    </div>
+    ${activity.description ? `<p class="activity-details-description">${escapeHtml(activity.description)}</p>` : ""}
+    <div class="registration-groups">
+      <details class="registration-group" open>
+        <summary><span>Komen</span><strong>${coming.length}</strong></summary>
+        <div class="registration-people">${activityDetailsPeople(coming, optOut ? "Niemand staat op aanwezig." : "Nog niemand ingeschreven.")}</div>
+      </details>
+      <details class="registration-group registration-group-cancelled" open>
+        <summary><span>Komen niet</span><strong>${notComing.length}</strong></summary>
+        <div class="registration-people">${activityDetailsPeople(notComing, "Nog niemand heeft zich afgemeld.")}</div>
+      </details>
     </div>
   `;
+  if (!els.activityDetailsDialog.open) els.activityDetailsDialog.showModal();
+}
+
+function agendaDayKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function normalizedAgendaTitle(value) {
+  return String(value || "").toLocaleLowerCase("nl").replace(/[^a-z0-9à-ÿ]+/g, "");
+}
+
+// Combines portal activities and the year planning into one list per day.
+// A planning item with the same title on the same day as an activity is left out.
+function agendaEventsByDay() {
+  const days = new Map();
+  const add = (key, event) => {
+    if (!days.has(key)) days.set(key, []);
+    days.get(key).push(event);
+  };
+  state.activities.forEach((activity) => {
+    const date = new Date(activity.startsAt);
+    if (!Number.isFinite(date.getTime())) return;
+    add(agendaDayKey(date), {
+      type: "activity",
+      activity,
+      title: activity.title,
+      timestamp: date.getTime(),
+      timeLabel: new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date)
+    });
+  });
+  state.yearAgendaItems.forEach((item) => {
+    const timestamp = yearAgendaItemTimestamp(item);
+    if (timestamp === null) return;
+    const key = agendaDayKey(new Date(timestamp));
+    const duplicate = (days.get(key) || []).some((event) => event.type === "activity" && normalizedAgendaTitle(event.title) === normalizedAgendaTitle(item.title));
+    if (duplicate) return;
+    add(key, { type: "planning", title: item.title, timestamp, timeLabel: yearAgendaTimeLabel(item) });
+  });
+  days.forEach((events) => events.sort((a, b) => a.timestamp - b.timestamp));
+  return days;
+}
+
+function renderAgendaCalendar() {
+  if (!els.agendaCalendarGrid) return;
+  const today = new Date();
+  if (!state.agendaMonth) state.agendaMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const month = state.agendaMonth;
+  const eventsByDay = agendaEventsByDay();
+  if (!state.agendaSelectedDay) state.agendaSelectedDay = agendaDayKey(today);
+
+  els.agendaMonthTitle.textContent = new Intl.DateTimeFormat("nl-NL", { month: "long", year: "numeric" }).format(month);
+  const firstWeekday = (month.getDay() + 6) % 7;
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const todayKey = agendaDayKey(today);
+  const cells = [];
+  for (let blank = 0; blank < firstWeekday; blank += 1) cells.push('<span class="agenda-day agenda-day-blank" aria-hidden="true"></span>');
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = new Date(month.getFullYear(), month.getMonth(), day);
+    const key = agendaDayKey(date);
+    const events = eventsByDay.get(key) || [];
+    const label = new Intl.DateTimeFormat("nl-NL", { weekday: "long", day: "numeric", month: "long" }).format(date);
+    cells.push(`
+      <button type="button" class="agenda-day ${key === todayKey ? "is-today" : ""} ${key === state.agendaSelectedDay ? "is-selected" : ""} ${events.length ? "has-events" : ""}"
+        data-agenda-day="${key}" aria-pressed="${key === state.agendaSelectedDay}"
+        aria-label="${escapeHtml(`${label}${events.length ? `, ${events.length} ${events.length === 1 ? "activiteit" : "activiteiten"}` : ""}`)}">
+        <span class="agenda-day-number">${day}</span>
+        ${events.length ? `<span class="agenda-day-dots">${events.slice(0, 3).map((event) => `<i class="agenda-dot agenda-dot-${event.type}"></i>`).join("")}</span>` : ""}
+        ${events.slice(0, 2).map((event) => `<span class="agenda-day-title agenda-day-title-${event.type}">${escapeHtml(event.title)}</span>`).join("")}
+        ${events.length > 2 ? `<span class="agenda-day-more">+${events.length - 2}</span>` : ""}
+      </button>
+    `);
+  }
+  els.agendaCalendarGrid.innerHTML = cells.join("");
+  renderAgendaDay(eventsByDay);
+}
+
+function renderAgendaDay(eventsByDay = agendaEventsByDay()) {
+  if (!els.agendaDayList) return;
+  const [year, monthNumber, day] = state.agendaSelectedDay.split("-").map(Number);
+  const date = new Date(year, monthNumber - 1, day);
+  els.agendaDayTitle.textContent = new Intl.DateTimeFormat("nl-NL", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(date);
+  const events = eventsByDay.get(state.agendaSelectedDay) || [];
+  if (!events.length) {
+    els.agendaDayList.innerHTML = '<p class="meta">Niets gepland op deze dag.</p>';
+    return;
+  }
+  els.agendaDayList.innerHTML = events.map((event) => {
+    if (event.type === "planning") {
+      return `
+        <article class="agenda-event agenda-event-planning">
+          <span class="agenda-event-time">${escapeHtml(event.timeLabel || "Hele dag")}</span>
+          <div><strong>${escapeHtml(event.title)}</strong><p class="meta">Jaarplanning</p></div>
+        </article>
+      `;
+    }
+    const { activity } = event;
+    const optOut = activity.responseMode === "optout";
+    return `
+      <button type="button" class="agenda-event agenda-event-activity" data-activity-details="${activity.id}">
+        <span class="agenda-event-time">${escapeHtml(event.timeLabel)}</span>
+        <div>
+          <strong>${escapeHtml(activity.title)}</strong>
+          <p class="meta">${escapeHtml(activity.location || "Locatie volgt")} · ${activity.registrationCount} ${optOut ? "verwacht" : "komen"}${activity.absentees?.length ? ` · ${activity.absentees.length} komen niet` : ""}</p>
+        </div>
+        <span class="agenda-event-link">Wie komen er? <span aria-hidden="true">→</span></span>
+      </button>
+    `;
+  }).join("");
+}
+
+function shiftAgendaMonth(offset) {
+  const current = state.agendaMonth || new Date();
+  state.agendaMonth = new Date(current.getFullYear(), current.getMonth() + offset, 1);
+  const today = new Date();
+  const isCurrentMonth = state.agendaMonth.getFullYear() === today.getFullYear() && state.agendaMonth.getMonth() === today.getMonth();
+  state.agendaSelectedDay = agendaDayKey(isCurrentMonth ? today : state.agendaMonth);
+  renderAgendaCalendar();
 }
 
 function csvValue(value) {
@@ -748,7 +920,7 @@ function showPage(page = location.hash.slice(1) || "home") {
     location.assign("/admin");
     return;
   }
-  const allowedPages = ["home", "leden", "plattegrond", "profiel", "documenten", "biechten"];
+  const allowedPages = ["home", "agenda", "leden", "plattegrond", "profiel", "documenten", "biechten"];
   const activePage = IS_ADMIN_PORTAL && state.user?.isAdmin ? "beheer" : allowedPages.includes(page) ? page : "home";
   document.querySelectorAll(".page-view").forEach((section) => {
     section.classList.toggle("hidden", section.id !== activePage);
@@ -1464,6 +1636,7 @@ async function loadYearAgenda() {
   }
   renderYearAgenda();
   renderAdminYearAgenda();
+  renderAgendaCalendar();
   renderPortalOverview();
 }
 
@@ -1653,7 +1826,7 @@ function activityListHtml(adminMode = false) {
   return state.activities
     .map((activity) => {
       const optOut = activity.responseMode === "optout";
-      const canParticipate = Boolean(state.user && !state.user.isAdmin);
+      const canParticipate = Boolean(state.user);
       const full = !optOut && activity.capacity && activity.registrationCount >= activity.capacity;
       const registrationOpen = activityRegistrationIsOpen(activity);
       const canRegister = Boolean(canParticipate && (optOut ? activity.wasCancelled : !activity.isRegistered && registrationOpen && !full));
@@ -1687,7 +1860,7 @@ function activityListHtml(adminMode = false) {
               ? `Schrijf je in als je komt, of meld je af als je niet kunt. Reageren kan tot ${formatActivityDeadline(activity)}.`
               : `De inschrijving sloot op ${formatActivityDeadline(activity)}. Afmelden blijft mogelijk.`;
       return `
-        <article ${adminMode ? "" : `id="activiteit-${activity.id}"`} class="activity-card ${state.user?.isAdmin && !adminMode ? "activity-card-readonly" : ""}" data-activity-card="${activity.id}">
+        <article ${adminMode ? "" : `id="activiteit-${activity.id}"`} class="activity-card" data-activity-card="${activity.id}">
           <div class="activity-card-content">
             <div class="activity-card-intro ${activity.hasImage ? "has-image" : ""}">
               <div>
@@ -1710,7 +1883,7 @@ function activityListHtml(adminMode = false) {
             ${renderActivityParticipants(activity)}
           </div>
           <div class="activity-actions ${adminMode ? "activity-actions-admin-only" : ""}">
-            <div class="activity-member-actions ${state.user?.isAdmin ? "hidden" : ""}">
+            <div class="activity-member-actions ${adminMode ? "hidden" : ""}">
               <span class="module-label">Jouw deelname</span>
               <button class="primary" data-register="${activity.id}" data-registration-action="join" ${canRegister ? "" : "disabled"}>${optOut ? "Afmelding intrekken" : "Inschrijven"}</button>
               <button class="secondary" data-register="${activity.id}" data-registration-action="cancel" ${canCancel ? "" : "disabled"}>${optOut ? "Ik kan niet" : "Afmelden"}</button>
@@ -1741,6 +1914,7 @@ function activityListHtml(adminMode = false) {
 
 function renderPublicActivities() {
   if (els.publicActivityList) els.publicActivityList.innerHTML = activityListHtml(false);
+  renderAgendaCalendar();
   if (els.adminActivityList) els.adminActivityList.innerHTML = state.user?.isAdmin && IS_ADMIN_PORTAL ? activityListHtml(true) : "";
 }
 
@@ -2529,6 +2703,14 @@ els.yearAgendaNext.addEventListener("click", () => {
   }
 });
 
+els.agendaPrevMonth?.addEventListener("click", () => shiftAgendaMonth(-1));
+els.agendaNextMonth?.addEventListener("click", () => shiftAgendaMonth(1));
+els.agendaToday?.addEventListener("click", () => {
+  state.agendaMonth = null;
+  state.agendaSelectedDay = "";
+  renderAgendaCalendar();
+});
+
 els.menuToggle.addEventListener("click", () => {
   const isOpen = els.siteHeader.classList.toggle("menu-open");
   els.menuToggle.setAttribute("aria-expanded", String(isOpen));
@@ -2902,6 +3084,17 @@ document.body.addEventListener("click", async (event) => {
     await loadActivities();
     renderAdmin();
     return showToast(activity.responseMode === "optout" ? `Je afmelding voor ${activity.title} is ingetrokken.` : `Je bent ingeschreven voor ${activity.title}.`);
+  }
+
+  const activityDetailsBtn = event.target.closest("[data-activity-details]");
+  if (activityDetailsBtn) return openActivityDetails(activityDetailsBtn.dataset.activityDetails);
+
+  const agendaDayBtn = event.target.closest("[data-agenda-day]");
+  if (agendaDayBtn) {
+    state.agendaSelectedDay = agendaDayBtn.dataset.agendaDay;
+    renderAgendaCalendar();
+    if (agendaDayBtn.classList.contains("has-events") && window.matchMedia("(max-width: 620px)").matches) els.agendaDayTitle.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
   }
 
   const registrationsBtn = event.target.closest("[data-registrations]");

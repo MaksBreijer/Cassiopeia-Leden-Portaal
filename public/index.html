@@ -28,7 +28,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20261011-profielfoto" />
+    <link rel="stylesheet" href="styles.css?v=20261012-agenda" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -96,6 +96,7 @@
       </button>
       <nav class="site-nav" aria-label="Hoofdnavigatie">
         <a class="member-portal-nav" href="#home">Home</a>
+        <a class="member-portal-nav" href="#agenda">Agenda</a>
         <a class="member-portal-nav" href="#leden">Leden</a>
         <a class="member-portal-nav" href="#plattegrond">Cassio Cribs</a>
         <a class="member-portal-nav" href="#documenten">Documenten</a>
@@ -195,6 +196,28 @@
         </div>
       </section>
 
+      <section id="agenda" class="section page-view hidden">
+        <div class="page-banner page-banner-compact">
+          <div class="page-banner-copy"><p class="eyebrow">Wat staat er gepland</p><h1>Agenda</h1><p>Kies een dag om te zien wat er gebeurt en wie er komen.</p></div>
+          <span class="page-number" aria-hidden="true">02</span>
+        </div>
+        <div class="content-module agenda-calendar-module">
+          <div class="agenda-calendar-toolbar" aria-label="Maand kiezen">
+            <button id="agendaPrevMonth" class="calendar-nav-button" type="button" aria-label="Vorige maand" title="Vorige maand">←</button>
+            <h2 id="agendaMonthTitle" aria-live="polite">Agenda</h2>
+            <button id="agendaNextMonth" class="calendar-nav-button" type="button" aria-label="Volgende maand" title="Volgende maand">→</button>
+            <button id="agendaToday" class="agenda-today-button" type="button">Vandaag</button>
+          </div>
+          <div class="agenda-weekdays" aria-hidden="true"><span>ma</span><span>di</span><span>wo</span><span>do</span><span>vr</span><span>za</span><span>zo</span></div>
+          <div id="agendaCalendarGrid" class="agenda-calendar-grid"></div>
+          <div class="agenda-legend" aria-hidden="true"><span><i class="agenda-dot agenda-dot-activity"></i>Activiteit met inschrijving</span><span><i class="agenda-dot agenda-dot-planning"></i>Jaarplanning</span></div>
+        </div>
+        <div class="content-module agenda-day-module">
+          <h2 id="agendaDayTitle">Kies een dag</h2>
+          <div id="agendaDayList" class="agenda-day-list" aria-live="polite"></div>
+        </div>
+      </section>
+
       <section id="leden" class="section page-view members-section hidden">
         <div class="page-banner">
           <div class="page-banner-copy">
@@ -202,7 +225,7 @@
             <h1>Leden</h1>
             <p>Alle gezichten, lichtingen en verhalen van Cassiopeia bij elkaar.</p>
           </div>
-          <span class="page-number" aria-hidden="true">02</span>
+          <span class="page-number" aria-hidden="true">03</span>
         </div>
         <div class="directory-toolbar">
           <div class="section-actions">
@@ -240,7 +263,7 @@
             <h1>Profiel</h1>
             <p>Werk hier zelf je adres, profielfoto en wachtwoord bij.</p>
           </div>
-          <span class="page-number" aria-hidden="true">06</span>
+          <span class="page-number" aria-hidden="true">07</span>
         </div>
         <div class="profile-layout">
           <aside class="profile-sidebar">
@@ -294,7 +317,7 @@
             <h1>De plattegrond</h1>
             <p>Bekijk waar onze huizen liggen. Je marker verhuist automatisch mee zodra je je adres bijwerkt.</p>
           </div>
-          <span class="page-number" aria-hidden="true">03</span>
+          <span class="page-number" aria-hidden="true">04</span>
         </div>
         <div class="map-layout">
           <div class="content-module map-module">
@@ -322,7 +345,7 @@
       <section id="documenten" class="section page-view hidden">
         <div class="page-banner page-banner-compact">
           <div class="page-banner-copy"><p class="eyebrow">Naslagwerk</p><h1>Documenten</h1><p>Statuten, HR en andere afspraken op één vertrouwde plek.</p></div>
-          <span class="page-number" aria-hidden="true">04</span>
+          <span class="page-number" aria-hidden="true">05</span>
         </div>
         <div class="content-module">
           <div class="section-head"><div><p class="eyebrow">Alle leden</p><h2>Statuten &amp; HR</h2><p class="section-intro">Lees de nieuwste versie direct in het ledenportaal of download haar.</p></div></div>
@@ -333,7 +356,7 @@
       <section id="biechten" class="section page-view hidden">
         <div class="page-banner page-banner-compact">
           <div class="page-banner-copy"><p class="eyebrow">Anoniem portaal</p><h1>Biechten</h1><p>Laat iets achter zonder naam. De datum blijft zichtbaar, de schrijver niet.</p></div>
-          <span class="page-number" aria-hidden="true">05</span>
+          <span class="page-number" aria-hidden="true">06</span>
         </div>
         <div class="confession-layout">
           <form id="confessionForm" class="content-module confession-form">
@@ -681,6 +704,17 @@
       </div>
     </dialog>
 
+    <dialog id="activityDetailsDialog" class="registrations-dialog">
+      <div class="dialog-card registrations-dialog-card">
+        <p id="activityDetailsDate" class="eyebrow">Activiteit</p>
+        <h3 id="activityDetailsTitle">Activiteit</h3>
+        <div id="activityDetailsBody"></div>
+        <div class="dialog-actions">
+          <button type="button" class="primary" data-close>Sluiten</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="documentViewerDialog" class="document-viewer-dialog">
       <div class="document-viewer-card">
         <header class="document-viewer-header">
@@ -770,6 +804,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20261004-deelafbeelding"></script>
+    <script src="app.js?v=20261012-agenda"></script>
   </body>
 </html>
