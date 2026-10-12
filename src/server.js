@@ -233,6 +233,7 @@ function publicUser(user) {
     memberStatus: user.member_status || "actief",
     committee: user.committee || "",
     isAdmin: Boolean(user.is_admin),
+    takesPart: user.takes_part === undefined ? undefined : Boolean(user.takes_part),
     accountStatus: user.account_status || "active"
   };
 }
@@ -360,6 +361,7 @@ function memberFromBody(body, existing = {}) {
     member_status: ["actief", "oud"].includes(memberStatus) ? memberStatus : "actief",
     committee: valueFromBody(body, "committee", existing.committee),
     is_admin: body.isAdmin ? 1 : 0,
+    takes_part: body.takesPart === undefined ? existing.takes_part ?? 1 : body.takesPart ? 1 : 0,
     account_status: ["pending", "active", "disabled"].includes(accountStatus) ? accountStatus : "active"
   };
 }
@@ -822,8 +824,8 @@ app.post("/api/members", requireAuth, requireAdmin, async (req, res) => {
   try {
     const result = db
       .prepare(`
-        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, birthday, address, latitude, longitude, location_updated_at, bio, avatar, member_status, committee, is_admin, account_status)
-        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @birthday, @address, @latitude, @longitude, @location_updated_at, @bio, @avatar, @member_status, @committee, @is_admin, @account_status)
+        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, birthday, address, latitude, longitude, location_updated_at, bio, avatar, member_status, committee, is_admin, takes_part, account_status)
+        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @birthday, @address, @latitude, @longitude, @location_updated_at, @bio, @avatar, @member_status, @committee, @is_admin, @takes_part, @account_status)
       `)
       .run({ ...member, ...coordinates, password_hash, account_status: "pending" });
     const created = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid);
@@ -903,7 +905,7 @@ app.put("/api/members/:id", requireAuth, requireAdmin, async (req, res) => {
           phone = @phone, birthday = @birthday, address = @address, latitude = @latitude, longitude = @longitude,
           location_updated_at = @location_updated_at, bio = @bio, avatar = @avatar,
           member_status = @member_status, committee = @committee, is_admin = @is_admin,
-          account_status = @account_status, updated_at = CURRENT_TIMESTAMP
+          takes_part = @takes_part, account_status = @account_status, updated_at = CURRENT_TIMESTAMP
       WHERE id = @id
     `).run({ ...member, ...coordinates, id: req.params.id });
 
@@ -965,7 +967,12 @@ function activityArchiveDate(startsAt) {
   return new Date(startsAtMs + ACTIVITY_ARCHIVE_DELAY_MS);
 }
 
+function takesPartInActivities(userId) {
+  return Boolean(db.prepare("SELECT takes_part FROM users WHERE id = ?").get(userId)?.takes_part);
+}
+
 function activityRows(userId, scope = "active") {
+  const canParticipate = takesPartInActivities(userId);
   const rows = db
     .prepare(`
       SELECT a.*,
@@ -986,12 +993,12 @@ function activityRows(userId, scope = "active") {
       FROM registrations r
       JOIN users u ON u.id = r.user_id
       JOIN activities a ON a.id = r.activity_id
-      WHERE r.cancelled_at IS NULL AND u.account_status = 'active' AND a.response_mode = 'signup'
+      WHERE r.cancelled_at IS NULL AND u.account_status = 'active' AND u.takes_part = 1 AND a.response_mode = 'signup'
       UNION ALL
       SELECT a.id AS activity_id, u.id, u.name, u.avatar, u.year_layer
       FROM activities a
       CROSS JOIN users u
-      WHERE a.response_mode = 'optout' AND u.account_status = 'active'
+      WHERE a.response_mode = 'optout' AND u.account_status = 'active' AND u.takes_part = 1
         AND NOT EXISTS (
           SELECT 1 FROM registrations cancelled
           WHERE cancelled.activity_id = a.id AND cancelled.user_id = u.id AND cancelled.cancelled_at IS NOT NULL
@@ -1006,7 +1013,7 @@ function activityRows(userId, scope = "active") {
     SELECT r.activity_id, u.id, u.name, u.avatar, u.year_layer
     FROM registrations r
     JOIN users u ON u.id = r.user_id
-    WHERE r.cancelled_at IS NOT NULL AND u.account_status = 'active'
+    WHERE r.cancelled_at IS NOT NULL AND u.account_status = 'active' AND u.takes_part = 1
     ORDER BY r.activity_id ASC, u.name ASC
   `).all().forEach((row) => {
     const absentees = absenteesByActivity.get(row.activity_id) || [];
@@ -1046,10 +1053,10 @@ function activityRows(userId, scope = "active") {
       registrationOverride: row.registration_override || "automatic",
       registrationOpen: isRegistrationOpen(row.starts_at, row.registration_override),
       archiveAt: archiveDate?.toISOString() || null,
-      isRegistered: (responseMode === "optout" ? !Boolean(row.was_cancelled) : Boolean(row.is_registered)),
-      wasCancelled: Boolean(row.was_cancelled),
-      lateCancelled: Boolean(row.late_cancelled),
-      cancellationReason: row.cancellation_reason || "",
+      isRegistered: canParticipate && (responseMode === "optout" ? !Boolean(row.was_cancelled) : Boolean(row.is_registered)),
+      wasCancelled: canParticipate && Boolean(row.was_cancelled),
+      lateCancelled: canParticipate && Boolean(row.late_cancelled),
+      cancellationReason: canParticipate ? row.cancellation_reason || "" : "",
       files: filesByActivity.get(row.id) || [],
       participants,
       absentees: absenteesByActivity.get(row.id) || []
@@ -1508,6 +1515,7 @@ app.delete("/api/activities/:id/image", requireAuth, requireAdmin, (req, res) =>
 });
 
 app.post("/api/activities/:id/register", requireAuth, (req, res) => {
+  if (!takesPartInActivities(req.session.userId)) return res.status(403).json({ error: "Dit account telt niet mee bij activiteiten." });
   const activity = db.prepare("SELECT * FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
   const responseMode = activity.response_mode || "signup";
@@ -1529,6 +1537,7 @@ app.post("/api/activities/:id/register", requireAuth, (req, res) => {
 });
 
 app.delete("/api/activities/:id/register", requireAuth, (req, res) => {
+  if (!takesPartInActivities(req.session.userId)) return res.status(403).json({ error: "Dit account telt niet mee bij activiteiten." });
   const activity = db.prepare("SELECT starts_at, response_mode FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
   const reason = String(req.body?.reason || "").trim();
@@ -1553,7 +1562,7 @@ app.get("/api/activities/:id/registrations", requireAuth, requireAdmin, (req, re
       r.cancelled_at, r.late_cancelled, r.cancellation_reason
     FROM users u
     LEFT JOIN registrations r ON r.activity_id = ? AND r.user_id = u.id
-    WHERE u.account_status = 'active'
+    WHERE u.account_status = 'active' AND u.takes_part = 1
     ORDER BY
       CASE
         WHEN r.cancelled_at IS NULL AND (r.id IS NOT NULL OR ? = 'optout') THEN 0

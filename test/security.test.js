@@ -563,6 +563,22 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.deepEqual([...new Uint8Array(await previewImage.arrayBuffer()).slice(0, 2)], [0xff, 0xd8]);
   const unsignedPreview = await fetch(`${baseUrl}/activity/${activity.data.activity.id}/preview.jpg`);
   assert.equal(unsignedPreview.status, 404);
+  // The bootstrap management account is not a member and does not take part.
+  const managementRegistration = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
+    method: "POST",
+    cookie: adminLogin.cookie
+  });
+  assert.equal(managementRegistration.response.status, 403);
+  const adminSession = await jsonRequest(baseUrl, "/api/session", { cookie: adminLogin.cookie });
+  assert.equal(adminSession.data.user.takesPart, false);
+  const adminTakesPart = await jsonRequest(baseUrl, `/api/members/${adminSession.data.user.id}`, {
+    method: "PUT",
+    cookie: adminLogin.cookie,
+    body: { ...adminSession.data.user, isAdmin: true, accountStatus: "active", takesPart: true }
+  });
+  assert.equal(adminTakesPart.response.status, 200);
+  assert.equal(adminTakesPart.data.member.takesPart, true);
+
   const registration = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
     method: "POST",
     cookie: adminLogin.cookie
