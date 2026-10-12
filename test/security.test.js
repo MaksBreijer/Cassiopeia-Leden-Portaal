@@ -797,6 +797,12 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.equal(cancelledMember.cancellationReason, "Familieverjaardag");
   assert.ok(cancelledMember.cancelledAt);
 
+  const memberSeesAbsentee = await jsonRequest(baseUrl, "/api/activities", { cookie: activated.cookie });
+  const absenteeActivity = memberSeesAbsentee.data.activities.find((item) => item.id === optOutActivity.data.activity.id);
+  assert.deepEqual(absenteeActivity.absentees.map((member) => member.id), [created.data.member.id]);
+  assert.equal(absenteeActivity.participants.length, 0);
+  assert.doesNotMatch(JSON.stringify(absenteeActivity.absentees), /Familieverjaardag|@/);
+
   const adminCannotOptOut = await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/register`, {
     method: "DELETE",
     cookie: adminLogin.cookie,

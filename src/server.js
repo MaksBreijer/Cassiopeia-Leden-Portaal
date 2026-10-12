@@ -1001,6 +1001,20 @@ function activityRows(userId, scope = "active") {
     `)
     .all();
 
+  // Members may see who cancelled, but never why: the reason stays in the admin overview.
+  const absenteesByActivity = new Map();
+  db.prepare(`
+    SELECT r.activity_id, u.id, u.name, u.avatar, u.year_layer
+    FROM registrations r
+    JOIN users u ON u.id = r.user_id
+    WHERE r.cancelled_at IS NOT NULL AND u.account_status = 'active' AND u.is_admin = 0
+    ORDER BY r.activity_id ASC, u.name ASC
+  `).all().forEach((row) => {
+    const absentees = absenteesByActivity.get(row.activity_id) || [];
+    absentees.push({ id: row.id, name: row.name, avatar: row.avatar || row.name.charAt(0).toUpperCase(), yearLayer: row.year_layer });
+    absenteesByActivity.set(row.activity_id, absentees);
+  });
+
   participants.forEach((participant) => {
     const activityParticipants = participantsByActivity.get(participant.activity_id) || [];
     activityParticipants.push(publicUser(participant));
@@ -1038,7 +1052,8 @@ function activityRows(userId, scope = "active") {
       lateCancelled: canParticipate && Boolean(row.late_cancelled),
       cancellationReason: canParticipate ? row.cancellation_reason || "" : "",
       files: filesByActivity.get(row.id) || [],
-      participants
+      participants,
+      absentees: absenteesByActivity.get(row.id) || []
     };
   });
 

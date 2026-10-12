@@ -5048,3 +5048,339 @@ dialog::backdrop {
   border-color: var(--orange);
   box-shadow: 0 0 0 3px rgba(230, 123, 69, 0.14);
 }
+
+/* Clickable "Gaan mee" row that opens who is (not) coming. */
+button.activity-participants {
+  flex-wrap: wrap;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 8px 10px;
+  margin-left: -10px;
+  width: calc(100% + 20px);
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+button.activity-participants:hover,
+button.activity-participants:focus-visible {
+  border-color: var(--line);
+  background: var(--lavender-50);
+}
+
+.participants-details-hint {
+  margin-left: auto;
+  color: var(--lavender-700);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.activity-details-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.activity-details-facts span {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--lavender-50);
+  font-size: 14px;
+}
+
+.activity-details-facts strong {
+  color: var(--orange-strong);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.activity-details-description {
+  margin: 12px 0 0;
+  color: var(--plum-soft);
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+#activityDetailsBody .registration-groups {
+  margin-top: 14px;
+}
+
+/* Agenda page: month calendar */
+.agenda-calendar-toolbar {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px auto;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 16px;
+  border-radius: 14px;
+  padding: 10px;
+  background: var(--plum);
+}
+
+.agenda-calendar-toolbar h2 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(19px, 2.4vw, 25px);
+  text-align: center;
+}
+
+.agenda-today-button {
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  padding: 0 14px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 800;
+}
+
+.agenda-weekdays,
+.agenda-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.agenda-weekdays span {
+  padding-bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.agenda-day {
+  display: flex;
+  min-width: 0;
+  min-height: 92px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px;
+  color: var(--plum);
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.agenda-day-blank {
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+}
+
+.agenda-day:not(.agenda-day-blank):hover {
+  border-color: var(--lavender-500);
+}
+
+.agenda-day.has-events {
+  background: var(--lavender-50);
+}
+
+.agenda-day.is-today .agenda-day-number {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--orange-strong);
+}
+
+.agenda-day.is-selected {
+  border-color: var(--plum);
+  box-shadow: 0 0 0 2px var(--plum) inset;
+}
+
+.agenda-day-number {
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.agenda-day-dots {
+  display: none;
+  gap: 3px;
+}
+
+.agenda-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+}
+
+.agenda-dot-activity {
+  background: var(--orange-strong);
+}
+
+.agenda-dot-planning {
+  background: var(--lavender-700);
+}
+
+.agenda-day-title {
+  overflow: hidden;
+  border-left: 3px solid var(--lavender-700);
+  border-radius: 4px;
+  padding: 2px 5px;
+  background: var(--lavender-100);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agenda-day-title-activity {
+  border-left-color: var(--orange-strong);
+  background: var(--orange-soft);
+}
+
+.agenda-day-more {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.agenda-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.agenda-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.agenda-day-module h2 {
+  margin: 0 0 14px;
+  font-size: clamp(22px, 3vw, 30px);
+}
+
+.agenda-calendar-toolbar h2::first-letter,
+.agenda-day-module h2::first-letter {
+  text-transform: uppercase;
+}
+
+.agenda-day-list {
+  display: grid;
+  gap: 8px;
+}
+
+.agenda-event {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 13px 15px;
+  color: var(--plum);
+  background: #fff;
+  font: inherit;
+  text-align: left;
+}
+
+.agenda-event-activity {
+  border-left: 4px solid var(--orange-strong);
+  cursor: pointer;
+}
+
+.agenda-event-activity:hover,
+.agenda-event-activity:focus-visible {
+  border-color: var(--lavender-500);
+  border-left-color: var(--orange-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.agenda-event-planning {
+  border-left: 4px solid var(--lavender-700);
+}
+
+.agenda-event strong {
+  display: block;
+}
+
+.agenda-event .meta {
+  margin: 3px 0 0;
+}
+
+.agenda-event-time {
+  color: var(--lavender-700);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.agenda-event-link {
+  color: var(--lavender-700);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+@media (max-width: 620px) {
+  .agenda-calendar-toolbar {
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+  }
+
+  .agenda-today-button {
+    grid-column: 1 / -1;
+    height: 38px;
+  }
+
+  .agenda-weekdays,
+  .agenda-calendar-grid {
+    gap: 3px;
+  }
+
+  .agenda-day {
+    min-height: 48px;
+    align-items: center;
+    padding: 6px 2px;
+  }
+
+  .agenda-day-title,
+  .agenda-day-more {
+    display: none;
+  }
+
+  .agenda-day-dots {
+    display: flex;
+  }
+
+  .agenda-event {
+    grid-template-columns: 50px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .agenda-event-time {
+    font-size: 12px;
+  }
+
+  .agenda-event-link {
+    grid-column: 2;
+  }
+
+  .activity-details-facts {
+    grid-template-columns: 1fr;
+  }
+}
