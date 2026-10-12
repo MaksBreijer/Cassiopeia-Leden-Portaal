@@ -1826,7 +1826,7 @@ function activityListHtml(adminMode = false) {
   return state.activities
     .map((activity) => {
       const optOut = activity.responseMode === "optout";
-      const canParticipate = Boolean(state.user && !state.user.isAdmin);
+      const canParticipate = Boolean(state.user);
       const full = !optOut && activity.capacity && activity.registrationCount >= activity.capacity;
       const registrationOpen = activityRegistrationIsOpen(activity);
       const canRegister = Boolean(canParticipate && (optOut ? activity.wasCancelled : !activity.isRegistered && registrationOpen && !full));
@@ -1860,7 +1860,7 @@ function activityListHtml(adminMode = false) {
               ? `Schrijf je in als je komt, of meld je af als je niet kunt. Reageren kan tot ${formatActivityDeadline(activity)}.`
               : `De inschrijving sloot op ${formatActivityDeadline(activity)}. Afmelden blijft mogelijk.`;
       return `
-        <article ${adminMode ? "" : `id="activiteit-${activity.id}"`} class="activity-card ${state.user?.isAdmin && !adminMode ? "activity-card-readonly" : ""}" data-activity-card="${activity.id}">
+        <article ${adminMode ? "" : `id="activiteit-${activity.id}"`} class="activity-card" data-activity-card="${activity.id}">
           <div class="activity-card-content">
             <div class="activity-card-intro ${activity.hasImage ? "has-image" : ""}">
               <div>
@@ -1883,7 +1883,7 @@ function activityListHtml(adminMode = false) {
             ${renderActivityParticipants(activity)}
           </div>
           <div class="activity-actions ${adminMode ? "activity-actions-admin-only" : ""}">
-            <div class="activity-member-actions ${state.user?.isAdmin ? "hidden" : ""}">
+            <div class="activity-member-actions ${adminMode ? "hidden" : ""}">
               <span class="module-label">Jouw deelname</span>
               <button class="primary" data-register="${activity.id}" data-registration-action="join" ${canRegister ? "" : "disabled"}>${optOut ? "Afmelding intrekken" : "Inschrijven"}</button>
               <button class="secondary" data-register="${activity.id}" data-registration-action="cancel" ${canCancel ? "" : "disabled"}>${optOut ? "Ik kan niet" : "Afmelden"}</button>
