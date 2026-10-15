@@ -416,7 +416,8 @@ function initializeWebApp() {
 const PUSH_HINT_KEY = "cassiopeiaPushHintDismissed";
 // Zet op true om de meldingenknop alleen aan admins te tonen.
 const PUSH_ADMINS_ONLY = false;
-const PUSH_PROMPT_KEY = "cassiopeiaPushPromptSeen";
+const PUSH_PROMPT_KEY = "cassiopeiaPushPromptLater";
+const PUSH_PROMPT_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
 
 function pushSupported() {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
@@ -485,18 +486,18 @@ function maybeShowPushPrompt({ enabled, blocked, iosNeedsInstall }) {
   const dialog = document.querySelector("#pushPromptDialog");
   if (!dialog || dialog.open || enabled || blocked || !els.loginScreen.classList.contains("hidden")) return;
   const requested = location.hash === "#meldingen";
-  let seen = false;
-  try { seen = localStorage.getItem(PUSH_PROMPT_KEY) === "1"; } catch {}
-  if (!requested && seen) return;
+  let snoozedUntil = 0;
+  try { snoozedUntil = Number(localStorage.getItem(PUSH_PROMPT_KEY)) || 0; } catch {}
+  if (!requested && Date.now() < snoozedUntil) return;
   dialog.querySelector("[data-push-prompt-install]").classList.toggle("hidden", !iosNeedsInstall);
   dialog.querySelector("[data-push-prompt-accept]").textContent = iosNeedsInstall ? "Begrepen" : "Meldingen aanzetten";
   dialog.dataset.iosNeedsInstall = String(iosNeedsInstall);
   dialog.showModal();
 }
 
-// De pop-up komt eenmalig; daarna kan het via Profiel.
+// Na "Later" komt de pop-up na 3 dagen terug; aanzetten kan ook altijd via Profiel.
 function snoozePushPrompt() {
-  try { localStorage.setItem(PUSH_PROMPT_KEY, "1"); } catch {}
+  try { localStorage.setItem(PUSH_PROMPT_KEY, String(Date.now() + PUSH_PROMPT_SNOOZE_MS)); } catch {}
   showToast("Je kunt meldingen altijd aanzetten via Profiel.");
 }
 
@@ -3164,7 +3165,6 @@ document.body.addEventListener("click", async (event) => {
     const dialog = document.querySelector("#pushPromptDialog");
     dialog.close();
     if (dialog.dataset.iosNeedsInstall === "true") return snoozePushPrompt();
-    try { localStorage.setItem(PUSH_PROMPT_KEY, "1"); } catch {}
     return togglePush(pushPromptAccept);
   }
 
