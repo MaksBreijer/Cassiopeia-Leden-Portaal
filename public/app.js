@@ -416,8 +416,7 @@ function initializeWebApp() {
 const PUSH_HINT_KEY = "cassiopeiaPushHintDismissed";
 // Zet op true om de meldingenknop alleen aan admins te tonen.
 const PUSH_ADMINS_ONLY = false;
-const PUSH_PROMPT_KEY = "cassiopeiaPushPromptLater";
-const PUSH_PROMPT_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
+const PUSH_PROMPT_KEY = "cassiopeiaPushPromptSeen";
 
 function pushSupported() {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
@@ -486,17 +485,19 @@ function maybeShowPushPrompt({ enabled, blocked, iosNeedsInstall }) {
   const dialog = document.querySelector("#pushPromptDialog");
   if (!dialog || dialog.open || enabled || blocked || !els.loginScreen.classList.contains("hidden")) return;
   const requested = location.hash === "#meldingen";
-  let snoozedUntil = 0;
-  try { snoozedUntil = Number(localStorage.getItem(PUSH_PROMPT_KEY)) || 0; } catch {}
-  if (!requested && Date.now() < snoozedUntil) return;
+  let seen = false;
+  try { seen = localStorage.getItem(PUSH_PROMPT_KEY) === "1"; } catch {}
+  if (!requested && seen) return;
   dialog.querySelector("[data-push-prompt-install]").classList.toggle("hidden", !iosNeedsInstall);
   dialog.querySelector("[data-push-prompt-accept]").textContent = iosNeedsInstall ? "Begrepen" : "Meldingen aanzetten";
   dialog.dataset.iosNeedsInstall = String(iosNeedsInstall);
   dialog.showModal();
 }
 
+// De pop-up komt eenmalig; daarna kan het via Profiel.
 function snoozePushPrompt() {
-  try { localStorage.setItem(PUSH_PROMPT_KEY, String(Date.now() + PUSH_PROMPT_SNOOZE_MS)); } catch {}
+  try { localStorage.setItem(PUSH_PROMPT_KEY, "1"); } catch {}
+  showToast("Je kunt meldingen altijd aanzetten via Profiel.");
 }
 
 async function togglePush(button) {
@@ -3163,6 +3164,7 @@ document.body.addEventListener("click", async (event) => {
     const dialog = document.querySelector("#pushPromptDialog");
     dialog.close();
     if (dialog.dataset.iosNeedsInstall === "true") return snoozePushPrompt();
+    try { localStorage.setItem(PUSH_PROMPT_KEY, "1"); } catch {}
     return togglePush(pushPromptAccept);
   }
 
