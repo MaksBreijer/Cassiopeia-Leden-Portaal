@@ -412,6 +412,103 @@ function initializeWebApp() {
   }
 }
 
+// Pushmeldingen
+const PUSH_HINT_KEY = "cassiopeiaPushHintDismissed";
+// Testfase: alleen admins zien de meldingenknop. Zet op false om het voor alle leden aan te zetten.
+const PUSH_ADMINS_ONLY = true;
+
+function pushSupported() {
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+function isStandaloneApp() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function isIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function urlBase64ToUint8Array(base64) {
+  const padded = (base64 + "=".repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(padded), (char) => char.charCodeAt(0));
+}
+
+async function currentPushSubscription() {
+  if (!pushSupported()) return null;
+  const registration = await navigator.serviceWorker.getRegistration("/");
+  return registration ? registration.pushManager.getSubscription() : null;
+}
+
+async function pushRegistration() {
+  const registration = (await navigator.serviceWorker.getRegistration("/")) || (await navigator.serviceWorker.register("/sw.js", { scope: "/" }));
+  return registration.active ? registration : navigator.serviceWorker.ready;
+}
+
+async function refreshPushUi() {
+  const cards = document.querySelectorAll("[data-push-card]");
+  const hint = document.querySelector("[data-push-hint]");
+  const iosNeedsInstall = isIos() && !isStandaloneApp();
+  if (!state.user || IS_ADMIN_PORTAL || (PUSH_ADMINS_ONLY && !state.user.isAdmin) || (!pushSupported() && !iosNeedsInstall)) {
+    cards.forEach((card) => { card.hidden = true; });
+    if (hint) hint.hidden = true;
+    return;
+  }
+  const subscription = iosNeedsInstall ? null : await currentPushSubscription().catch(() => null);
+  const enabled = Boolean(subscription) && Notification.permission === "granted";
+  const blocked = !iosNeedsInstall && Notification.permission === "denied";
+  cards.forEach((card) => { card.hidden = false; });
+  document.querySelectorAll("[data-push-status]").forEach((status) => {
+    status.textContent = iosNeedsInstall
+      ? "Op iPhone werken meldingen zodra je Cassiopeia op je beginscherm zet (Deel → Zet op beginscherm)."
+      : blocked
+        ? "Meldingen zijn geblokkeerd. Zet ze aan via de instellingen van je browser of telefoon."
+        : enabled
+          ? "Meldingen staan aan op dit apparaat."
+          : "Krijg een melding bij nieuwe activiteiten, sluitende inschrijvingen en verjaardagen.";
+  });
+  document.querySelectorAll("[data-push-toggle]").forEach((button) => {
+    button.textContent = iosNeedsInstall ? "Hoe installeer ik de app?" : enabled ? "Meldingen uitzetten" : "Meldingen aanzetten";
+    button.classList.toggle("primary", !enabled);
+    button.classList.toggle("secondary", enabled);
+    button.disabled = blocked;
+    button.dataset.pushEnabled = String(enabled);
+  });
+  let dismissed = false;
+  try { dismissed = localStorage.getItem(PUSH_HINT_KEY) === "1"; } catch {}
+  if (hint) hint.hidden = enabled || blocked || dismissed;
+}
+
+async function togglePush(button) {
+  if (isIos() && !isStandaloneApp()) return openInstallFlow();
+  button.disabled = true;
+  try {
+    const existing = await currentPushSubscription();
+    if (button.dataset.pushEnabled === "true" && existing) {
+      await api("/api/push/subscriptions", { method: "DELETE", body: JSON.stringify({ endpoint: existing.endpoint }) }).catch(() => {});
+      await existing.unsubscribe();
+      showToast("Meldingen staan uit op dit apparaat.");
+    } else {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        showToast("Zonder toestemming kunnen we geen meldingen sturen.");
+      } else {
+        const { publicKey } = await api("/api/push/public-key");
+        const registration = await pushRegistration();
+        const subscription = existing || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+        await api("/api/push/subscriptions", { method: "POST", body: JSON.stringify({ subscription }) });
+        await api("/api/push/test", { method: "POST" }).catch(() => {});
+        showToast("Meldingen staan aan!");
+      }
+    }
+  } catch (error) {
+    showToast(error.message || "Meldingen aanzetten is niet gelukt.");
+  } finally {
+    button.disabled = false;
+    refreshPushUi();
+  }
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -985,6 +1082,7 @@ function setLoggedIn(user) {
   els.memberGrid.classList.remove("hidden");
   renderProfile();
   syncScopedVisibility();
+  refreshPushUi();
   showPage(IS_ADMIN_PORTAL ? "beheer" : undefined);
   if (IS_ADMIN_PORTAL) showAdminPanel(activeAdminPanel);
   return true;
@@ -3039,6 +3137,15 @@ document.body.addEventListener("click", async (event) => {
 
   const calendarSubscriptionButton = event.target.closest("[data-open-calendar-subscription]");
   if (calendarSubscriptionButton) return openCalendarSubscriptionDialog();
+
+  const pushToggleButton = event.target.closest("[data-push-toggle]");
+  if (pushToggleButton) return togglePush(pushToggleButton);
+
+  if (event.target.closest("[data-push-hint-dismiss]")) {
+    try { localStorage.setItem(PUSH_HINT_KEY, "1"); } catch {}
+    document.querySelector("[data-push-hint]").hidden = true;
+    return;
+  }
 
   const showAllActivitiesButton = event.target.closest("[data-show-all-activities]");
   if (showAllActivitiesButton) {

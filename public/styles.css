@@ -5475,3 +5475,57 @@ button.activity-participants:focus-visible {
     grid-column: auto;
   }
 }
+
+/* Pushmeldingen */
+.push-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-sm);
+}
+
+.push-hint[hidden],
+.push-card[hidden] {
+  display: none;
+}
+
+.push-hint strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--plum);
+  font-size: 17px;
+}
+
+.push-hint p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.push-hint-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.push-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+
+.push-card-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
