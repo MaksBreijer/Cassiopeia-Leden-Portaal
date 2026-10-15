@@ -774,6 +774,28 @@
       </form>
     </dialog>
 
+    <dialog id="pushPromptDialog" class="install-app-dialog">
+      <div class="dialog-card install-app-card">
+        <div class="install-app-icon" aria-hidden="true">
+          <img src="assets/app-icon-192.png?v=20260831-logo" alt="" />
+        </div>
+        <div class="dialog-heading">
+          <p class="eyebrow">Mis niks meer 🔔</p>
+          <h3>Zet meldingen aan</h3>
+          <p>Krijg een seintje bij nieuwe activiteiten, als een inschrijving bijna sluit en als er iemand jarig is.</p>
+        </div>
+        <div data-push-prompt-install class="install-steps hidden">
+          <span>1</span><p>Tik onderin Safari op <strong>Delen</strong>.</p>
+          <span>2</span><p>Kies <strong>Zet op beginscherm</strong> en open Cassiopeia vanaf je beginscherm.</p>
+          <span>3</span><p>Tik daar op <strong>Meldingen aanzetten</strong>.</p>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" class="primary" data-push-prompt-accept>Meldingen aanzetten</button>
+          <button type="button" class="ghost" data-push-prompt-later>Later</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="installAppDialog" class="install-app-dialog">
       <div class="dialog-card install-app-card">
         <div class="install-app-icon" aria-hidden="true">
@@ -830,6 +852,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20261016-push"></script>
+    <script src="app.js?v=20261016-later"></script>
   </body>
 </html>

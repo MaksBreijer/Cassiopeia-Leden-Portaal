@@ -414,8 +414,10 @@ function initializeWebApp() {
 
 // Pushmeldingen
 const PUSH_HINT_KEY = "cassiopeiaPushHintDismissed";
-// Testfase: alleen admins zien de meldingenknop. Zet op false om het voor alle leden aan te zetten.
-const PUSH_ADMINS_ONLY = true;
+// Zet op true om de meldingenknop alleen aan admins te tonen.
+const PUSH_ADMINS_ONLY = false;
+const PUSH_PROMPT_KEY = "cassiopeiaPushPromptLater";
+const PUSH_PROMPT_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
 
 function pushSupported() {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
@@ -477,6 +479,26 @@ async function refreshPushUi() {
   let dismissed = false;
   try { dismissed = localStorage.getItem(PUSH_HINT_KEY) === "1"; } catch {}
   if (hint) hint.hidden = enabled || blocked || dismissed;
+  maybeShowPushPrompt({ enabled, blocked, iosNeedsInstall });
+}
+
+function maybeShowPushPrompt({ enabled, blocked, iosNeedsInstall }) {
+  const dialog = document.querySelector("#pushPromptDialog");
+  if (!dialog || dialog.open || enabled || blocked || !els.loginScreen.classList.contains("hidden")) return;
+  const requested = location.hash === "#meldingen";
+  let snoozedUntil = 0;
+  try { snoozedUntil = Number(localStorage.getItem(PUSH_PROMPT_KEY)) || 0; } catch {}
+  if (!requested && Date.now() < snoozedUntil) return;
+  dialog.querySelector("[data-push-prompt-install]").classList.toggle("hidden", !iosNeedsInstall);
+  dialog.querySelector("[data-push-prompt-accept]").textContent = iosNeedsInstall ? "Begrepen" : "Meldingen aanzetten";
+  dialog.dataset.iosNeedsInstall = String(iosNeedsInstall);
+  dialog.showModal();
+}
+
+// Na "Later" komt de pop-up na 3 dagen terug; aanzetten kan ook altijd via Profiel.
+function snoozePushPrompt() {
+  try { localStorage.setItem(PUSH_PROMPT_KEY, String(Date.now() + PUSH_PROMPT_SNOOZE_MS)); } catch {}
+  showToast("Je kunt meldingen altijd aanzetten via Profiel.");
 }
 
 async function togglePush(button) {
@@ -3137,6 +3159,20 @@ document.body.addEventListener("click", async (event) => {
 
   const calendarSubscriptionButton = event.target.closest("[data-open-calendar-subscription]");
   if (calendarSubscriptionButton) return openCalendarSubscriptionDialog();
+
+  const pushPromptAccept = event.target.closest("[data-push-prompt-accept]");
+  if (pushPromptAccept) {
+    const dialog = document.querySelector("#pushPromptDialog");
+    dialog.close();
+    if (dialog.dataset.iosNeedsInstall === "true") return snoozePushPrompt();
+    return togglePush(pushPromptAccept);
+  }
+
+  if (event.target.closest("[data-push-prompt-later]")) {
+    snoozePushPrompt();
+    document.querySelector("#pushPromptDialog").close();
+    return;
+  }
 
   const pushToggleButton = event.target.closest("[data-push-toggle]");
   if (pushToggleButton) return togglePush(pushToggleButton);
