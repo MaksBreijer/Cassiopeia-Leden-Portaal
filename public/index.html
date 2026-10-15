@@ -28,7 +28,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20261015-overzicht" />
+    <link rel="stylesheet" href="styles.css?v=20261016-push" />
     <link rel="stylesheet" href="refine.css?v=20261016-fotos" />
   </head>
   <body>
@@ -117,8 +117,8 @@
       <a href="#home"><span aria-hidden="true">⌂</span>Home</a>
       <a href="#agenda"><span aria-hidden="true">▦</span>Agenda</a>
       <a href="#leden"><span aria-hidden="true">☺</span>Leden</a>
+      <a href="#biechten"><span aria-hidden="true">✉</span>Biechten</a>
       <a href="#plattegrond"><span aria-hidden="true">⌖</span>Cribs</a>
-      <a href="#profiel"><span aria-hidden="true">◉</span>Profiel</a>
     </nav>
 
     <main class="hidden">
@@ -141,6 +141,17 @@
           </div>
           <div class="portal-hero-media" aria-label="Groepsfoto van Cassiopeia">
             <img class="portal-hero-background" data-site-asset="herobackground" src="assets/cassio-background.jpeg" alt="Groepsfoto van Cassiopeia" />
+          </div>
+        </div>
+
+        <div class="push-hint" data-push-hint hidden>
+          <div>
+            <strong>Mis niks meer 🔔</strong>
+            <p>Krijg een melding bij nieuwe activiteiten, sluitende inschrijvingen en verjaardagen.</p>
+          </div>
+          <div class="push-hint-actions">
+            <button class="primary" type="button" data-push-toggle>Meldingen aanzetten</button>
+            <button class="ghost" type="button" data-push-hint-dismiss>Later</button>
           </div>
         </div>
 
@@ -285,6 +296,11 @@
               </div>
             </div>
             <p class="profile-note">Jouw profiel is alleen zichtbaar voor ingelogde leden van Cassiopeia.</p>
+            <div class="push-card" data-push-card hidden>
+              <span class="module-label">Pushmeldingen</span>
+              <p class="push-card-status" data-push-status>Krijg een melding bij nieuwe activiteiten, sluitende inschrijvingen en verjaardagen.</p>
+              <button class="primary" type="button" data-push-toggle>Meldingen aanzetten</button>
+            </div>
           </aside>
           <form id="profileForm" class="profile-card">
             <div class="form-section-heading"><span>Persoonlijke gegevens</span><p>Werk alleen bij wat is veranderd.</p></div>
@@ -814,6 +830,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20261015-overzicht"></script>
+    <script src="app.js?v=20261016-push"></script>
   </body>
 </html>

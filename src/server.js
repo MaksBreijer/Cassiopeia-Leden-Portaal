@@ -9,8 +9,10 @@ const { createCalendarFeed, googleCalendarLinkFromIcsUrl, parseGoogleCalendarFee
 const { MAX_IMPORT_ROWS, parseMemberImport, validateRecords } = require("./member-import");
 const { createSqliteSessionStore } = require("./session-store");
 const { renderActivityShareImage } = require("./activity-share-image");
+const { setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, sendToUsers } = require("./push");
 
 initializeDatabase();
+setupPush();
 const SQLiteSessionStore = createSqliteSessionStore(session, db);
 
 const app = express();
@@ -531,6 +533,34 @@ function isLateCancellation(startsAt) {
   const deadline = registrationDeadline(startsAt);
   return Boolean(deadline && Date.now() >= deadline.getTime());
 }
+
+app.get("/api/push/public-key", requireAuth, (req, res) => {
+  res.json({ publicKey: getPublicKey() });
+});
+
+app.post("/api/push/subscriptions", requireAuth, (req, res) => {
+  try {
+    saveSubscription(req.session.userId, req.body?.subscription);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+  res.status(201).json({ ok: true });
+});
+
+app.delete("/api/push/subscriptions", requireAuth, (req, res) => {
+  removeSubscription(req.session.userId, req.body?.endpoint);
+  res.json({ ok: true });
+});
+
+app.post("/api/push/test", requireAuth, async (req, res) => {
+  const sent = await sendToUsers([req.session.userId], {
+    title: "Meldingen staan aan 🎉",
+    body: "Je hoort het voortaan als er iets nieuws is bij Cassiopeia.",
+    url: "/#home",
+    tag: "push-test",
+  });
+  res.json({ sent });
+});
 
 app.get("/api/session", (req, res) => {
   res.json({ user: publicUser(getCurrentUser(req)) });
@@ -1420,6 +1450,7 @@ app.post("/api/activities", requireAuth, requireAdmin, (req, res) => {
   const result = db
     .prepare("INSERT INTO activities (title, description, location, starts_at, capacity, response_mode, registration_override, created_by) VALUES (@title, @description, @location, @starts_at, @capacity, @response_mode, @registration_override, @created_by)")
     .run({ ...activity, created_by: req.session.userId });
+  notifyNewActivity({ ...activity, id: result.lastInsertRowid }, req.session.userId);
   res.status(201).json({ activity: activityRows(req.session.userId, "all").find((item) => item.id === result.lastInsertRowid) });
 });
 
