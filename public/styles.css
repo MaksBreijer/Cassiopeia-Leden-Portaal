@@ -5384,3 +5384,94 @@ button.activity-participants:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* Overzichtelijker: compacte activiteitkaarten */
+.activity-quick-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 16px 0 0;
+  color: var(--plum-soft);
+  font-size: 13px;
+}
+
+.activity-quick-facts span {
+  white-space: nowrap;
+}
+
+.activity-card-content {
+  padding: clamp(18px, 3vw, 28px);
+}
+
+.activity-card .activity-participants {
+  margin-top: 14px;
+}
+
+.activity-actions {
+  padding: 20px;
+  gap: 12px;
+}
+
+.activity-show-all {
+  justify-self: center;
+  margin-top: 4px;
+}
+
+/* Mobiele tabbalk onderin */
+.bottom-nav {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  body.is-authenticated:not(.admin-portal):not(:has(#loginScreen:not(.hidden))) .bottom-nav {
+    position: fixed;
+    inset: auto 10px calc(10px + env(safe-area-inset-bottom)) 10px;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(14px);
+    box-shadow: var(--shadow-md);
+  }
+
+  body.is-authenticated:not(.admin-portal) main {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .bottom-nav a {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    border-radius: 16px;
+    padding: 7px 2px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .bottom-nav a span {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .bottom-nav a[aria-current="page"] {
+    color: var(--plum);
+    background: var(--lavender-100);
+  }
+
+  .activity-quick-facts {
+    font-size: 12px;
+  }
+
+  body .activity-member-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  body .activity-member-actions > button {
+    grid-column: auto;
+  }
+}

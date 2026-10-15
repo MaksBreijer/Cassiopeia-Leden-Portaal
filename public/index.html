@@ -28,7 +28,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
-    <link rel="stylesheet" href="styles.css?v=20261012-agenda" />
+    <link rel="stylesheet" href="styles.css?v=20261015-overzicht" />
   </head>
   <body>
     <section id="loginScreen" class="login-screen">
@@ -111,6 +111,14 @@
         <button id="logoutBtn" class="nav-button hidden">Uitloggen</button>
       </nav>
     </header>
+
+    <nav class="bottom-nav" aria-label="Snelle navigatie">
+      <a href="#home"><span aria-hidden="true">⌂</span>Home</a>
+      <a href="#agenda"><span aria-hidden="true">▦</span>Agenda</a>
+      <a href="#leden"><span aria-hidden="true">☺</span>Leden</a>
+      <a href="#plattegrond"><span aria-hidden="true">⌖</span>Cribs</a>
+      <a href="#profiel"><span aria-hidden="true">◉</span>Profiel</a>
+    </nav>
 
     <main class="hidden">
       <section id="home" class="section page-view page-intro">
@@ -805,6 +813,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20261012-meetellen"></script>
+    <script src="app.js?v=20261015-overzicht"></script>
   </body>
 </html>

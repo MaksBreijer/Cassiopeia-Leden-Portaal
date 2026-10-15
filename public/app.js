@@ -502,7 +502,12 @@ function activityShareUrl(activity) {
 function focusSharedActivity() {
   const id = sharedActivityId();
   if (!id) return false;
-  const card = document.querySelector(`[data-activity-card="${id}"]`);
+  let card = document.querySelector(`[data-activity-card="${id}"]`);
+  if (!card && !showAllHomeActivities && state.activities.some((activity) => String(activity.id) === String(id))) {
+    showAllHomeActivities = true;
+    renderPublicActivities();
+    card = document.querySelector(`[data-activity-card="${id}"]`);
+  }
   if (!card) return false;
   card.classList.add("activity-card-highlight");
   card.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -925,7 +930,7 @@ function showPage(page = location.hash.slice(1) || "home") {
   document.querySelectorAll(".page-view").forEach((section) => {
     section.classList.toggle("hidden", section.id !== activePage);
   });
-  document.querySelectorAll(".site-nav a[href^='#']").forEach((link) => {
+  document.querySelectorAll(".site-nav a[href^='#'], .bottom-nav a[href^='#']").forEach((link) => {
     if (link.getAttribute("href") === `#${activePage}`) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
@@ -1810,7 +1815,10 @@ function renderYearAgenda() {
   `;
 }
 
-function activityListHtml(adminMode = false) {
+const HOME_ACTIVITY_PREVIEW = 3;
+let showAllHomeActivities = false;
+
+function activityListHtml(adminMode = false, limit = Infinity) {
   if (!state.activities.length) {
     return `
       <article class="activity-card">
@@ -1823,7 +1831,12 @@ function activityListHtml(adminMode = false) {
     `;
   }
 
+  const hiddenCount = Math.max(0, state.activities.length - limit);
+  const moreButton = hiddenCount
+    ? `<button type="button" class="ghost activity-show-all" data-show-all-activities>Toon alle ${state.activities.length} activiteiten</button>`
+    : "";
   return state.activities
+    .slice(0, limit)
     .map((activity) => {
       const optOut = activity.responseMode === "optout";
       const canParticipate = Boolean(state.user && state.user.takesPart !== false);
@@ -1873,11 +1886,11 @@ function activityListHtml(adminMode = false) {
               </div>
               ${activity.hasImage ? `<img class="activity-card-image" src="/api/activities/${activity.id}/image" alt="" loading="lazy" />` : ""}
             </div>
-            <div class="activity-facts">
-              <span><strong>Locatie</strong>${escapeHtml(activity.location || "Volgt")}</span>
-              <span><strong>${optOut ? "Verwacht" : "Aanmeldingen"}</strong>${activity.registrationCount}${!optOut && activity.capacity ? ` van ${activity.capacity}` : ""}</span>
-              <span><strong>${optOut ? "Afmelddeadline" : "Inschrijfdeadline"}</strong>${formatActivityDeadline(activity)}</span>
-            </div>
+            <p class="activity-quick-facts">
+              <span>📍 ${escapeHtml(activity.location || "Locatie volgt")}</span>
+              <span>👥 ${activity.registrationCount}${!optOut && activity.capacity ? `/${activity.capacity}` : ""} ${optOut ? "verwacht" : "aangemeld"}</span>
+              <span>⏳ ${optOut ? "Afmelden" : "Reageren"} tot ${formatActivityDeadline(activity)}</span>
+            </p>
             ${activity.wasCancelled ? `<p class="late-cancelled-note">${activity.lateCancelled ? "Afmelding te laat geregistreerd." : "Je bent afgemeld."}</p>` : ""}
             ${activity.files?.length ? `<div class="activity-files"><span class="module-label">Bestanden</span>${activity.files.map((file) => `<button class="file-link" type="button" data-download-activity-file="${file.id}" data-activity-id="${activity.id}" data-file-name="${escapeHtml(file.fileName)}" data-file-type="${escapeHtml(file.mimeType)}">${escapeHtml(file.fileName)}</button>${adminMode ? `<button class="file-delete" type="button" data-delete-activity-file="${file.id}" data-activity-id="${activity.id}" aria-label="Verwijder ${escapeHtml(file.fileName)}">×</button>` : ""}`).join("")}</div>` : ""}
             ${renderActivityParticipants(activity)}
@@ -1909,11 +1922,11 @@ function activityListHtml(adminMode = false) {
         </article>
       `;
     })
-    .join("");
+    .join("") + moreButton;
 }
 
 function renderPublicActivities() {
-  if (els.publicActivityList) els.publicActivityList.innerHTML = activityListHtml(false);
+  if (els.publicActivityList) els.publicActivityList.innerHTML = activityListHtml(false, showAllHomeActivities ? Infinity : HOME_ACTIVITY_PREVIEW);
   renderAgendaCalendar();
   if (els.adminActivityList) els.adminActivityList.innerHTML = state.user?.isAdmin && IS_ADMIN_PORTAL ? activityListHtml(true) : "";
 }
@@ -3027,7 +3040,14 @@ document.body.addEventListener("click", async (event) => {
   const calendarSubscriptionButton = event.target.closest("[data-open-calendar-subscription]");
   if (calendarSubscriptionButton) return openCalendarSubscriptionDialog();
 
-  const navLink = event.target.closest(".site-nav a");
+  const showAllActivitiesButton = event.target.closest("[data-show-all-activities]");
+  if (showAllActivitiesButton) {
+    showAllHomeActivities = true;
+    renderPublicActivities();
+    return;
+  }
+
+  const navLink = event.target.closest(".site-nav a, .bottom-nav a");
   if (navLink?.getAttribute("href")?.startsWith("#")) {
     showPage(navLink.getAttribute("href").slice(1));
   }
