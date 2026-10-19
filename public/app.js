@@ -1208,11 +1208,17 @@ function setFilterOptions(select, values, emptyLabel, formatValue = (value) => v
   select.value = values.includes(current) ? current : "";
 }
 
+// Bestuursfuncties vallen in het filter samen onder "Bestuur".
+const BOARD_ROLE_PATTERN = /^(praeses|ab[\s-]*actis|q(u)?aestor|questor|bestuur)$/i;
+
 function memberCommittees(member) {
-  return String(member.committee || "")
+  const committees = String(member.committee || "")
     .split(/[,;|/]/)
     .map((value) => value.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((value) => (BOARD_ROLE_PATTERN.test(value) ? "Bestuur" : value));
+  if (BOARD_ROLE_PATTERN.test(String(member.roleTitle || "").trim())) committees.push("Bestuur");
+  return [...new Set(committees)];
 }
 
 function renderMemberFilters() {
