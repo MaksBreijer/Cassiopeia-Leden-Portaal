@@ -746,6 +746,17 @@ function agendaEventsByDay() {
     if (duplicate) return;
     add(key, { type: "planning", title: item.title, timestamp, timeLabel: yearAgendaTimeLabel(item) });
   });
+  // Verjaardagen komen elk jaar terug; vul ze in rond het getoonde jaar.
+  const shownYear = (state.agendaMonth || new Date()).getFullYear();
+  (state.agendaMembers || []).forEach((member) => {
+    const parts = member.accountStatus === "active" ? birthdayParts(member.birthday) : null;
+    if (!parts) return;
+    for (let year = shownYear - 1; year <= shownYear + 1; year += 1) {
+      const date = new Date(year, parts.month - 1, parts.day);
+      if (date.getMonth() !== parts.month - 1) continue;
+      add(agendaDayKey(date), { type: "birthday", title: `🎂 ${member.name}`, timestamp: date.getTime() - 1, timeLabel: "Jarig" });
+    }
+  });
   days.forEach((events) => events.sort((a, b) => a.timestamp - b.timestamp));
   return days;
 }
@@ -795,6 +806,14 @@ function renderAgendaDay(eventsByDay = agendaEventsByDay()) {
     return;
   }
   els.agendaDayList.innerHTML = events.map((event) => {
+    if (event.type === "birthday") {
+      return `
+        <article class="agenda-event agenda-event-birthday">
+          <span class="agenda-event-time">${escapeHtml(event.timeLabel)}</span>
+          <div><strong>${escapeHtml(event.title)}</strong><p class="meta">Verjaardag</p></div>
+        </article>
+      `;
+    }
     if (event.type === "planning") {
       return `
         <article class="agenda-event agenda-event-planning">
@@ -1155,6 +1174,11 @@ async function loadMembers() {
   const query = encodeURIComponent(els.memberSearch.value || "");
   const data = await api(`/api/members?q=${query}`);
   state.members = data.members;
+  // Ongefilterde lijst voor de verjaardagen in de agenda.
+  if (!query) {
+    state.agendaMembers = data.members;
+    renderAgendaCalendar();
+  }
   renderMemberFilters();
   renderMembers();
   renderBirthdays();
@@ -1184,11 +1208,17 @@ function setFilterOptions(select, values, emptyLabel, formatValue = (value) => v
   select.value = values.includes(current) ? current : "";
 }
 
+// Bestuursfuncties vallen in het filter samen onder "Bestuur".
+const BOARD_ROLE_PATTERN = /^(praeses|ab[\s-]*actis|q(u)?aestor|questor|bestuur)$/i;
+
 function memberCommittees(member) {
-  return String(member.committee || "")
+  const committees = String(member.committee || "")
     .split(/[,;|/]/)
     .map((value) => value.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((value) => (BOARD_ROLE_PATTERN.test(value) ? "Bestuur" : value));
+  if (BOARD_ROLE_PATTERN.test(String(member.roleTitle || "").trim())) committees.push("Bestuur");
+  return [...new Set(committees)];
 }
 
 function renderMemberFilters() {

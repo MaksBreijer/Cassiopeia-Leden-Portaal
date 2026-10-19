@@ -5227,6 +5227,10 @@ button.activity-participants:focus-visible {
   background: var(--orange-strong);
 }
 
+.agenda-dot-birthday {
+  background: #d6537a;
+}
+
 .agenda-dot-planning {
   background: var(--lavender-700);
 }
@@ -5242,6 +5246,11 @@ button.activity-participants:focus-visible {
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.agenda-day-title-birthday {
+  border-left-color: #d6537a;
+  background: #fde8ef;
 }
 
 .agenda-day-title-activity {
@@ -5310,6 +5319,10 @@ button.activity-participants:focus-visible {
   border-color: var(--lavender-500);
   border-left-color: var(--orange-strong);
   box-shadow: var(--shadow-sm);
+}
+
+.agenda-event-birthday {
+  border-left: 4px solid #d6537a;
 }
 
 .agenda-event-planning {
