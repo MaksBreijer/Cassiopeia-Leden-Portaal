@@ -156,6 +156,20 @@ async function notifyBirthdays(today) {
   }
 }
 
+// Eenmalige aankondiging: gala-teaser op 23 oktober 2026 tussen 20:00 en 21:00 (Amsterdam) naar alle actieve leden.
+const GALA_TEASER_DATE = "2026-10-23";
+const GALA_TEASER_HOUR = 20;
+
+async function notifyGalaTeaser(today) {
+  if (today.date !== GALA_TEASER_DATE || today.hour !== GALA_TEASER_HOUR) return;
+  await sendOnce(`gala-teaser:${GALA_TEASER_DATE}`, activeMemberIds(), {
+    title: "Morgen is het Gala ✨",
+    body: "Het Cassiopeia Gala is morgen! Tik om de teaser te zien.",
+    url: "/gala.html",
+    tag: "gala-teaser",
+  });
+}
+
 let running = false;
 
 async function runDailyNotifications(now = new Date()) {
@@ -166,6 +180,7 @@ async function runDailyNotifications(now = new Date()) {
   try {
     await notifyDeadlinesTomorrow(today, now);
     await notifyBirthdays(today);
+    await notifyGalaTeaser(today);
   } catch (error) {
     console.error("Dagelijkse pushmeldingen mislukt:", error.message);
   } finally {

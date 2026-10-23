@@ -1,4 +1,4 @@
-const CACHE_NAME = "cassiopeia-pwa-v45";
+const CACHE_NAME = "cassiopeia-pwa-v46";
 const APP_SHELL = [
   "/",
   "/offline.html",
@@ -29,13 +29,18 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin || requestUrl.pathname.startsWith("/api/")) return;
+  // Video's gebruiken deelverzoeken (206) die niet in de cache kunnen; laat de browser die zelf afhandelen.
+  if (requestUrl.pathname.endsWith(".mp4")) return;
 
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put("/", copy));
+          // Alleen de app zelf als offline-terugval bewaren, niet losse pagina's zoals /gala.html.
+          if (requestUrl.pathname === "/") {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put("/", copy));
+          }
           return response;
         })
         .catch(() => caches.match("/").then((cached) => cached || caches.match("/offline.html")))
