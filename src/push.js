@@ -128,6 +128,22 @@ function notifyNewConfession(confession, createdBy) {
   }).catch((error) => console.error("Pushmelding nieuwe biecht mislukt:", error.message));
 }
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Inhaalronde: biechten van vóór de biechtmelding krijgen alsnog elk hun eigen melding, oudste eerst,
+// met tien seconden ertussen. Wat al verstuurd is wordt overgeslagen, dus na een herstart gaat er niets dubbel.
+async function notifyExistingConfessions({ delayMs = 10 * 1000 } = {}) {
+  const ids = db.prepare("SELECT id FROM confessions ORDER BY created_at ASC, id ASC").all().map((row) => row.id);
+  let first = true;
+  for (const id of ids) {
+    if (db.prepare("SELECT 1 FROM push_log WHERE key = ?").get(`confession-new:${id}`)) continue;
+    if (!first) await wait(delayMs);
+    first = false;
+    const confession = db.prepare("SELECT id, body FROM confessions WHERE id = ?").get(id);
+    if (confession) await notifyNewConfession(confession, null);
+  }
+}
+
 function amsterdamParts(date = new Date()) {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" })
@@ -204,4 +220,4 @@ async function runDailyNotifications(now = new Date()) {
   }
 }
 
-module.exports = { runDailyNotifications, setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, notifyNewConfession, sendToUsers };
+module.exports = { runDailyNotifications, setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, notifyNewConfession, notifyExistingConfessions, sendToUsers };
