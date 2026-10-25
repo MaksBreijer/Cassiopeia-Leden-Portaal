@@ -89,7 +89,7 @@ test("nieuwe biecht gaat met de tekst naar iedereen behalve de schrijver, zonder
   sent.length = 0;
   await push.notifyNewConfession({ id: 7, body: "Ik heb  stiekem\nde laatste tosti opgegeten." }, sophie);
   assert.deepEqual(sent.map((item) => item.endpoint).sort(), ["https://push.example/anna@cassio.test", "https://push.example/lotte@cassio.test"]);
-  assert.equal(sent[0].payload.title, "Nieuwe biecht ✉");
+  assert.equal(sent[0].payload.title, "Nieuwe biecht");
   assert.equal(sent[0].payload.body, "Ik heb stiekem de laatste tosti opgegeten.");
   assert.equal(sent[0].payload.url, "/#biechten");
   assert.ok(!JSON.stringify(sent[0].payload).includes("Sophie"));

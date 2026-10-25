@@ -121,7 +121,7 @@ function notifyNewConfession(confession, createdBy) {
   const chars = Array.from(text);
   const body = chars.length > CONFESSION_PREVIEW_LENGTH ? `${chars.slice(0, CONFESSION_PREVIEW_LENGTH - 1).join("").trimEnd()}…` : text;
   return sendOnce(`confession-new:${confession.id}`, activeMemberIds({ exceptUserId: createdBy }), {
-    title: "Nieuwe biecht ✉",
+    title: "Nieuwe biecht",
     body,
     url: "/#biechten",
     tag: `confession-${confession.id}`,
