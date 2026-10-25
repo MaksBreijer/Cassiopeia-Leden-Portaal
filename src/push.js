@@ -112,6 +112,22 @@ function notifyNewActivity(activity, createdBy) {
   }).catch((error) => console.error("Pushmelding nieuwe activiteit mislukt:", error.message));
 }
 
+// Pushdiensten accepteren maar een paar kB; lange biechten worden ingekort.
+const CONFESSION_PREVIEW_LENGTH = 240;
+
+// Biechten zijn anoniem: de melding noemt geen naam, alleen de tekst.
+function notifyNewConfession(confession, createdBy) {
+  const text = String(confession.body || "").replace(/\s+/g, " ").trim();
+  const chars = Array.from(text);
+  const body = chars.length > CONFESSION_PREVIEW_LENGTH ? `${chars.slice(0, CONFESSION_PREVIEW_LENGTH - 1).join("").trimEnd()}…` : text;
+  return sendOnce(`confession-new:${confession.id}`, activeMemberIds({ exceptUserId: createdBy }), {
+    title: "Nieuwe biecht ✉",
+    body,
+    url: "/#biechten",
+    tag: `confession-${confession.id}`,
+  }).catch((error) => console.error("Pushmelding nieuwe biecht mislukt:", error.message));
+}
+
 function amsterdamParts(date = new Date()) {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" })
@@ -188,4 +204,4 @@ async function runDailyNotifications(now = new Date()) {
   }
 }
 
-module.exports = { runDailyNotifications, setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, sendToUsers };
+module.exports = { runDailyNotifications, setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, notifyNewConfession, sendToUsers };

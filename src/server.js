@@ -9,7 +9,7 @@ const { createCalendarFeed, googleCalendarLinkFromIcsUrl, parseGoogleCalendarFee
 const { MAX_IMPORT_ROWS, parseMemberImport, validateRecords } = require("./member-import");
 const { createSqliteSessionStore } = require("./session-store");
 const { renderActivityShareImage } = require("./activity-share-image");
-const { setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, sendToUsers } = require("./push");
+const { setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, notifyNewConfession, sendToUsers } = require("./push");
 
 initializeDatabase();
 setupPush();
@@ -1354,6 +1354,7 @@ app.post("/api/confessions", requireAuth, (req, res) => {
   confessionAttempts.set(key, current);
   const result = db.prepare("INSERT INTO confessions (body) VALUES (?)").run(body);
   const row = db.prepare("SELECT id, body, created_at FROM confessions WHERE id = ?").get(result.lastInsertRowid);
+  notifyNewConfession(row, req.session.userId);
   res.status(201).json({ confession: { id: row.id, body: row.body, createdAt: row.created_at } });
 });
 

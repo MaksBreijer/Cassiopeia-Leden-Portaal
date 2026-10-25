@@ -84,3 +84,24 @@ test("gala-teaser gaat één keer naar iedereen, alleen op 23 oktober tussen 20:
   await push.runDailyNotifications(new Date("2026-10-23T18:20:00Z"));
   assert.equal(teaser().length, 0);
 });
+
+test("nieuwe biecht gaat met de tekst naar iedereen behalve de schrijver, zonder naam", async () => {
+  sent.length = 0;
+  await push.notifyNewConfession({ id: 7, body: "Ik heb  stiekem\nde laatste tosti opgegeten." }, sophie);
+  assert.deepEqual(sent.map((item) => item.endpoint).sort(), ["https://push.example/anna@cassio.test", "https://push.example/lotte@cassio.test"]);
+  assert.equal(sent[0].payload.title, "Nieuwe biecht ✉");
+  assert.equal(sent[0].payload.body, "Ik heb stiekem de laatste tosti opgegeten.");
+  assert.equal(sent[0].payload.url, "/#biechten");
+  assert.ok(!JSON.stringify(sent[0].payload).includes("Sophie"));
+
+  sent.length = 0;
+  await push.notifyNewConfession({ id: 7, body: "Ik heb stiekem de laatste tosti opgegeten." }, sophie);
+  assert.equal(sent.length, 0);
+});
+
+test("lange biecht wordt ingekort in de melding", async () => {
+  sent.length = 0;
+  await push.notifyNewConfession({ id: 8, body: "a".repeat(2000) }, anna);
+  assert.equal(Array.from(sent[0].payload.body).length, 240);
+  assert.ok(sent[0].payload.body.endsWith("…"));
+});
