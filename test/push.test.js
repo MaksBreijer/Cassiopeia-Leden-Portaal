@@ -105,3 +105,19 @@ test("lange biecht wordt ingekort in de melding", async () => {
   assert.equal(Array.from(sent[0].payload.body).length, 240);
   assert.ok(sent[0].payload.body.endsWith("…"));
 });
+
+test("bestaande biechten krijgen alsnog elk één melding, oudste eerst, met pauze ertussen", async () => {
+  db.prepare("INSERT INTO confessions (body, created_at) VALUES ('Tweede', '2030-01-02 10:00:00')").run();
+  db.prepare("INSERT INTO confessions (body, created_at) VALUES ('Eerste', '2030-01-01 10:00:00')").run();
+  sent.length = 0;
+  const started = Date.now();
+  await push.notifyExistingConfessions({ delayMs: 50 });
+  const bodies = [...new Set(sent.map((item) => item.payload.body))];
+  assert.deepEqual(bodies, ["Eerste", "Tweede"]);
+  assert.equal(sent.length, 6); // twee biechten × drie leden
+  assert.ok(Date.now() - started >= 50);
+
+  sent.length = 0;
+  await push.notifyExistingConfessions({ delayMs: 50 });
+  assert.equal(sent.length, 0);
+});

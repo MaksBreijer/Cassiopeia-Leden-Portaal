@@ -9,7 +9,7 @@ const { createCalendarFeed, googleCalendarLinkFromIcsUrl, parseGoogleCalendarFee
 const { MAX_IMPORT_ROWS, parseMemberImport, validateRecords } = require("./member-import");
 const { createSqliteSessionStore } = require("./session-store");
 const { renderActivityShareImage } = require("./activity-share-image");
-const { setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, notifyNewConfession, sendToUsers } = require("./push");
+const { setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, notifyNewConfession, notifyExistingConfessions, sendToUsers } = require("./push");
 
 initializeDatabase();
 setupPush();
@@ -40,6 +40,7 @@ function purgeExpiredConfessions() {
 
 purgeExpiredConfessions();
 setInterval(purgeExpiredConfessions, CONFESSION_RETENTION_MS).unref();
+notifyExistingConfessions().catch((error) => console.error("Inhaalmeldingen biechten mislukt:", error.message));
 
 if (!SESSION_SECRET) {
   throw new Error("SESSION_SECRET is verplicht in productie.");
