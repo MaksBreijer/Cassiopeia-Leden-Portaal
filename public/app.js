@@ -2285,6 +2285,7 @@ function renderActivityArchive() {
       <div class="activity-archive-actions">
         <button class="secondary" type="button" data-registrations="${activity.id}">Reacties bekijken</button>
         <button class="activity-excel-button" type="button" data-export-activity="${activity.id}">Excel downloaden</button>
+        <button class="danger" type="button" data-delete-activity="${activity.id}">Verwijder</button>
       </div>
     </article>
   `).join("");
@@ -3413,7 +3414,7 @@ document.body.addEventListener("click", async (event) => {
   if (editActivityBtn) return openActivityDialog(state.activities.find((activity) => activity.id === Number(editActivityBtn.dataset.editActivity)));
 
   const deleteActivityBtn = event.target.closest("[data-delete-activity]");
-  if (deleteActivityBtn && confirm("Weet je zeker dat je deze activiteit wilt verwijderen?")) {
+  if (deleteActivityBtn && confirm("Weet je zeker dat je deze activiteit wilt verwijderen? Alle aanmeldingen en afmeldingen worden ook verwijderd.")) {
     await api(`/api/activities/${deleteActivityBtn.dataset.deleteActivity}`, { method: "DELETE" });
     await refreshPortal();
     return showToast("Activiteit verwijderd.");
