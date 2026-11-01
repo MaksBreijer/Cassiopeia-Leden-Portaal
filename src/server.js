@@ -10,7 +10,7 @@ const { MAX_IMPORT_ROWS, parseMemberImport, validateRecords } = require("./membe
 const { createSqliteSessionStore } = require("./session-store");
 const { renderActivityShareImage } = require("./activity-share-image");
 const { applyTheme } = require("./theme");
-const { setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, sendToUsers } = require("./push");
+const { setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, notifyNewConfession, notifyExistingConfessions, sendToUsers } = require("./push");
 
 initializeDatabase();
 setupPush();
@@ -41,6 +41,7 @@ function purgeExpiredConfessions() {
 
 purgeExpiredConfessions();
 setInterval(purgeExpiredConfessions, CONFESSION_RETENTION_MS).unref();
+notifyExistingConfessions().catch((error) => console.error("Inhaalmeldingen biechten mislukt:", error.message));
 
 if (!SESSION_SECRET) {
   throw new Error("SESSION_SECRET is verplicht in productie.");
@@ -1362,6 +1363,7 @@ app.post("/api/confessions", requireAuth, (req, res) => {
   confessionAttempts.set(key, current);
   const result = db.prepare("INSERT INTO confessions (body) VALUES (?)").run(body);
   const row = db.prepare("SELECT id, body, created_at FROM confessions WHERE id = ?").get(result.lastInsertRowid);
+  notifyNewConfession(row, req.session.userId);
   res.status(201).json({ confession: { id: row.id, body: row.body, createdAt: row.created_at } });
 });
 

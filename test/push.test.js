@@ -100,3 +100,40 @@ test("dies-felicitatie gaat één keer naar iedereen, op 7 november om 10:00", a
   await push.runDailyNotifications(new Date("2026-11-07T09:40:00Z"));
   assert.equal(dies().length, 0);
 });
+
+test("nieuwe biecht gaat met de tekst naar iedereen behalve de schrijver, zonder naam", async () => {
+  sent.length = 0;
+  await push.notifyNewConfession({ id: 7, body: "Ik heb  stiekem\nde laatste tosti opgegeten." }, sophie);
+  assert.deepEqual(sent.map((item) => item.endpoint).sort(), ["https://push.example/anna@cassio.test", "https://push.example/lotte@cassio.test"]);
+  assert.equal(sent[0].payload.title, "Nieuwe biecht ✉");
+  assert.equal(sent[0].payload.body, "Ik heb stiekem de laatste tosti opgegeten.");
+  assert.equal(sent[0].payload.url, "/#biechten");
+  assert.ok(!JSON.stringify(sent[0].payload).includes("Sophie"));
+
+  sent.length = 0;
+  await push.notifyNewConfession({ id: 7, body: "Ik heb stiekem de laatste tosti opgegeten." }, sophie);
+  assert.equal(sent.length, 0);
+});
+
+test("lange biecht wordt ingekort in de melding", async () => {
+  sent.length = 0;
+  await push.notifyNewConfession({ id: 8, body: "a".repeat(2000) }, anna);
+  assert.equal(Array.from(sent[0].payload.body).length, 240);
+  assert.ok(sent[0].payload.body.endsWith("…"));
+});
+
+test("bestaande biechten krijgen alsnog elk één melding, oudste eerst, met pauze ertussen", async () => {
+  db.prepare("INSERT INTO confessions (body, created_at) VALUES ('Tweede', '2030-01-02 10:00:00')").run();
+  db.prepare("INSERT INTO confessions (body, created_at) VALUES ('Eerste', '2030-01-01 10:00:00')").run();
+  sent.length = 0;
+  const started = Date.now();
+  await push.notifyExistingConfessions({ delayMs: 50 });
+  const bodies = [...new Set(sent.map((item) => item.payload.body))];
+  assert.deepEqual(bodies, ["Eerste", "Tweede"]);
+  assert.equal(sent.length, 6); // twee biechten × drie leden
+  assert.ok(Date.now() - started >= 50);
+
+  sent.length = 0;
+  await push.notifyExistingConfessions({ delayMs: 50 });
+  assert.equal(sent.length, 0);
+});
