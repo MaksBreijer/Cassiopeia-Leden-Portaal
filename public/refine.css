@@ -221,3 +221,20 @@ textarea:focus {
 .portal-hero-copy h1 span {
   color: rgba(255, 255, 255, 0.82);
 }
+
+/* Na het lustrum (vanaf 8 november 2026): hetzelfde patroon, in lila */
+body.na-lustrum.is-authenticated {
+  background:
+    linear-gradient(rgba(245, 245, 247, 0.55), rgba(245, 245, 247, 0.55)),
+    url("assets/cassiopeia-patroon-lila.png") center top / 420px auto repeat,
+    var(--cream);
+  background-attachment: fixed;
+}
+
+body.na-lustrum .login-screen {
+  background:
+    linear-gradient(rgba(250, 248, 252, 0.76), rgba(250, 248, 252, 0.76)),
+    url("assets/cassiopeia-patroon-lila.png") center;
+  background-size: cover, 430px auto;
+  background-repeat: no-repeat, repeat;
+}

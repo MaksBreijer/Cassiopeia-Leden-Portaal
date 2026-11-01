@@ -202,6 +202,20 @@ async function notifyGalaTeaser(today) {
   });
 }
 
+// Eenmalige felicitatie: Cassiopeia is jarig op 7 november 2026, melding om 10:00 (Amsterdam) naar alle actieve leden.
+const DIES_DATE = "2026-11-07";
+const DIES_HOUR = 10;
+
+async function notifyDies(today) {
+  if (today.date !== DIES_DATE || today.hour !== DIES_HOUR) return;
+  await sendOnce(`dies:${DIES_DATE}`, activeMemberIds(), {
+    title: "Cassiopeia is jarig! 🎂",
+    body: "Gefeliciteerd allemaal met ons dispuut! Proost op vele mooie jaren.",
+    url: "/#home",
+    tag: "dies",
+  });
+}
+
 let running = false;
 
 async function runDailyNotifications(now = new Date()) {
@@ -213,6 +227,7 @@ async function runDailyNotifications(now = new Date()) {
     await notifyDeadlinesTomorrow(today, now);
     await notifyBirthdays(today);
     await notifyGalaTeaser(today);
+    await notifyDies(today);
   } catch (error) {
     console.error("Dagelijkse pushmeldingen mislukt:", error.message);
   } finally {
