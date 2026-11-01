@@ -3,6 +3,7 @@ const { db } = require("./db");
 
 const TIME_ZONE = "Europe/Amsterdam";
 const DAILY_HOUR = 8;
+const DEADLINE_HOUR = 19;
 const CHECK_INTERVAL_MS = 15 * 60 * 1000;
 
 function initializePushTables() {
@@ -154,6 +155,7 @@ function amsterdamParts(date = new Date()) {
 }
 
 async function notifyDeadlinesTomorrow(today, now) {
+  if (today.hour < DEADLINE_HOUR) return;
   const tomorrow = amsterdamParts(new Date(now.getTime() + 24 * 60 * 60 * 1000));
   // De inschrijving sluit op de eerste van de maand van de activiteit.
   if (tomorrow.day !== "01") return;

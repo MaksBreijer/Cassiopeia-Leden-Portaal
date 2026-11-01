@@ -38,11 +38,13 @@ test("nieuwe activiteit gaat naar iedereen behalve de maker", async () => {
   assert.equal(sent[0].payload.url, "/#activiteit-99");
 });
 
-test("deadlinemelding de dag voor sluiten, alleen voor wie nog niet reageerde, en maar één keer", async () => {
+test("deadlinemelding om 19:00 de dag voor sluiten, alleen voor wie nog niet reageerde, en maar één keer", async () => {
   const { lastInsertRowid } = db.prepare("INSERT INTO activities (title, starts_at) VALUES ('Cantus', '2030-05-20T20:00')").run();
   db.prepare("INSERT INTO registrations (activity_id, user_id) VALUES (?, ?)").run(lastInsertRowid, sophie);
   sent.length = 0;
-  const lastDayOfApril = new Date("2030-04-30T09:00:00Z"); // 11:00 in Amsterdam
+  await push.runDailyNotifications(new Date("2030-04-30T16:59:00Z")); // 18:59 in Amsterdam
+  assert.equal(sent.filter((item) => item.payload.title.includes("Cantus")).length, 0);
+  const lastDayOfApril = new Date("2030-04-30T17:00:00Z"); // 19:00 in Amsterdam
   await push.runDailyNotifications(lastDayOfApril);
   const deadline = sent.filter((item) => item.payload.title.includes("Cantus"));
   assert.deepEqual(deadline.map((item) => item.endpoint).sort(), ["https://push.example/anna@cassio.test", "https://push.example/lotte@cassio.test"]);
