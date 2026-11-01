@@ -9,6 +9,7 @@ const { createCalendarFeed, googleCalendarLinkFromIcsUrl, parseGoogleCalendarFee
 const { MAX_IMPORT_ROWS, parseMemberImport, validateRecords } = require("./member-import");
 const { createSqliteSessionStore } = require("./session-store");
 const { renderActivityShareImage } = require("./activity-share-image");
+const { applyTheme } = require("./theme");
 const { setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, sendToUsers } = require("./push");
 
 initializeDatabase();
@@ -130,6 +131,11 @@ function escapeHtmlAttribute(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("$", "&#36;");
 }
 
+function sendIndexPage(res) {
+  res.setHeader("Cache-Control", "no-store");
+  res.type("html").send(applyTheme(fs.readFileSync(INDEX_HTML_PATH, "utf8")));
+}
+
 function sendActivitySharePage(activityId, key, res, next) {
   if (!/^\d+$/.test(activityId)) return next();
 
@@ -162,12 +168,14 @@ function sendActivitySharePage(activityId, key, res, next) {
   }
 
   res.setHeader("Cache-Control", "no-store");
-  res.type("html").send(html);
+  res.type("html").send(applyTheme(html));
 }
 
-app.get("/", (req, res, next) => {
-  sendActivitySharePage(String(req.query.activity || "").trim(), req.query.s, res, next);
+app.get("/", (req, res) => {
+  sendActivitySharePage(String(req.query.activity || "").trim(), req.query.s, res, () => sendIndexPage(res));
 });
+
+app.get("/index.html", (req, res) => sendIndexPage(res));
 
 app.get("/activity/:activityId", (req, res, next) => {
   sendActivitySharePage(String(req.params.activityId || "").trim(), req.query.s, res, next);

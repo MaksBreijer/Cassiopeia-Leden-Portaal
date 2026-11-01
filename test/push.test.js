@@ -84,3 +84,19 @@ test("gala-teaser gaat één keer naar iedereen, alleen op 23 oktober tussen 20:
   await push.runDailyNotifications(new Date("2026-10-23T18:20:00Z"));
   assert.equal(teaser().length, 0);
 });
+
+test("dies-felicitatie gaat één keer naar iedereen, op 7 november om 10:00", async () => {
+  const dies = () => sent.filter((item) => item.payload.tag === "dies");
+  sent.length = 0;
+  await push.runDailyNotifications(new Date("2026-11-07T08:30:00Z")); // 09:30 in Amsterdam
+  await push.runDailyNotifications(new Date("2026-11-06T09:30:00Z")); // een dag te vroeg
+  assert.equal(dies().length, 0);
+
+  await push.runDailyNotifications(new Date("2026-11-07T09:05:00Z")); // 10:05 in Amsterdam
+  assert.equal(dies().length, 3);
+  assert.equal(dies()[0].payload.title, "Cassiopeia is jarig! 🎂");
+
+  sent.length = 0;
+  await push.runDailyNotifications(new Date("2026-11-07T09:40:00Z"));
+  assert.equal(dies().length, 0);
+});
