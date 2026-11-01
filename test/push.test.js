@@ -53,11 +53,11 @@ test("deadlinemelding de dag voor sluiten, alleen voor wie nog niet reageerde, e
   assert.equal(sent.length, 0);
 });
 
-test("verjaardag om 10 uur naar de anderen, niet voor 10 uur", async () => {
+test("verjaardag om 8 uur naar de anderen, niet voor 8 uur", async () => {
   sent.length = 0;
-  await push.runDailyNotifications(new Date("2030-03-15T07:00:00Z")); // 08:00 in Amsterdam
+  await push.runDailyNotifications(new Date("2030-03-15T06:59:00Z")); // 07:59 in Amsterdam
   assert.equal(sent.length, 0);
-  await push.runDailyNotifications(new Date("2030-03-15T10:00:00Z"));
+  await push.runDailyNotifications(new Date("2030-03-15T07:00:00Z")); // 08:00 in Amsterdam
   assert.deepEqual(sent.map((item) => item.endpoint).sort(), ["https://push.example/lotte@cassio.test", "https://push.example/sophie@cassio.test"]);
   assert.equal(sent[0].payload.title, "Vandaag jarig: Anna 🎉");
 });

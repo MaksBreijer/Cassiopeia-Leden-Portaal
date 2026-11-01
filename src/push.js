@@ -2,7 +2,7 @@ const webpush = require("web-push");
 const { db } = require("./db");
 
 const TIME_ZONE = "Europe/Amsterdam";
-const DAILY_HOUR = 10;
+const DAILY_HOUR = 8;
 const CHECK_INTERVAL_MS = 15 * 60 * 1000;
 
 function initializePushTables() {
