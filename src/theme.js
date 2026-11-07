@@ -1,5 +1,5 @@
-// Het lustrumthema loopt tot en met de dies op 7 november 2026; vanaf 8 november 00:00 (Amsterdam) toont de app het gewone thema.
-const LUSTRUM_END = Date.parse("2026-11-08T00:00:00+01:00");
+// Het lustrumthema is op de dies (7 november 2026) beëindigd; vanaf dan toont de app het gewone thema.
+const LUSTRUM_END = Date.parse("2026-11-07T00:00:00+01:00");
 
 function lustrumActive(now = new Date()) {
   return now.getTime() < LUSTRUM_END;

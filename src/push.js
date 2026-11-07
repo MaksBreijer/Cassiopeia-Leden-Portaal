@@ -218,6 +218,19 @@ async function notifyDies(today) {
   });
 }
 
+// Eenmalige melding dat het lustrum voorbij is: op 7 november 2026, bij de eerste dagelijkse ronde, naar alle actieve leden.
+const LUSTRUM_END_DATE = "2026-11-07";
+
+async function notifyLustrumEnd(today) {
+  if (today.date !== LUSTRUM_END_DATE) return;
+  await sendOnce(`einde-lustrum:${LUSTRUM_END_DATE}`, activeMemberIds(), {
+    title: "Einde lustrum 🥂",
+    body: "Het lustrum zit erop! Bedankt allemaal voor een onvergetelijk jaar.",
+    url: "/#home",
+    tag: "einde-lustrum",
+  });
+}
+
 let running = false;
 
 async function runDailyNotifications(now = new Date()) {
@@ -230,6 +243,7 @@ async function runDailyNotifications(now = new Date()) {
     await notifyBirthdays(today);
     await notifyGalaTeaser(today);
     await notifyDies(today);
+    await notifyLustrumEnd(today);
   } catch (error) {
     console.error("Dagelijkse pushmeldingen mislukt:", error.message);
   } finally {

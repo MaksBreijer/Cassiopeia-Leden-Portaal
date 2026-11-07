@@ -1,4 +1,4 @@
-const CACHE_NAME = "cassiopeia-pwa-v48";
+const CACHE_NAME = "cassiopeia-pwa-v49";
 const APP_SHELL = [
   "/",
   "/offline.html",
