@@ -773,6 +773,17 @@ test("admins invite members who set and reset their own password", async (t) => 
 
   const forbiddenArchive = await jsonRequest(baseUrl, "/api/activities/archive", { cookie: activated.cookie });
   assert.equal(forbiddenArchive.response.status, 403);
+  const memberConfessions = await jsonRequest(baseUrl, "/api/confessions", { cookie: activated.cookie });
+  assert.equal(memberConfessions.response.status, 200);
+  const memberBody = { name: "Nieuw Lid", email: "nieuw@example.nl", yearLayer: "2026", committee: "Feestcommissie" };
+  const madeAlumna = await jsonRequest(baseUrl, `/api/members/${created.data.member.id}`, { method: "PUT", cookie: adminLogin.cookie, body: { ...memberBody, memberStatus: "oud" } });
+  assert.equal(madeAlumna.response.status, 200);
+  const alumnaConfessions = await jsonRequest(baseUrl, "/api/confessions", { cookie: activated.cookie });
+  assert.equal(alumnaConfessions.response.status, 403);
+  const alumnaConfession = await jsonRequest(baseUrl, "/api/confessions", { method: "POST", cookie: activated.cookie, body: { body: "Reünistenbiecht" } });
+  assert.equal(alumnaConfession.response.status, 403);
+  const madeActive = await jsonRequest(baseUrl, `/api/members/${created.data.member.id}`, { method: "PUT", cookie: adminLogin.cookie, body: { ...memberBody, memberStatus: "actief" } });
+  assert.equal(madeActive.response.status, 200);
   const signupBeforeResponse = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/registrations`, { cookie: adminLogin.cookie });
   const memberWithoutResponse = signupBeforeResponse.data.registrations.find((member) => member.id === created.data.member.id);
   assert.equal(memberWithoutResponse.hasResponded, false);

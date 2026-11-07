@@ -88,9 +88,9 @@ async function sendToUsers(userIds, payload) {
   return sent;
 }
 
-function activeMemberIds({ exceptUserId = null, participantsOnly = false } = {}) {
+function activeMemberIds({ exceptUserId = null, participantsOnly = false, withoutAlumni = false } = {}) {
   return db
-    .prepare(`SELECT id FROM users WHERE account_status = 'active' ${participantsOnly ? "AND takes_part = 1" : ""}`)
+    .prepare(`SELECT id FROM users WHERE account_status = 'active' ${participantsOnly ? "AND takes_part = 1" : ""} ${withoutAlumni ? "AND COALESCE(member_status, 'actief') <> 'oud'" : ""}`)
     .all()
     .map((row) => row.id)
     .filter((id) => id !== exceptUserId);
@@ -121,7 +121,7 @@ function notifyNewConfession(confession, createdBy) {
   const text = String(confession.body || "").replace(/\s+/g, " ").trim();
   const chars = Array.from(text);
   const body = chars.length > CONFESSION_PREVIEW_LENGTH ? `${chars.slice(0, CONFESSION_PREVIEW_LENGTH - 1).join("").trimEnd()}…` : text;
-  return sendOnce(`confession-new:${confession.id}`, activeMemberIds({ exceptUserId: createdBy }), {
+  return sendOnce(`confession-new:${confession.id}`, activeMemberIds({ exceptUserId: createdBy, withoutAlumni: true }), {
     title: "Nieuwe biecht ✉",
     body,
     url: "/#biechten",

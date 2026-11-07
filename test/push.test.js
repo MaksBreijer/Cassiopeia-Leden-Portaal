@@ -135,6 +135,15 @@ test("nieuwe biecht gaat met de tekst naar iedereen behalve de schrijver, zonder
   assert.equal(sent.length, 0);
 });
 
+test("reünisten krijgen geen biechtmelding", async () => {
+  const reunist = addUser("Roos Oud", "roos@cassio.test");
+  db.prepare("UPDATE users SET member_status = 'oud' WHERE id = ?").run(reunist);
+  sent.length = 0;
+  await push.notifyNewConfession({ id: 9, body: "Niet voor reünisten." }, anna);
+  assert.deepEqual(sent.map((item) => item.endpoint).sort(), ["https://push.example/lotte@cassio.test", "https://push.example/sophie@cassio.test"]);
+  db.prepare("UPDATE users SET account_status = 'blocked' WHERE id = ?").run(reunist);
+});
+
 test("lange biecht wordt ingekort in de melding", async () => {
   sent.length = 0;
   await push.notifyNewConfession({ id: 8, body: "a".repeat(2000) }, anna);

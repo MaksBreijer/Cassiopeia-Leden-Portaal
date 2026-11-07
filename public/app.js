@@ -1058,12 +1058,17 @@ function closeMobileMenu() {
   els.menuToggle.setAttribute("aria-expanded", "false");
 }
 
+// Reünisten zien de biechten niet; admins wel, voor moderatie.
+function canUseConfessions() {
+  return Boolean(state.user) && (state.user.memberStatus !== "oud" || state.user.isAdmin);
+}
+
 function showPage(page = location.hash.slice(1) || "home") {
   if (!IS_ADMIN_PORTAL && page === "beheer" && state.user?.isAdmin) {
     location.assign("/admin");
     return;
   }
-  const allowedPages = ["home", "agenda", "leden", "plattegrond", "profiel", "documenten", "biechten"];
+  const allowedPages = ["home", "agenda", "leden", "plattegrond", "profiel", "documenten", ...(canUseConfessions() ? ["biechten"] : [])];
   const activePage = IS_ADMIN_PORTAL && state.user?.isAdmin ? "beheer" : allowedPages.includes(page) ? page : "home";
   document.querySelectorAll(".page-view").forEach((section) => {
     section.classList.toggle("hidden", section.id !== activePage);
@@ -1084,6 +1089,10 @@ function syncScopedVisibility() {
     const allowedForPortal = (!element.classList.contains("member-portal-nav") || !IS_ADMIN_PORTAL)
       && (!element.classList.contains("admin-portal-only") || IS_ADMIN_PORTAL);
     element.classList.toggle("hidden", !(allowedForRole && allowedForPortal));
+  });
+  document.querySelectorAll(".confession-nav").forEach((element) => {
+    if (!canUseConfessions()) element.classList.add("hidden");
+    else if (!element.classList.contains("member-portal-nav")) element.classList.remove("hidden");
   });
 }
 
@@ -1763,6 +1772,10 @@ async function loadDocuments() {
 }
 
 async function loadConfessions() {
+  if (!canUseConfessions()) {
+    state.confessions = [];
+    return;
+  }
   const data = await api("/api/confessions");
   state.confessions = data.confessions || [];
   renderConfessions();
