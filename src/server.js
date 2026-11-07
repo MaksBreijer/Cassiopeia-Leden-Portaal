@@ -1342,13 +1342,20 @@ app.delete("/api/site-assets/:key", requireAuth, requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-app.get("/api/confessions", requireAuth, (req, res) => {
+// Reünisten staan los van het actieve dispuutsleven; de biechten zijn alleen voor actieve leden (en admins, voor moderatie).
+function requireConfessionAccess(req, res, next) {
+  const user = db.prepare("SELECT member_status, is_admin FROM users WHERE id = ?").get(req.session.userId);
+  if (!user || (user.member_status === "oud" && !user.is_admin)) return res.status(403).json({ error: "De biechten zijn alleen voor actieve leden." });
+  next();
+}
+
+app.get("/api/confessions", requireAuth, requireConfessionAccess, (req, res) => {
   purgeExpiredConfessions();
   const rows = db.prepare("SELECT id, body, created_at FROM confessions ORDER BY created_at DESC, id DESC").all();
   res.json({ confessions: rows.map((row) => ({ id: row.id, body: row.body, createdAt: row.created_at })) });
 });
 
-app.post("/api/confessions", requireAuth, (req, res) => {
+app.post("/api/confessions", requireAuth, requireConfessionAccess, (req, res) => {
   const body = String(req.body.body || "").trim();
   if (!body) return res.status(400).json({ error: "Schrijf eerst een bericht." });
   if (body.length > 2000) return res.status(400).json({ error: "Een bericht mag maximaal 2000 tekens zijn." });
