@@ -87,16 +87,16 @@ test("gala-teaser gaat één keer naar iedereen, alleen op 23 oktober tussen 20:
   assert.equal(teaser().length, 0);
 });
 
-test("einde-lustrummelding gaat één keer naar iedereen, alleen op 7 november", async () => {
+test("einde-lustrummelding gaat één keer naar iedereen, vanaf 7 november tot en met 14 november", async () => {
   const einde = () => sent.filter((item) => item.payload.tag === "einde-lustrum");
   // De opstartronde van setupPush gebruikt de echte klok en kan de melding al geclaimd hebben.
   db.prepare("DELETE FROM push_log WHERE key LIKE 'einde-lustrum:%'").run();
   sent.length = 0;
   await push.runDailyNotifications(new Date("2026-11-06T13:00:00Z")); // een dag te vroeg
-  await push.runDailyNotifications(new Date("2026-11-08T13:00:00Z")); // een dag te laat
+  await push.runDailyNotifications(new Date("2026-11-15T13:00:00Z")); // te laat
   assert.equal(einde().length, 0);
 
-  await push.runDailyNotifications(new Date("2026-11-07T13:00:00Z")); // 14:00 in Amsterdam
+  await push.runDailyNotifications(new Date("2026-11-08T07:00:00Z")); // 8 november, 08:00 in Amsterdam
   assert.equal(einde().length, 3);
   assert.equal(einde()[0].payload.title, "Einde lustrum 🥂");
 

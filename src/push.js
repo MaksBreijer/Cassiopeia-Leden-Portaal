@@ -218,11 +218,13 @@ async function notifyDies(today) {
   });
 }
 
-// Eenmalige melding dat het lustrum voorbij is: op 7 november 2026, bij de eerste dagelijkse ronde, naar alle actieve leden.
+// Eenmalige melding dat het lustrum voorbij is, naar alle actieve leden: bij de eerste dagelijkse ronde vanaf 7 november 2026,
+// ook als de nieuwe versie pas later live staat. Na 14 november gaat hij niet meer.
 const LUSTRUM_END_DATE = "2026-11-07";
+const LUSTRUM_END_LAST_DATE = "2026-11-14";
 
 async function notifyLustrumEnd(today) {
-  if (today.date !== LUSTRUM_END_DATE) return;
+  if (today.date < LUSTRUM_END_DATE || today.date > LUSTRUM_END_LAST_DATE) return;
   await sendOnce(`einde-lustrum:${LUSTRUM_END_DATE}`, activeMemberIds(), {
     title: "Einde lustrum 🥂",
     body: "Het lustrum zit erop! Bedankt allemaal voor een onvergetelijk jaar.",
