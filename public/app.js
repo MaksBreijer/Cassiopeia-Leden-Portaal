@@ -2104,7 +2104,7 @@ function activityListHtml(adminMode = false, limit = Infinity) {
                 <h3>${escapeHtml(activity.title)}</h3>
                 ${activity.description ? `<p>${escapeHtml(activity.description)}</p>` : ""}
               </div>
-              ${activity.hasImage ? `<img class="activity-card-image" src="/api/activities/${activity.id}/image" alt="" loading="lazy" />` : `<span class="activity-card-image activity-card-art"><img src="/assets/activity-art/${activityArt(activity)}.png" alt="" loading="lazy" /></span>`}
+              ${activity.hasImage ? `<img class="activity-card-image" src="/api/activities/${activity.id}/image" alt="" loading="lazy" />` : `<span class="activity-card-art activity-art-${activityArt(activity)}" aria-hidden="true"></span>`}
             </div>
             <p class="activity-quick-facts">
               <span>📍 ${escapeHtml(activity.location || "Locatie volgt")}</span>
