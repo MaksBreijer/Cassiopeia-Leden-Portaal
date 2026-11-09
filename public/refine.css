@@ -238,3 +238,14 @@ body.na-lustrum .login-screen {
   background-size: cover, 430px auto;
   background-repeat: no-repeat, repeat;
 }
+
+body.na-lustrum .login-submit {
+  border-color: var(--plum);
+  color: #fff;
+  background: var(--plum);
+  box-shadow: 0 10px 24px rgba(29, 29, 31, 0.18);
+}
+
+body.na-lustrum .login-submit:hover {
+  box-shadow: 0 14px 30px rgba(29, 29, 31, 0.24);
+}
