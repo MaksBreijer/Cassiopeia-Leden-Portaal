@@ -80,6 +80,13 @@ test("herinnering om 19:00 een week voor de deadline, alleen voor wie nog niet r
   assert.equal(reminders("Reis").length, 0);
   await push.runDailyNotifications(new Date("2031-06-03T17:00:00Z")); // 19:00 in Amsterdam
   assert.equal(reminders("Reis").length, 3);
+
+  const closing = () => sent.filter((item) => item.payload.title === "Inschrijving voor Reis sluit morgen");
+  sent.length = 0;
+  await push.runDailyNotifications(new Date("2031-05-31T17:00:00Z")); // dag voor de 1e, maar Reis heeft een eigen deadline
+  assert.equal(closing().length, 0);
+  await push.runDailyNotifications(new Date("2031-06-09T17:00:00Z")); // dag voor de eigen deadline
+  assert.equal(closing().length, 3);
 });
 
 test("verjaardag om 8 uur naar de anderen, niet voor 8 uur", async () => {
