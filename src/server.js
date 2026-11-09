@@ -26,7 +26,7 @@ const LOGIN_WINDOW_MS = 1000 * 60 * 15;
 const LOGIN_MAX_ATTEMPTS = 5;
 const MEMBER_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
 const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
-const ACTIVITY_ARCHIVE_DELAY_MS = 2 * 24 * 60 * 60 * 1000;
+const ACTIVITY_ARCHIVE_DELAY_MS = 12 * 60 * 60 * 1000;
 const CONFESSION_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const INDEX_HTML_PATH = path.join(__dirname, "..", "public", "index.html");
 const ACTIVITY_SHARE_IMAGE_URL = "https://www.dispuutcassiopeia.nl/assets/cassiopeia-activity-share.png?v=20260902-rsvp";

@@ -411,3 +411,19 @@ body.na-lustrum .login-submit:hover {
     min-height: 44px;
   }
 }
+
+/* Activiteit zonder eigen foto: tekening uit het patroon op lila */
+.activity-card-art {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: linear-gradient(160deg, #c3b0da 0%, #8f74b5 100%);
+}
+
+.activity-card-art img {
+  position: absolute;
+  inset: 14px;
+  width: calc(100% - 28px);
+  height: calc(100% - 28px);
+  object-fit: contain;
+}

@@ -644,6 +644,28 @@ function avatarHtml(user) {
   return escapeHtml(avatar);
 }
 
+// Activiteiten zonder eigen foto krijgen een tekening uit het Cassiopeia-patroon: passend bij de titel of omschrijving, anders vast per activiteit.
+const ACTIVITY_ART_RULES = [
+  [/brunch|ontbijt|lunch|koffie|croissant/, "croissant"],
+  [/diner|koken|kook|eten\b/, "kok"],
+  [/borrel|wijn|cantus|proost|bier/, "fles"],
+  [/feest|party|dans|disco|gala|\bdj\b/, "discobal"],
+  [/fiets|sport|wandel/, "fiets"],
+  [/zomer|strand|vakantie|weekend|reis/, "strandstoel"],
+  [/\bijs|ijsje/, "ijsje"],
+  [/bbq|barbecue|hotdog|broodje/, "broodje"],
+  [/\balv\b|vergader/, "sterren"],
+];
+const ACTIVITY_ART_FALLBACK = ["smiley", "meloen", "capybara", "sterren", "zonnebril", "ijsje"];
+
+function activityArt(activity) {
+  for (const text of [activity.title, activity.description]) {
+    const rule = ACTIVITY_ART_RULES.find(([pattern]) => pattern.test(String(text || "").toLowerCase()));
+    if (rule) return rule[1];
+  }
+  return ACTIVITY_ART_FALLBACK[activity.id % ACTIVITY_ART_FALLBACK.length];
+}
+
 function renderActivityParticipants(activity) {
   const participants = activity.participants || [];
   const detailsHint = `<span class="participants-details-hint">Wie komen er? <span aria-hidden="true">→</span></span>`;
@@ -2040,7 +2062,7 @@ function activityListHtml(adminMode = false, limit = Infinity) {
       return `
         <article ${adminMode ? "" : `id="activiteit-${activity.id}"`} class="activity-card" data-activity-card="${activity.id}">
           <div class="activity-card-content">
-            <div class="activity-card-intro ${activity.hasImage ? "has-image" : ""}">
+            <div class="activity-card-intro has-image">
               <div>
                 <div class="activity-card-heading">
                   <p class="eyebrow">${formatDate(activity.startsAt)}</p>
@@ -2049,7 +2071,7 @@ function activityListHtml(adminMode = false, limit = Infinity) {
                 <h3>${escapeHtml(activity.title)}</h3>
                 ${activity.description ? `<p>${escapeHtml(activity.description)}</p>` : ""}
               </div>
-              ${activity.hasImage ? `<img class="activity-card-image" src="/api/activities/${activity.id}/image" alt="" loading="lazy" />` : ""}
+              ${activity.hasImage ? `<img class="activity-card-image" src="/api/activities/${activity.id}/image" alt="" loading="lazy" />` : `<span class="activity-card-image activity-card-art"><img src="/assets/activity-art/${activityArt(activity)}.png" alt="" loading="lazy" /></span>`}
             </div>
             <p class="activity-quick-facts">
               <span>📍 ${escapeHtml(activity.location || "Locatie volgt")}</span>
