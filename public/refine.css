@@ -225,7 +225,7 @@ textarea:focus {
 /* Na het lustrum (vanaf 8 november 2026): hetzelfde patroon, in lila */
 body.na-lustrum.is-authenticated {
   background:
-    linear-gradient(rgba(245, 245, 247, 0.55), rgba(245, 245, 247, 0.55)),
+    linear-gradient(rgba(245, 245, 247, 0.88), rgba(245, 245, 247, 0.88)),
     url("assets/cassiopeia-patroon-lila.png") center top / 420px auto repeat,
     var(--cream);
   background-attachment: fixed;
@@ -269,3 +269,145 @@ body.na-lustrum .login-submit:hover {
 .nav-icon-leden { --nav-icon: url("assets/nav/leden.png"); }
 .nav-icon-biechten { --nav-icon: url("assets/nav/biechten.png"); }
 .nav-icon-cribs { --nav-icon: url("assets/nav/cribs.png"); }
+
+/* Premium-laag: één lila accent, rustige kaarten en compactere koppen. Alleen visueel. */
+:root {
+  --orange: #a68dc0;
+  --orange-strong: #5f4690;
+  --orange-soft: #f3eef8;
+  --premium-line: rgba(29, 29, 31, 0.07);
+}
+
+.primary:hover {
+  background: #4f3a79;
+}
+
+.primary,
+.secondary,
+.ghost,
+.danger {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.eyebrow {
+  color: #7b63a6;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+}
+
+.content-module,
+.activity-card {
+  border: 1px solid var(--premium-line);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(29, 29, 31, 0.03);
+}
+
+.page-banner {
+  border: 0;
+  padding: clamp(10px, 3vw, 28px) 4px clamp(6px, 2vw, 16px);
+  background: transparent;
+  box-shadow: none;
+}
+
+.page-banner .eyebrow {
+  margin-bottom: 6px;
+}
+
+.page-banner h1 {
+  font-size: clamp(38px, 6vw, 60px);
+  line-height: 1.04;
+}
+
+.page-banner p:last-child {
+  max-width: 54ch;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.menu-toggle {
+  color: var(--plum);
+  background: rgba(29, 29, 31, 0.05);
+}
+
+.agenda-calendar-toolbar {
+  border: 0;
+  padding: 0 0 8px;
+  color: var(--plum);
+  background: transparent;
+  box-shadow: none;
+}
+
+.agenda-calendar-toolbar h2 {
+  color: var(--plum);
+}
+
+.agenda-calendar-toolbar .calendar-nav-button,
+.agenda-today-button {
+  border: 0;
+  color: var(--orange-strong);
+  background: var(--orange-soft);
+  box-shadow: none;
+}
+
+.agenda-day {
+  border-color: transparent;
+  border-radius: 14px;
+  background: #faf9fc;
+  box-shadow: none;
+}
+
+.agenda-day-blank {
+  background: transparent;
+}
+
+.agenda-day.is-today {
+  border-color: transparent;
+  outline: 0;
+  background: var(--orange-soft);
+}
+
+.agenda-day.is-selected {
+  border-color: transparent;
+  outline: 0;
+  box-shadow: inset 0 0 0 1.5px var(--orange-strong);
+}
+
+.menu-toggle span {
+  background: var(--plum);
+}
+
+.portal-hero-copy .eyebrow,
+.portal-hero-copy .hero-intro {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.filter-chip.active {
+  color: #fff;
+  background: var(--orange-strong);
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .member-filterbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .member-filterbar .filter-segments,
+  .member-filterbar .filter-clear {
+    grid-column: 1 / -1;
+  }
+
+  .member-filterbar .filter-select {
+    min-width: 0;
+    font-size: 14px;
+  }
+
+  .agenda-day {
+    min-height: 44px;
+  }
+}
