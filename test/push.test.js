@@ -30,6 +30,9 @@ const anna = addUser("Anna de Vries", "anna@cassio.test", "2001-03-15");
 const sophie = addUser("Sophie Jansen", "sophie@cassio.test");
 const lotte = addUser("Lotte Bakker", "lotte@cassio.test");
 
+// De opstartronde van setupPush gebruikt de echte klok; laat die eerst uitlopen.
+test.before(() => new Promise((resolve) => setTimeout(resolve, 200)));
+
 test("nieuwe activiteit gaat naar iedereen behalve de maker", async () => {
   sent.length = 0;
   await push.notifyNewActivity({ id: 99, title: "Lustrumgala", starts_at: "2030-04-12T19:00" }, anna);
@@ -103,6 +106,24 @@ test("einde-lustrummelding gaat één keer naar iedereen, vanaf 7 november tot e
   sent.length = 0;
   await push.runDailyNotifications(new Date("2026-11-07T15:00:00Z"));
   assert.equal(einde().length, 0);
+});
+
+test("telefoonoproep gaat één keer naar leden zonder nummer, alleen in de week van 9 november", async () => {
+  const oproep = () => sent.filter((item) => item.payload.tag === "telefoon-verplicht");
+  db.prepare("DELETE FROM push_log WHERE key LIKE 'telefoon-verplicht:%'").run();
+  db.prepare("UPDATE users SET phone = '0612345678' WHERE id = ?").run(sophie);
+  sent.length = 0;
+  await push.runDailyNotifications(new Date("2026-11-08T13:00:00Z"));
+  await push.runDailyNotifications(new Date("2026-11-17T13:00:00Z"));
+  assert.equal(oproep().length, 0);
+
+  await push.runDailyNotifications(new Date("2026-11-10T13:00:00Z"));
+  assert.deepEqual(oproep().map((item) => item.endpoint).sort(), ["https://push.example/anna@cassio.test", "https://push.example/lotte@cassio.test"]);
+
+  sent.length = 0;
+  await push.runDailyNotifications(new Date("2026-11-11T13:00:00Z"));
+  assert.equal(oproep().length, 0);
+  db.prepare("UPDATE users SET phone = '' WHERE id = ?").run(sophie);
 });
 
 test("dies-felicitatie gaat één keer naar iedereen, op 7 november om 10:00", async () => {

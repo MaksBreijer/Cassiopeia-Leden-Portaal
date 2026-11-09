@@ -29,7 +29,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="assets/app-icon-32.png?v=20260831-logo" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/app-icon-180.png?v=20260831-logo" />
     <link rel="stylesheet" href="styles.css?v=20261016-push" />
-    <link rel="stylesheet" href="refine.css?v=20261109-art" />
+    <link rel="stylesheet" href="refine.css?v=20261109-telefoon" />
   </head>
   <body class="na-lustrum">
     <section id="loginScreen" class="login-screen">
@@ -303,6 +303,7 @@
             <div class="form-section-heading"><span>Persoonlijke gegevens</span><p>Werk alleen bij wat is veranderd.</p></div>
             <div class="form-grid">
               <label>Verjaardag<input name="birthday" type="date" autocomplete="bday" /></label>
+              <label>Telefoonnummer<input name="phone" type="tel" autocomplete="tel" placeholder="06 12345678" /></label>
               <fieldset class="address-fieldset wide">
                 <legend>Adres <span class="label-hint">voor de plattegrond</span></legend>
                 <div class="address-grid">
@@ -774,6 +775,22 @@
       </form>
     </dialog>
 
+    <dialog id="phoneRequiredDialog" class="install-app-dialog">
+      <form id="phoneRequiredForm" class="dialog-card install-app-card">
+        <div class="dialog-heading">
+          <p class="eyebrow">Verplicht 📱</p>
+          <h3>Vul je telefoonnummer in</h3>
+          <p>Alle leden moeten hun nummer invullen. Zolang het ontbreekt, zie je deze pop-up elke keer dat je de app opent.</p>
+        </div>
+        <input name="phone" type="tel" autocomplete="tel" placeholder="06 12345678" aria-label="Telefoonnummer" required />
+        <p id="phoneRequiredError" class="login-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="submit" class="primary">Opslaan</button>
+          <button type="button" class="ghost" data-phone-required-later>Later</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="pushPromptDialog" class="install-app-dialog">
       <div class="dialog-card install-app-card">
         <div class="install-app-icon" aria-hidden="true">
@@ -852,6 +869,6 @@
     </dialog>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20261109-art"></script>
+    <script src="app.js?v=20261109-telefoon"></script>
   </body>
 </html>
