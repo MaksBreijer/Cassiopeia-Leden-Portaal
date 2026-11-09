@@ -272,6 +272,24 @@ async function notifyMissingPhones(today) {
   });
 }
 
+// Eenmalige extra herinnering voor de activiteit van 15 november 2026, voor wie meedoet en nog niet reageerde.
+const NOV15_REMINDER_DATE = "2026-11-09";
+const NOV15_REMINDER_LAST_DATE = "2026-11-14";
+
+async function notifyNov15Reminder(today) {
+  if (today.date < NOV15_REMINDER_DATE || today.date > NOV15_REMINDER_LAST_DATE) return;
+  const activity = db.prepare("SELECT id, title FROM activities WHERE starts_at LIKE '2026-11-15%' AND title LIKE '15e van de maand%'").get();
+  if (!activity) return;
+  const responded = new Set(db.prepare("SELECT user_id FROM registrations WHERE activity_id = ?").all(activity.id).map((row) => row.user_id));
+  const recipients = activeMemberIds({ participantsOnly: true }).filter((id) => !responded.has(id));
+  await sendOnce(`herinnering-15-november:${activity.id}`, recipients, {
+    title: "Ben je er 15 november bij? 💜",
+    body: `${activity.title} Laat nog even weten of je meedoet.`,
+    url: `/#activiteit-${activity.id}`,
+    tag: `herinnering-15-november-${activity.id}`,
+  });
+}
+
 let running = false;
 
 async function runDailyNotifications(now = new Date()) {
@@ -287,6 +305,7 @@ async function runDailyNotifications(now = new Date()) {
     await notifyDies(today);
     await notifyLustrumEnd(today);
     await notifyMissingPhones(today);
+    await notifyNov15Reminder(today);
   } catch (error) {
     console.error("Dagelijkse pushmeldingen mislukt:", error.message);
   } finally {

@@ -157,6 +157,22 @@ test("telefoonoproep gaat één keer naar leden zonder nummer, alleen in de week
   db.prepare("UPDATE users SET phone = '' WHERE id = ?").run(sophie);
 });
 
+test("extra herinnering voor 15 november gaat één keer naar wie nog niet reageerde", async () => {
+  const id = db.prepare("INSERT INTO activities (title, starts_at) VALUES ('15e van de maand voor wie het gezellig vindt!', '2026-11-15T10:00')").run().lastInsertRowid;
+  db.prepare("INSERT INTO registrations (activity_id, user_id) VALUES (?, ?)").run(id, sophie);
+  const herinnering = () => sent.filter((item) => item.payload.tag === `herinnering-15-november-${id}`);
+  sent.length = 0;
+  await push.runDailyNotifications(new Date("2026-11-15T13:00:00Z")); // te laat
+  assert.equal(herinnering().length, 0);
+
+  await push.runDailyNotifications(new Date("2026-11-12T13:00:00Z"));
+  assert.deepEqual(herinnering().map((item) => item.endpoint).sort(), ["https://push.example/anna@cassio.test", "https://push.example/lotte@cassio.test"]);
+
+  sent.length = 0;
+  await push.runDailyNotifications(new Date("2026-11-13T13:00:00Z"));
+  assert.equal(herinnering().length, 0);
+});
+
 test("dies-felicitatie gaat één keer naar iedereen, op 7 november om 10:00", async () => {
   const dies = () => sent.filter((item) => item.payload.tag === "dies");
   sent.length = 0;
