@@ -461,3 +461,86 @@ body.na-lustrum .login-submit:hover {
 #phoneRequiredForm input {
   width: 100%;
 }
+
+/* Admin op de telefoon: één scrollgebied, alle onderdelen in beeld, compacte rijen */
+.admin-section-tab.active {
+  color: #fff;
+  background: var(--orange-strong);
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .admin-banner p:last-child {
+    display: none;
+  }
+
+  .admin-banner h1 {
+    font-size: 34px;
+  }
+
+  .admin-banner-actions .secondary {
+    min-height: 0;
+    width: auto;
+    border: 0;
+    padding: 4px 0;
+    color: var(--orange-strong);
+    background: transparent;
+  }
+
+  .admin-section-nav {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
+    box-shadow: none;
+  }
+
+  .admin-section-tab {
+    min-width: 0;
+    padding: 9px 2px;
+    font-size: 11.5px;
+    font-weight: 650;
+  }
+
+  .admin-account-list,
+  .admin-activity-list,
+  .admin-year-agenda-list,
+  .admin-document-list,
+  .admin-confession-list,
+  .activity-archive-list {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .admin-account-row.has-select {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .admin-account-row .row-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .admin-account-row.has-select .row-actions {
+    grid-column: 1 / -1;
+  }
+
+  .admin-account-row .row-actions > * {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 8px;
+    font-size: 13px;
+  }
+
+  .activity-admin-utilities {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .activity-admin-utilities > button {
+    grid-column: auto;
+    width: 100%;
+    min-width: 0;
+  }
+}
