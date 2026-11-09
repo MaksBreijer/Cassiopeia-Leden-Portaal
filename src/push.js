@@ -233,6 +233,21 @@ async function notifyLustrumEnd(today) {
   });
 }
 
+// Eenmalige oproep aan actieve leden zonder telefoonnummer, bij de eerste dagelijkse ronde in deze week.
+const PHONE_REMINDER_DATE = "2026-11-09";
+const PHONE_REMINDER_LAST_DATE = "2026-11-16";
+
+async function notifyMissingPhones(today) {
+  if (today.date < PHONE_REMINDER_DATE || today.date > PHONE_REMINDER_LAST_DATE) return;
+  const recipients = db.prepare("SELECT id FROM users WHERE account_status = 'active' AND COALESCE(TRIM(phone), '') = ''").all().map((row) => row.id);
+  await sendOnce(`telefoon-verplicht:${PHONE_REMINDER_DATE}`, recipients, {
+    title: "Vul je telefoonnummer in 📱",
+    body: "Dit is verplicht voor alle leden. Zolang je nummer ontbreekt, krijg je bij het openen van de app een pop-up.",
+    url: "/#home",
+    tag: "telefoon-verplicht",
+  });
+}
+
 let running = false;
 
 async function runDailyNotifications(now = new Date()) {
@@ -246,6 +261,7 @@ async function runDailyNotifications(now = new Date()) {
     await notifyGalaTeaser(today);
     await notifyDies(today);
     await notifyLustrumEnd(today);
+    await notifyMissingPhones(today);
   } catch (error) {
     console.error("Dagelijkse pushmeldingen mislukt:", error.message);
   } finally {

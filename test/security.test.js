@@ -813,6 +813,13 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(birthdayUpdate.response.status, 200);
   assert.equal(birthdayUpdate.data.user.birthday, "2001-05-12");
+  const invalidPhone = await jsonRequest(baseUrl, "/api/me", { method: "PUT", cookie: activated.cookie, body: { phone: "geen nummer" } });
+  assert.equal(invalidPhone.response.status, 400);
+  const phoneUpdate = await jsonRequest(baseUrl, "/api/me", { method: "PUT", cookie: activated.cookie, body: { phone: "06 12 34 56 78" } });
+  assert.equal(phoneUpdate.response.status, 200);
+  assert.equal(phoneUpdate.data.user.phone, "0612345678");
+  const phoneKept = await jsonRequest(baseUrl, "/api/me", { method: "PUT", cookie: activated.cookie, body: { phone: "" } });
+  assert.equal(phoneKept.data.user.phone, "0612345678");
   const invalidBirthday = await jsonRequest(baseUrl, "/api/me", {
     method: "PUT",
     cookie: activated.cookie,

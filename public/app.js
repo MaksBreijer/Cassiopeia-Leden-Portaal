@@ -484,6 +484,7 @@ async function refreshPushUi() {
 
 function maybeShowPushPrompt({ enabled, blocked, iosNeedsInstall }) {
   const dialog = document.querySelector("#pushPromptDialog");
+  if (document.querySelector("#phoneRequiredDialog").open) return;
   if (!dialog || dialog.open || enabled || blocked || !els.loginScreen.classList.contains("hidden")) return;
   const requested = location.hash === "#meldingen";
   let snoozedUntil = 0;
@@ -1029,6 +1030,7 @@ function renderProfile() {
   if (els.headerUserName) els.headerUserName.textContent = state.user.name.split(/\s+/)[0] || "Profiel";
   if (els.welcomeName) els.welcomeName.textContent = state.user.name.split(/\s+/)[0] || "Cassiopeia";
   if (els.profileForm.elements.birthday) els.profileForm.elements.birthday.value = state.user.birthday || "";
+  els.profileForm.elements.phone.value = state.user.phone || "";
   fillAddressFields(els.profileForm, state.user.address || "");
   updateProfilePhotoName();
 }
@@ -1201,7 +1203,38 @@ async function refreshPortal() {
   const archiveTask = state.user?.isAdmin ? loadActivityArchive() : Promise.resolve();
   await Promise.all([loadMembers(), loadMapMembers(), loadActivities(), archiveTask, loadYearAgenda(), loadDocuments(), loadConfessions(), loadSiteAssets()]);
   focusSharedActivity();
+  maybeShowPhoneRequired();
 }
+
+// Telefoonnummer is verplicht: zonder nummer komt deze pop-up één keer per keer dat de app wordt geopend.
+let phonePromptShown = false;
+
+function maybeShowPhoneRequired() {
+  const dialog = document.querySelector("#phoneRequiredDialog");
+  if (phonePromptShown || !state.user || String(state.user.phone || "").trim() || dialog.open) return;
+  phonePromptShown = true;
+  document.querySelector("#pushPromptDialog").close();
+  dialog.showModal();
+}
+
+document.querySelector("#phoneRequiredForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const error = document.querySelector("#phoneRequiredError");
+  error.textContent = "";
+  try {
+    const { user } = await api("/api/me", { method: "PUT", body: JSON.stringify({ phone: event.target.elements.phone.value }) });
+    state.user = user;
+    renderProfile();
+    document.querySelector("#phoneRequiredDialog").close();
+    showToast("Telefoonnummer opgeslagen.");
+  } catch (requestError) {
+    error.textContent = requestError.message;
+  }
+});
+
+document.querySelector("[data-phone-required-later]").addEventListener("click", () => {
+  document.querySelector("#phoneRequiredDialog").close();
+});
 
 async function loadMembers() {
   const query = encodeURIComponent(els.memberSearch.value || "");

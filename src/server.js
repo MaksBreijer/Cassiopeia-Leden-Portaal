@@ -679,15 +679,25 @@ app.post("/api/account/activate", async (req, res) => {
   createAuthenticatedSession(req, res, user);
 });
 
+// Telefoonnummer is verplicht: leeg laten houdt het huidige nummer, een ongeldig nummer wordt geweigerd.
+function phoneFromBody(body, existingPhone) {
+  const phone = String(body.phone || "").replace(/[\s\-().]/g, "");
+  if (!phone) return existingPhone || "";
+  if (!/^\+?[0-9]{8,15}$/.test(phone)) throw new Error("Vul een geldig telefoonnummer in.");
+  return phone;
+}
+
 app.put("/api/me", requireAuth, async (req, res) => {
   const existing = db.prepare("SELECT * FROM users WHERE id = ?").get(req.session.userId);
   if (!existing) return res.status(404).json({ error: "Account niet gevonden." });
 
   let avatar;
   let birthday;
+  let phone;
   try {
     avatar = profileAvatarFromBody(req.body.avatar, existing.avatar);
     birthday = birthdayFromBody(req.body, existing.birthday);
+    phone = phoneFromBody(req.body, existing.phone);
   } catch (error) {
     return res.status(400).json({ error: error.message });
   }
@@ -696,6 +706,8 @@ app.put("/api/me", requireAuth, async (req, res) => {
   const newPassword = String(req.body.newPassword || "");
   const address = req.body.address === undefined ? existing.address || "" : String(req.body.address || "").trim();
   const coordinates = await coordinatesForAddress(address, existing);
+
+  db.prepare("UPDATE users SET phone = ? WHERE id = ?").run(phone, req.session.userId);
 
   if (newPassword) {
     const validationError = passwordError(newPassword, existing.email);

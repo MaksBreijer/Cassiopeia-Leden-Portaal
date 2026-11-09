@@ -427,3 +427,37 @@ body.na-lustrum .login-submit:hover {
   height: calc(100% - 28px);
   object-fit: contain;
 }
+
+/* Kaart zonder eigen acties: geen lege kolom of balk */
+.activity-card:has(.activity-actions > .activity-member-actions.hidden:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.activity-actions:has(> .activity-member-actions.hidden:only-child) {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  .activity-card-intro.has-image {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .activity-card-image {
+    order: -1;
+    width: 100%;
+    height: 140px;
+    border-radius: 16px;
+    box-shadow: none;
+  }
+
+  .activity-card-art img {
+    inset: 22px;
+    width: calc(100% - 44px);
+    height: calc(100% - 44px);
+  }
+}
+
+#phoneRequiredForm input {
+  width: 100%;
+}
