@@ -524,21 +524,25 @@ function publicActivityFile(row) {
   return { id: row.id, activityId: row.activity_id, fileName: row.file_name, mimeType: row.mime_type, createdAt: row.created_at };
 }
 
-function registrationDeadline(startsAt) {
+function registrationDeadline(startsAt, customDeadline = null) {
+  if (customDeadline) {
+    const custom = new Date(customDeadline);
+    if (!Number.isNaN(custom.getTime())) return custom;
+  }
   const start = new Date(startsAt);
   if (Number.isNaN(start.getTime())) return null;
   return new Date(start.getFullYear(), start.getMonth(), 1);
 }
 
-function isRegistrationOpen(startsAt, registrationOverride = "automatic") {
+function isRegistrationOpen(startsAt, registrationOverride = "automatic", customDeadline = null) {
   if (registrationOverride === "open") return true;
   if (registrationOverride === "closed") return false;
-  const deadline = registrationDeadline(startsAt);
+  const deadline = registrationDeadline(startsAt, customDeadline);
   return Boolean(deadline && Date.now() < deadline.getTime());
 }
 
-function isLateCancellation(startsAt) {
-  const deadline = registrationDeadline(startsAt);
+function isLateCancellation(startsAt, customDeadline = null) {
+  const deadline = registrationDeadline(startsAt, customDeadline);
   return Boolean(deadline && Date.now() >= deadline.getTime());
 }
 
@@ -988,6 +992,8 @@ function activityFromBody(body, existing = {}) {
   const registrationOverride = ["automatic", "open", "closed"].includes(requestedOverride) ? requestedOverride : "automatic";
   const requestedResponseMode = String(body.responseMode ?? existing.response_mode ?? "signup").trim();
   const responseMode = ["signup", "optout"].includes(requestedResponseMode) ? requestedResponseMode : "signup";
+  const requestedDeadline = body.registrationDeadline === undefined ? existing.registration_deadline : body.registrationDeadline;
+  const registrationDeadlineValue = String(requestedDeadline || "").trim();
   return {
     title: String(body.title || existing.title || "").trim(),
     description: String(body.description || existing.description || "").trim(),
@@ -995,8 +1001,13 @@ function activityFromBody(body, existing = {}) {
     starts_at: String(body.startsAt || existing.starts_at || "").trim(),
     capacity: Number.isFinite(capacity) && capacity > 0 ? capacity : null,
     response_mode: responseMode,
-    registration_override: registrationOverride
+    registration_override: registrationOverride,
+    registration_deadline: registrationDeadlineValue || null
   };
+}
+
+function invalidRegistrationDeadline(activity) {
+  return Boolean(activity.registration_deadline && Number.isNaN(new Date(activity.registration_deadline).getTime()));
 }
 
 function activityArchiveDate(startsAt) {
@@ -1072,7 +1083,7 @@ function activityRows(userId, scope = "active") {
   });
 
   const activities = rows.map((row) => {
-    const deadline = registrationDeadline(row.starts_at);
+    const deadline = registrationDeadline(row.starts_at, row.registration_deadline);
     const archiveDate = activityArchiveDate(row.starts_at);
     const responseMode = row.response_mode || "signup";
     const participants = participantsByActivity.get(row.id) || [];
@@ -1088,8 +1099,9 @@ function activityRows(userId, scope = "active") {
       shareKey: activityShareKey(row.id),
       registrationCount: participants.length,
       registrationDeadline: deadline?.toISOString() || null,
+      customRegistrationDeadline: row.registration_deadline || null,
       registrationOverride: row.registration_override || "automatic",
-      registrationOpen: isRegistrationOpen(row.starts_at, row.registration_override),
+      registrationOpen: isRegistrationOpen(row.starts_at, row.registration_override, row.registration_deadline),
       archiveAt: archiveDate?.toISOString() || null,
       isRegistered: canParticipate && (responseMode === "optout" ? !Boolean(row.was_cancelled) : Boolean(row.is_registered)),
       wasCancelled: canParticipate && Boolean(row.was_cancelled),
@@ -1462,9 +1474,12 @@ app.post("/api/activities", requireAuth, requireAdmin, (req, res) => {
   if (!activity.title || !activity.starts_at) {
     return res.status(400).json({ error: "Titel en datum zijn verplicht." });
   }
+  if (invalidRegistrationDeadline(activity)) {
+    return res.status(400).json({ error: "De afmelddeadline is geen geldige datum." });
+  }
 
   const result = db
-    .prepare("INSERT INTO activities (title, description, location, starts_at, capacity, response_mode, registration_override, created_by) VALUES (@title, @description, @location, @starts_at, @capacity, @response_mode, @registration_override, @created_by)")
+    .prepare("INSERT INTO activities (title, description, location, starts_at, capacity, response_mode, registration_override, registration_deadline, created_by) VALUES (@title, @description, @location, @starts_at, @capacity, @response_mode, @registration_override, @registration_deadline, @created_by)")
     .run({ ...activity, created_by: req.session.userId });
   notifyNewActivity({ ...activity, id: result.lastInsertRowid }, req.session.userId);
   res.status(201).json({ activity: activityRows(req.session.userId, "all").find((item) => item.id === result.lastInsertRowid) });
@@ -1478,12 +1493,15 @@ app.put("/api/activities/:id", requireAuth, requireAdmin, (req, res) => {
   if (!activity.title || !activity.starts_at) {
     return res.status(400).json({ error: "Titel en datum zijn verplicht." });
   }
+  if (invalidRegistrationDeadline(activity)) {
+    return res.status(400).json({ error: "De afmelddeadline is geen geldige datum." });
+  }
 
   db.prepare(`
     UPDATE activities
     SET title = @title, description = @description, location = @location,
         starts_at = @starts_at, capacity = @capacity, response_mode = @response_mode,
-        registration_override = @registration_override,
+        registration_override = @registration_override, registration_deadline = @registration_deadline,
         updated_at = CURRENT_TIMESTAMP
     WHERE id = @id
   `).run({ ...activity, id: req.params.id });
@@ -1566,8 +1584,8 @@ app.post("/api/activities/:id/register", requireAuth, (req, res) => {
   const activity = db.prepare("SELECT * FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
   const responseMode = activity.response_mode || "signup";
-  if (responseMode === "signup" && !isRegistrationOpen(activity.starts_at, activity.registration_override)) {
-    return res.status(400).json({ error: "De inschrijving is gesloten. De deadline was de eerste van de maand." });
+  if (responseMode === "signup" && !isRegistrationOpen(activity.starts_at, activity.registration_override, activity.registration_deadline)) {
+    return res.status(400).json({ error: "De inschrijving is gesloten omdat de deadline voorbij is." });
   }
 
   if (responseMode === "signup" && activity.capacity) {
@@ -1585,11 +1603,11 @@ app.post("/api/activities/:id/register", requireAuth, (req, res) => {
 
 app.delete("/api/activities/:id/register", requireAuth, (req, res) => {
   if (!takesPartInActivities(req.session.userId)) return res.status(403).json({ error: "Dit account telt niet mee bij activiteiten." });
-  const activity = db.prepare("SELECT starts_at, response_mode FROM activities WHERE id = ?").get(req.params.id);
+  const activity = db.prepare("SELECT starts_at, response_mode, registration_deadline FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
   const reason = String(req.body?.reason || "").trim();
   if (reason.length > 500) return res.status(400).json({ error: "De reden mag maximaal 500 tekens bevatten." });
-  const lateCancelled = isLateCancellation(activity.starts_at);
+  const lateCancelled = isLateCancellation(activity.starts_at, activity.registration_deadline);
   const result = db.prepare(`
     INSERT INTO registrations (activity_id, user_id, cancelled_at, late_cancelled, cancellation_reason)
     VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?)
