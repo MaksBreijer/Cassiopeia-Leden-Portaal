@@ -216,7 +216,7 @@ const committeeAssignments2026 = {
 };
 
 // Bijnamen die naar een volledige naam verwijzen.
-const committeeNameAliases = { tina: "vera verzijl", rita: "anahita", taz: "isabelle ortt" };
+const committeeNameAliases = { tina: "vera verzijl", rita: "anahita", taz: "isabelle ortt", britt: "bert" };
 
 function normalizeName(value) {
   return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -239,7 +239,7 @@ function findCommitteeMember(users, nickname) {
 }
 
 function assignCommittees2026() {
-  const migrationKey = "assign_committees_2026_11_09_v1";
+  const migrationKey = "assign_committees_2026_11_09_v2";
   if (db.prepare("SELECT 1 FROM app_settings WHERE key = ?").get(migrationKey)) return;
   const users = db.prepare("SELECT id, name, committee FROM users").all();
   if (!users.length) return;
