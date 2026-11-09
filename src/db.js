@@ -195,8 +195,80 @@ function initializeDatabase() {
   purgeExistingNonAdminMembers();
   seedYearAgenda();
   syncCsvYearAgendaData();
+  assignCommittees2026();
   installOfficialLogoAssets();
   connectOfficialGoogleCalendar();
+}
+
+// Commissie-indeling 2026-2027 (aangeleverd 9 november 2026). Namen tussen
+// [haken] zijn de bestuursleden die de commissie begeleiden.
+const committeeAssignments2026 = {
+  FeutCie: ["Evi", "Tina", "Zonne", "Jasmin", "Machteld", "Marie", "Benthe"],
+  "Kerst & Nieuw DinerCie": ["Lauke", "Anne", "Sarah", "Britt"],
+  ReünistendagCie: ["Taz", "Annebel", "Juul", "Rita", "Benthe", "Nikki"],
+  EscalaCie: ["Juul", "Jaimy", "Shareena", "Marie", "Lizzy"],
+  COCCie: ["Shareena", "Jasmin", "Isabella", "Marie", "Benthe", "Nikki"],
+  VakanCie: ["Machteld", "Fay", "Lauke", "Evi", "Annemijn", "Britt"],
+  InstaCie: ["Evi", "Juul", "Fay", "Jill", "Jet", "Nikki"],
+  BrandingCie: ["Isabella", "Taz", "Annemijn", "Britt"],
+  GoededoelenCie: ["Vera", "Machteld", "Anne", "Marie", "Annemijn", "Nikki"],
+  DatedinerCie: ["Fay", "Jasmin", "Taz", "Rita", "Annemijn", "Jet", "Lizzy"]
+};
+
+// Bijnamen die naar een volledige naam verwijzen.
+const committeeNameAliases = { tina: "vera verzijl", rita: "anahita", taz: "isabelle ortt" };
+
+function normalizeName(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+function findCommitteeMember(users, nickname) {
+  const key = normalizeName(nickname);
+  const alias = committeeNameAliases[key];
+  if (alias) {
+    const matches = users.filter((user) => normalizeName(user.name).startsWith(alias));
+    return matches.length === 1 ? matches[0] : null;
+  }
+  const aliasTargets = Object.values(committeeNameAliases);
+  const matches = users.filter((user) => {
+    const name = normalizeName(user.name);
+    if (aliasTargets.some((target) => name.startsWith(target))) return false;
+    return name.split(/\s+/)[0] === key;
+  });
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function assignCommittees2026() {
+  const migrationKey = "assign_committees_2026_11_09_v1";
+  if (db.prepare("SELECT 1 FROM app_settings WHERE key = ?").get(migrationKey)) return;
+  const users = db.prepare("SELECT id, name, committee FROM users").all();
+  if (!users.length) return;
+
+  const committeesByUser = new Map();
+  const unmatched = [];
+  Object.entries(committeeAssignments2026).forEach(([committee, names]) => {
+    names.forEach((nickname) => {
+      const user = findCommitteeMember(users, nickname);
+      if (!user) {
+        unmatched.push(`${nickname} (${committee})`);
+        return;
+      }
+      if (!committeesByUser.has(user.id)) committeesByUser.set(user.id, []);
+      committeesByUser.get(user.id).push(committee);
+    });
+  });
+
+  const update = db.prepare("UPDATE users SET committee = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+  db.transaction(() => {
+    users.forEach((user) => {
+      const added = committeesByUser.get(user.id);
+      if (!added) return;
+      const existing = String(user.committee || "").split(/[,;|/]/).map((value) => value.trim()).filter(Boolean);
+      update.run([...new Set([...existing, ...added])].join(", "), user.id);
+    });
+    db.prepare("INSERT INTO app_settings (key, value) VALUES (?, 'complete')").run(migrationKey);
+  })();
+  if (unmatched.length) console.warn(`Commissie-indeling: niet (eenduidig) gevonden: ${unmatched.join(", ")}`);
 }
 
 function ensureColumn(table, column, definition) {
