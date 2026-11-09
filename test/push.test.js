@@ -58,6 +58,37 @@ test("deadlinemelding om 19:00 de dag voor sluiten, alleen voor wie nog niet rea
   assert.equal(sent.length, 0);
 });
 
+test("herinnering om 19:00 een week voor de deadline, alleen voor wie nog niet reageerde, en maar één keer", async () => {
+  const diner = db.prepare("INSERT INTO activities (title, starts_at) VALUES ('Diner', '2031-03-10T20:00')").run().lastInsertRowid;
+  db.prepare("INSERT INTO registrations (activity_id, user_id) VALUES (?, ?)").run(diner, sophie);
+  db.prepare("INSERT INTO activities (title, starts_at, registration_deadline) VALUES ('Reis', '2031-06-20T20:00', '2031-06-10T12:00')").run();
+  const reminders = (title) => sent.filter((item) => item.payload.title === `Schrijf je in voor ${title}`);
+
+  sent.length = 0;
+  await push.runDailyNotifications(new Date("2031-02-22T17:59:00Z")); // 18:59 in Amsterdam
+  await push.runDailyNotifications(new Date("2031-02-21T18:00:00Z")); // een dag te vroeg
+  assert.equal(reminders("Diner").length, 0);
+
+  await push.runDailyNotifications(new Date("2031-02-22T18:00:00Z")); // 19:00 in Amsterdam
+  assert.deepEqual(reminders("Diner").map((item) => item.endpoint).sort(), ["https://push.example/anna@cassio.test", "https://push.example/lotte@cassio.test"]);
+
+  sent.length = 0;
+  await push.runDailyNotifications(new Date("2031-02-22T19:00:00Z"));
+  assert.equal(reminders("Diner").length, 0);
+
+  await push.runDailyNotifications(new Date("2031-05-25T17:00:00Z")); // week voor de 1e, maar Reis heeft een eigen deadline
+  assert.equal(reminders("Reis").length, 0);
+  await push.runDailyNotifications(new Date("2031-06-03T17:00:00Z")); // 19:00 in Amsterdam
+  assert.equal(reminders("Reis").length, 3);
+
+  const closing = () => sent.filter((item) => item.payload.title === "Inschrijving voor Reis sluit morgen");
+  sent.length = 0;
+  await push.runDailyNotifications(new Date("2031-05-31T17:00:00Z")); // dag voor de 1e, maar Reis heeft een eigen deadline
+  assert.equal(closing().length, 0);
+  await push.runDailyNotifications(new Date("2031-06-09T17:00:00Z")); // dag voor de eigen deadline
+  assert.equal(closing().length, 3);
+});
+
 test("verjaardag om 8 uur naar de anderen, niet voor 8 uur", async () => {
   sent.length = 0;
   await push.runDailyNotifications(new Date("2030-03-15T06:59:00Z")); // 07:59 in Amsterdam

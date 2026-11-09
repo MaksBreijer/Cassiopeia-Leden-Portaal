@@ -154,15 +154,22 @@ function amsterdamParts(date = new Date()) {
   return { date: `${parts.year}-${parts.month}-${parts.day}`, month: parts.month, day: parts.day, hour: Number(parts.hour) };
 }
 
+// De inschrijving sluit op de eigen deadline van de activiteit, anders op de 1e van de maand.
+function activitiesWithDeadlineOn(date) {
+  return db
+    .prepare("SELECT * FROM activities WHERE response_mode = 'signup' AND registration_override = 'automatic'")
+    .all()
+    .filter((activity) => {
+      const custom = activity.registration_deadline && new Date(activity.registration_deadline);
+      const deadlineDate = custom && !Number.isNaN(custom.getTime()) ? amsterdamParts(custom).date : `${activity.starts_at.slice(0, 7)}-01`;
+      return deadlineDate === date;
+    });
+}
+
 async function notifyDeadlinesTomorrow(today, now) {
   if (today.hour < DEADLINE_HOUR) return;
   const tomorrow = amsterdamParts(new Date(now.getTime() + 24 * 60 * 60 * 1000));
-  // De inschrijving sluit op de eerste van de maand van de activiteit.
-  if (tomorrow.day !== "01") return;
-  const monthPrefix = tomorrow.date.slice(0, 7);
-  const activities = db
-    .prepare("SELECT * FROM activities WHERE substr(starts_at, 1, 7) = ? AND response_mode = 'signup' AND registration_override = 'automatic'")
-    .all(monthPrefix);
+  const activities = activitiesWithDeadlineOn(tomorrow.date);
   for (const activity of activities) {
     const responded = new Set(db.prepare("SELECT user_id FROM registrations WHERE activity_id = ?").all(activity.id).map((row) => row.user_id));
     const recipients = activeMemberIds({ participantsOnly: true }).filter((id) => !responded.has(id));
@@ -171,6 +178,23 @@ async function notifyDeadlinesTomorrow(today, now) {
       body: "Laat nog even weten of je erbij bent.",
       url: `/#activiteit-${activity.id}`,
       tag: `deadline-${activity.id}`,
+    });
+  }
+}
+
+// Een week voor de deadline krijgt wie nog niet reageerde een herinnering.
+async function notifyDeadlinesNextWeek(today, now) {
+  if (today.hour < DEADLINE_HOUR) return;
+  const nextWeek = amsterdamParts(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000));
+  const activities = activitiesWithDeadlineOn(nextWeek.date);
+  for (const activity of activities) {
+    const responded = new Set(db.prepare("SELECT user_id FROM registrations WHERE activity_id = ?").all(activity.id).map((row) => row.user_id));
+    const recipients = activeMemberIds({ participantsOnly: true }).filter((id) => !responded.has(id));
+    await sendOnce(`deadline-week:${activity.id}`, recipients, {
+      title: `Schrijf je in voor ${activity.title}`,
+      body: "Over een week sluit de inschrijving. Laat je weten of je erbij bent?",
+      url: `/#activiteit-${activity.id}`,
+      tag: `deadline-week-${activity.id}`,
     });
   }
 }
@@ -257,6 +281,7 @@ async function runDailyNotifications(now = new Date()) {
   running = true;
   try {
     await notifyDeadlinesTomorrow(today, now);
+    await notifyDeadlinesNextWeek(today, now);
     await notifyBirthdays(today);
     await notifyGalaTeaser(today);
     await notifyDies(today);
