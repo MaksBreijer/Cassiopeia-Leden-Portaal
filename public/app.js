@@ -12,6 +12,8 @@ const state = {
   yearAgendaUsesLocalData: false,
   yearAgendaSource: { type: "local", label: "Cassiopeia" },
   activeYearAgendaMonthIndex: null,
+  agendaMonth: null,
+  agendaSelectedDay: "",
   memberStatusFilter: "",
   openMemberId: null,
   activationToken: "",
@@ -178,6 +180,17 @@ const els = {
   yearAgendaSourceTitle: document.querySelector("#yearAgendaSourceTitle"),
   yearAgendaSourceLabel: document.querySelector("#yearAgendaSourceLabel"),
   publicActivityList: document.querySelector("#publicActivityList"),
+  agendaMonthTitle: document.querySelector("#agendaMonthTitle"),
+  agendaPrevMonth: document.querySelector("#agendaPrevMonth"),
+  agendaNextMonth: document.querySelector("#agendaNextMonth"),
+  agendaToday: document.querySelector("#agendaToday"),
+  agendaCalendarGrid: document.querySelector("#agendaCalendarGrid"),
+  agendaDayTitle: document.querySelector("#agendaDayTitle"),
+  agendaDayList: document.querySelector("#agendaDayList"),
+  activityDetailsDialog: document.querySelector("#activityDetailsDialog"),
+  activityDetailsDate: document.querySelector("#activityDetailsDate"),
+  activityDetailsTitle: document.querySelector("#activityDetailsTitle"),
+  activityDetailsBody: document.querySelector("#activityDetailsBody"),
   adminActivityList: document.querySelector("#adminActivityList"),
   adminYearAgendaList: document.querySelector("#adminYearAgendaList"),
   adminAgendaSourceSummary: document.querySelector("#adminAgendaSourceSummary"),
@@ -287,6 +300,7 @@ async function api(path, options = {}) {
     throw new Error("Login werkt alleen via de lokale server. Start npm start in de map Cassio website en open daarna http://127.0.0.1:3000.");
   }
   const data = await response.json().catch(() => ({}));
+  if (response.status === 413 && !data.error) throw new Error("Het bestand is te groot om te uploaden.");
   if (!response.ok) throw new Error(data.error || "Er ging iets mis.");
   return data;
 }
@@ -398,6 +412,125 @@ function initializeWebApp() {
   }
 }
 
+// Pushmeldingen
+const PUSH_HINT_KEY = "cassiopeiaPushHintDismissed";
+// Zet op true om de meldingenknop alleen aan admins te tonen.
+const PUSH_ADMINS_ONLY = false;
+const PUSH_PROMPT_KEY = "cassiopeiaPushPromptLater";
+const PUSH_PROMPT_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
+
+function pushSupported() {
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+function isStandaloneApp() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function isIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function urlBase64ToUint8Array(base64) {
+  const padded = (base64 + "=".repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(padded), (char) => char.charCodeAt(0));
+}
+
+async function currentPushSubscription() {
+  if (!pushSupported()) return null;
+  const registration = await navigator.serviceWorker.getRegistration("/");
+  return registration ? registration.pushManager.getSubscription() : null;
+}
+
+async function pushRegistration() {
+  const registration = (await navigator.serviceWorker.getRegistration("/")) || (await navigator.serviceWorker.register("/sw.js", { scope: "/" }));
+  return registration.active ? registration : navigator.serviceWorker.ready;
+}
+
+async function refreshPushUi() {
+  const cards = document.querySelectorAll("[data-push-card]");
+  const hint = document.querySelector("[data-push-hint]");
+  const iosNeedsInstall = isIos() && !isStandaloneApp();
+  if (!state.user || IS_ADMIN_PORTAL || (PUSH_ADMINS_ONLY && !state.user.isAdmin) || (!pushSupported() && !iosNeedsInstall)) {
+    cards.forEach((card) => { card.hidden = true; });
+    if (hint) hint.hidden = true;
+    return;
+  }
+  const subscription = iosNeedsInstall ? null : await currentPushSubscription().catch(() => null);
+  const enabled = Boolean(subscription) && Notification.permission === "granted";
+  const blocked = !iosNeedsInstall && Notification.permission === "denied";
+  cards.forEach((card) => { card.hidden = false; });
+  document.querySelectorAll("[data-push-status]").forEach((status) => {
+    status.textContent = iosNeedsInstall
+      ? "Op iPhone werken meldingen zodra je Cassiopeia op je beginscherm zet (Deel → Zet op beginscherm)."
+      : blocked
+        ? "Meldingen zijn geblokkeerd. Zet ze aan via de instellingen van je browser of telefoon."
+        : enabled
+          ? "Meldingen staan aan op dit apparaat."
+          : "Krijg een melding bij nieuwe activiteiten, sluitende inschrijvingen en verjaardagen.";
+  });
+  document.querySelectorAll("[data-push-toggle]").forEach((button) => {
+    button.textContent = iosNeedsInstall ? "Hoe installeer ik de app?" : enabled ? "Meldingen uitzetten" : "Meldingen aanzetten";
+    button.classList.toggle("primary", !enabled);
+    button.classList.toggle("secondary", enabled);
+    button.disabled = blocked;
+    button.dataset.pushEnabled = String(enabled);
+  });
+  let dismissed = false;
+  try { dismissed = localStorage.getItem(PUSH_HINT_KEY) === "1"; } catch {}
+  if (hint) hint.hidden = enabled || blocked || dismissed;
+  maybeShowPushPrompt({ enabled, blocked, iosNeedsInstall });
+}
+
+function maybeShowPushPrompt({ enabled, blocked, iosNeedsInstall }) {
+  const dialog = document.querySelector("#pushPromptDialog");
+  if (!dialog || dialog.open || enabled || blocked || !els.loginScreen.classList.contains("hidden")) return;
+  const requested = location.hash === "#meldingen";
+  let snoozedUntil = 0;
+  try { snoozedUntil = Number(localStorage.getItem(PUSH_PROMPT_KEY)) || 0; } catch {}
+  if (!requested && Date.now() < snoozedUntil) return;
+  dialog.querySelector("[data-push-prompt-install]").classList.toggle("hidden", !iosNeedsInstall);
+  dialog.querySelector("[data-push-prompt-accept]").textContent = iosNeedsInstall ? "Begrepen" : "Meldingen aanzetten";
+  dialog.dataset.iosNeedsInstall = String(iosNeedsInstall);
+  dialog.showModal();
+}
+
+// Na "Later" komt de pop-up na 3 dagen terug; aanzetten kan ook altijd via Profiel.
+function snoozePushPrompt() {
+  try { localStorage.setItem(PUSH_PROMPT_KEY, String(Date.now() + PUSH_PROMPT_SNOOZE_MS)); } catch {}
+  showToast("Je kunt meldingen altijd aanzetten via Profiel.");
+}
+
+async function togglePush(button) {
+  if (isIos() && !isStandaloneApp()) return openInstallFlow();
+  button.disabled = true;
+  try {
+    const existing = await currentPushSubscription();
+    if (button.dataset.pushEnabled === "true" && existing) {
+      await api("/api/push/subscriptions", { method: "DELETE", body: JSON.stringify({ endpoint: existing.endpoint }) }).catch(() => {});
+      await existing.unsubscribe();
+      showToast("Meldingen staan uit op dit apparaat.");
+    } else {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        showToast("Zonder toestemming kunnen we geen meldingen sturen.");
+      } else {
+        const { publicKey } = await api("/api/push/public-key");
+        const registration = await pushRegistration();
+        const subscription = existing || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+        await api("/api/push/subscriptions", { method: "POST", body: JSON.stringify({ subscription }) });
+        await api("/api/push/test", { method: "POST" }).catch(() => {});
+        showToast("Meldingen staan aan!");
+      }
+    }
+  } catch (error) {
+    showToast(error.message || "Meldingen aanzetten is niet gelukt.");
+  } finally {
+    button.disabled = false;
+    refreshPushUi();
+  }
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -480,8 +613,9 @@ function sharedActivityId() {
   return id && /^\d+$/.test(id) ? id : "";
 }
 
-function activityShareUrl(activityId) {
-  const url = new URL(`/activity/${activityId}`, window.location.origin);
+function activityShareUrl(activity) {
+  const url = new URL(`/activity/${activity.id}`, window.location.origin);
+  if (activity.shareKey) url.searchParams.set("s", activity.shareKey);
   url.hash = "home";
   return url.toString();
 }
@@ -489,7 +623,12 @@ function activityShareUrl(activityId) {
 function focusSharedActivity() {
   const id = sharedActivityId();
   if (!id) return false;
-  const card = document.querySelector(`[data-activity-card="${id}"]`);
+  let card = document.querySelector(`[data-activity-card="${id}"]`);
+  if (!card && !showAllHomeActivities && state.activities.some((activity) => String(activity.id) === String(id))) {
+    showAllHomeActivities = true;
+    renderPublicActivities();
+    card = document.querySelector(`[data-activity-card="${id}"]`);
+  }
   if (!card) return false;
   card.classList.add("activity-card-highlight");
   card.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -507,13 +646,14 @@ function avatarHtml(user) {
 
 function renderActivityParticipants(activity) {
   const participants = activity.participants || [];
+  const detailsHint = `<span class="participants-details-hint">Wie komen er? <span aria-hidden="true">→</span></span>`;
   if (!participants.length) {
-    return `<div class="activity-participants empty">${activity.responseMode === "optout" ? "Niemand staat op aanwezig" : "Nog niemand ingeschreven"}</div>`;
+    return `<button type="button" class="activity-participants empty" data-activity-details="${activity.id}">${activity.responseMode === "optout" ? "Niemand staat op aanwezig" : "Nog niemand ingeschreven"}${detailsHint}</button>`;
   }
   const preview = participants.slice(0, 8);
   const extra = participants.length - preview.length;
   return `
-    <div class="activity-participants" aria-label="Wie gaan er mee">
+    <button type="button" class="activity-participants" data-activity-details="${activity.id}" aria-label="Bekijk wie er komen bij ${escapeHtml(activity.title)}">
       <span class="participants-label">Gaan mee</span>
       <div class="participant-avatars">
         ${preview
@@ -527,8 +667,185 @@ function renderActivityParticipants(activity) {
           .join("")}
         ${extra > 0 ? `<span class="participant-more">+${extra}</span>` : ""}
       </div>
+      ${detailsHint}
+    </button>
+  `;
+}
+
+function activityDetailsPeople(members, emptyText) {
+  if (!members.length) return `<p class="registration-empty">${emptyText}</p>`;
+  return members.map((member) => `
+    <article class="registration-person">
+      <span class="registration-avatar avatar">${avatarHtml(member)}</span>
+      <div class="registration-person-copy">
+        <strong>${escapeHtml(member.name)}</strong>
+        <p class="meta">${escapeHtml(formatLichting(member.yearLayer))}</p>
+      </div>
+    </article>
+  `).join("");
+}
+
+function openActivityDetails(activityId) {
+  const activity = state.activities.find((item) => item.id === Number(activityId));
+  if (!activity) return showToast("Deze activiteit is niet meer te vinden.");
+  const optOut = activity.responseMode === "optout";
+  const coming = activity.participants || [];
+  const notComing = activity.absentees || [];
+  els.activityDetailsDate.textContent = formatDate(activity.startsAt);
+  els.activityDetailsTitle.textContent = activity.title;
+  els.activityDetailsBody.innerHTML = `
+    <div class="activity-details-facts">
+      <span><strong>Locatie</strong>${escapeHtml(activity.location || "Volgt")}</span>
+      <span><strong>${optOut ? "Afmelddeadline" : "Inschrijfdeadline"}</strong>${formatActivityDeadline(activity)}</span>
+    </div>
+    ${activity.description ? `<p class="activity-details-description">${escapeHtml(activity.description)}</p>` : ""}
+    <div class="registration-groups">
+      <details class="registration-group" open>
+        <summary><span>Komen</span><strong>${coming.length}</strong></summary>
+        <div class="registration-people">${activityDetailsPeople(coming, optOut ? "Niemand staat op aanwezig." : "Nog niemand ingeschreven.")}</div>
+      </details>
+      <details class="registration-group registration-group-cancelled" open>
+        <summary><span>Komen niet</span><strong>${notComing.length}</strong></summary>
+        <div class="registration-people">${activityDetailsPeople(notComing, "Nog niemand heeft zich afgemeld.")}</div>
+      </details>
     </div>
   `;
+  if (!els.activityDetailsDialog.open) els.activityDetailsDialog.showModal();
+}
+
+function agendaDayKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function normalizedAgendaTitle(value) {
+  return String(value || "").toLocaleLowerCase("nl").replace(/[^a-z0-9à-ÿ]+/g, "");
+}
+
+// Combines portal activities and the year planning into one list per day.
+// A planning item with the same title on the same day as an activity is left out.
+function agendaEventsByDay() {
+  const days = new Map();
+  const add = (key, event) => {
+    if (!days.has(key)) days.set(key, []);
+    days.get(key).push(event);
+  };
+  state.activities.forEach((activity) => {
+    const date = new Date(activity.startsAt);
+    if (!Number.isFinite(date.getTime())) return;
+    add(agendaDayKey(date), {
+      type: "activity",
+      activity,
+      title: activity.title,
+      timestamp: date.getTime(),
+      timeLabel: new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date)
+    });
+  });
+  state.yearAgendaItems.forEach((item) => {
+    const timestamp = yearAgendaItemTimestamp(item);
+    if (timestamp === null) return;
+    const key = agendaDayKey(new Date(timestamp));
+    const duplicate = (days.get(key) || []).some((event) => event.type === "activity" && normalizedAgendaTitle(event.title) === normalizedAgendaTitle(item.title));
+    if (duplicate) return;
+    add(key, { type: "planning", title: item.title, timestamp, timeLabel: yearAgendaTimeLabel(item) });
+  });
+  // Verjaardagen komen elk jaar terug; vul ze in rond het getoonde jaar.
+  const shownYear = (state.agendaMonth || new Date()).getFullYear();
+  (state.agendaMembers || []).forEach((member) => {
+    const parts = member.accountStatus === "active" ? birthdayParts(member.birthday) : null;
+    if (!parts) return;
+    for (let year = shownYear - 1; year <= shownYear + 1; year += 1) {
+      const date = new Date(year, parts.month - 1, parts.day);
+      if (date.getMonth() !== parts.month - 1) continue;
+      add(agendaDayKey(date), { type: "birthday", title: `🎂 ${member.name}`, timestamp: date.getTime() - 1, timeLabel: "Jarig" });
+    }
+  });
+  days.forEach((events) => events.sort((a, b) => a.timestamp - b.timestamp));
+  return days;
+}
+
+function renderAgendaCalendar() {
+  if (!els.agendaCalendarGrid) return;
+  const today = new Date();
+  if (!state.agendaMonth) state.agendaMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const month = state.agendaMonth;
+  const eventsByDay = agendaEventsByDay();
+  if (!state.agendaSelectedDay) state.agendaSelectedDay = agendaDayKey(today);
+
+  els.agendaMonthTitle.textContent = new Intl.DateTimeFormat("nl-NL", { month: "long", year: "numeric" }).format(month);
+  const firstWeekday = (month.getDay() + 6) % 7;
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const todayKey = agendaDayKey(today);
+  const cells = [];
+  for (let blank = 0; blank < firstWeekday; blank += 1) cells.push('<span class="agenda-day agenda-day-blank" aria-hidden="true"></span>');
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = new Date(month.getFullYear(), month.getMonth(), day);
+    const key = agendaDayKey(date);
+    const events = eventsByDay.get(key) || [];
+    const label = new Intl.DateTimeFormat("nl-NL", { weekday: "long", day: "numeric", month: "long" }).format(date);
+    cells.push(`
+      <button type="button" class="agenda-day ${key === todayKey ? "is-today" : ""} ${key === state.agendaSelectedDay ? "is-selected" : ""} ${events.length ? "has-events" : ""}"
+        data-agenda-day="${key}" aria-pressed="${key === state.agendaSelectedDay}"
+        aria-label="${escapeHtml(`${label}${events.length ? `, ${events.length} ${events.length === 1 ? "activiteit" : "activiteiten"}` : ""}`)}">
+        <span class="agenda-day-number">${day}</span>
+        ${events.length ? `<span class="agenda-day-dots">${events.slice(0, 3).map((event) => `<i class="agenda-dot agenda-dot-${event.type}"></i>`).join("")}</span>` : ""}
+        ${events.slice(0, 2).map((event) => `<span class="agenda-day-title agenda-day-title-${event.type}">${escapeHtml(event.title)}</span>`).join("")}
+        ${events.length > 2 ? `<span class="agenda-day-more">+${events.length - 2}</span>` : ""}
+      </button>
+    `);
+  }
+  els.agendaCalendarGrid.innerHTML = cells.join("");
+  renderAgendaDay(eventsByDay);
+}
+
+function renderAgendaDay(eventsByDay = agendaEventsByDay()) {
+  if (!els.agendaDayList) return;
+  const [year, monthNumber, day] = state.agendaSelectedDay.split("-").map(Number);
+  const date = new Date(year, monthNumber - 1, day);
+  els.agendaDayTitle.textContent = new Intl.DateTimeFormat("nl-NL", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(date);
+  const events = eventsByDay.get(state.agendaSelectedDay) || [];
+  if (!events.length) {
+    els.agendaDayList.innerHTML = '<p class="meta">Niets gepland op deze dag.</p>';
+    return;
+  }
+  els.agendaDayList.innerHTML = events.map((event) => {
+    if (event.type === "birthday") {
+      return `
+        <article class="agenda-event agenda-event-birthday">
+          <span class="agenda-event-time">${escapeHtml(event.timeLabel)}</span>
+          <div><strong>${escapeHtml(event.title)}</strong><p class="meta">Verjaardag</p></div>
+        </article>
+      `;
+    }
+    if (event.type === "planning") {
+      return `
+        <article class="agenda-event agenda-event-planning">
+          <span class="agenda-event-time">${escapeHtml(event.timeLabel || "Hele dag")}</span>
+          <div><strong>${escapeHtml(event.title)}</strong><p class="meta">Jaarplanning</p></div>
+        </article>
+      `;
+    }
+    const { activity } = event;
+    const optOut = activity.responseMode === "optout";
+    return `
+      <button type="button" class="agenda-event agenda-event-activity" data-activity-details="${activity.id}">
+        <span class="agenda-event-time">${escapeHtml(event.timeLabel)}</span>
+        <div>
+          <strong>${escapeHtml(activity.title)}</strong>
+          <p class="meta">${escapeHtml(activity.location || "Locatie volgt")} · ${activity.registrationCount} ${optOut ? "verwacht" : "komen"}${activity.absentees?.length ? ` · ${activity.absentees.length} komen niet` : ""}</p>
+        </div>
+        <span class="agenda-event-link">Wie komen er? <span aria-hidden="true">→</span></span>
+      </button>
+    `;
+  }).join("");
+}
+
+function shiftAgendaMonth(offset) {
+  const current = state.agendaMonth || new Date();
+  state.agendaMonth = new Date(current.getFullYear(), current.getMonth() + offset, 1);
+  const today = new Date();
+  const isCurrentMonth = state.agendaMonth.getFullYear() === today.getFullYear() && state.agendaMonth.getMonth() === today.getMonth();
+  state.agendaSelectedDay = agendaDayKey(isCurrentMonth ? today : state.agendaMonth);
+  renderAgendaCalendar();
 }
 
 function csvValue(value) {
@@ -565,6 +882,42 @@ function fileAsBase64(file) {
     reader.addEventListener("error", () => reject(new Error("Het bestand kon niet worden gelezen.")));
     reader.readAsDataURL(file);
   });
+}
+
+function fileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "")));
+    reader.addEventListener("error", () => reject(new Error("Het bestand kon niet worden gelezen.")));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Grote foto's (bijv. van een telefoon) worden verkleind voordat ze worden geüpload,
+// zodat ze niet stranden op de uploadlimiet van de server.
+async function siteImageUpload(key, file) {
+  const original = { fileName: file.name, mimeType: file.type, data: await fileAsBase64(file) };
+  const maxSide = key === "herobackground" ? 2400 : 1200;
+  let image;
+  try {
+    image = await loadImageFromFile(file);
+  } catch (error) {
+    return original;
+  }
+  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+  if (scale === 1 && file.size <= 700 * 1024) return original;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+  // Foto's worden JPEG; logo's en lustrumbeelden houden hun transparantie.
+  const encoded = canvas.toDataURL(key === "herobackground" || file.type === "image/jpeg" ? "image/jpeg" : file.type, 0.85);
+  const mimeType = encoded.slice(5, encoded.indexOf(";"));
+  const data = encoded.split(",")[1] || "";
+  if (!data || !["image/png", "image/jpeg", "image/webp"].includes(mimeType) || data.length >= original.data.length) return original;
+  const extension = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" }[mimeType];
+  const fileName = `${file.name.replace(/\.[^.]+$/, "") || "afbeelding"}.${extension}`;
+  return { fileName, mimeType, data };
 }
 
 function resetMemberImportPreview() {
@@ -707,17 +1060,22 @@ function closeMobileMenu() {
   els.menuToggle.setAttribute("aria-expanded", "false");
 }
 
+// Reünisten zien de biechten niet; admins wel, voor moderatie.
+function canUseConfessions() {
+  return Boolean(state.user) && (state.user.memberStatus !== "oud" || state.user.isAdmin);
+}
+
 function showPage(page = location.hash.slice(1) || "home") {
   if (!IS_ADMIN_PORTAL && page === "beheer" && state.user?.isAdmin) {
     location.assign("/admin");
     return;
   }
-  const allowedPages = ["home", "leden", "plattegrond", "profiel", "documenten", "biechten"];
+  const allowedPages = ["home", "agenda", "leden", "plattegrond", "profiel", "documenten", ...(canUseConfessions() ? ["biechten"] : [])];
   const activePage = IS_ADMIN_PORTAL && state.user?.isAdmin ? "beheer" : allowedPages.includes(page) ? page : "home";
   document.querySelectorAll(".page-view").forEach((section) => {
     section.classList.toggle("hidden", section.id !== activePage);
   });
-  document.querySelectorAll(".site-nav a[href^='#']").forEach((link) => {
+  document.querySelectorAll(".site-nav a[href^='#'], .bottom-nav a[href^='#']").forEach((link) => {
     if (link.getAttribute("href") === `#${activePage}`) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
@@ -733,6 +1091,10 @@ function syncScopedVisibility() {
     const allowedForPortal = (!element.classList.contains("member-portal-nav") || !IS_ADMIN_PORTAL)
       && (!element.classList.contains("admin-portal-only") || IS_ADMIN_PORTAL);
     element.classList.toggle("hidden", !(allowedForRole && allowedForPortal));
+  });
+  document.querySelectorAll(".confession-nav").forEach((element) => {
+    if (!canUseConfessions()) element.classList.add("hidden");
+    else if (!element.classList.contains("member-portal-nav")) element.classList.remove("hidden");
   });
 }
 
@@ -772,6 +1134,7 @@ function setLoggedIn(user) {
   els.memberGrid.classList.remove("hidden");
   renderProfile();
   syncScopedVisibility();
+  refreshPushUi();
   showPage(IS_ADMIN_PORTAL ? "beheer" : undefined);
   if (IS_ADMIN_PORTAL) showAdminPanel(activeAdminPanel);
   return true;
@@ -822,6 +1185,11 @@ async function loadMembers() {
   const query = encodeURIComponent(els.memberSearch.value || "");
   const data = await api(`/api/members?q=${query}`);
   state.members = data.members;
+  // Ongefilterde lijst voor de verjaardagen in de agenda.
+  if (!query) {
+    state.agendaMembers = data.members;
+    renderAgendaCalendar();
+  }
   renderMemberFilters();
   renderMembers();
   renderBirthdays();
@@ -851,11 +1219,17 @@ function setFilterOptions(select, values, emptyLabel, formatValue = (value) => v
   select.value = values.includes(current) ? current : "";
 }
 
+// Bestuursfuncties vallen in het filter samen onder "Bestuur".
+const BOARD_ROLE_PATTERN = /^(praeses|ab[\s-]*actis|q(u)?aestor|questor|bestuur)$/i;
+
 function memberCommittees(member) {
-  return String(member.committee || "")
+  const committees = String(member.committee || "")
     .split(/[,;|/]/)
     .map((value) => value.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((value) => (BOARD_ROLE_PATTERN.test(value) ? "Bestuur" : value));
+  if (BOARD_ROLE_PATTERN.test(String(member.roleTitle || "").trim())) committees.push("Bestuur");
+  return [...new Set(committees)];
 }
 
 function renderMemberFilters() {
@@ -1400,6 +1774,10 @@ async function loadDocuments() {
 }
 
 async function loadConfessions() {
+  if (!canUseConfessions()) {
+    state.confessions = [];
+    return;
+  }
   const data = await api("/api/confessions");
   state.confessions = data.confessions || [];
   renderConfessions();
@@ -1428,6 +1806,7 @@ async function loadYearAgenda() {
   }
   renderYearAgenda();
   renderAdminYearAgenda();
+  renderAgendaCalendar();
   renderPortalOverview();
 }
 
@@ -1601,7 +1980,10 @@ function renderYearAgenda() {
   `;
 }
 
-function activityListHtml(adminMode = false) {
+const HOME_ACTIVITY_PREVIEW = 3;
+let showAllHomeActivities = false;
+
+function activityListHtml(adminMode = false, limit = Infinity) {
   if (!state.activities.length) {
     return `
       <article class="activity-card">
@@ -1614,10 +1996,15 @@ function activityListHtml(adminMode = false) {
     `;
   }
 
+  const hiddenCount = Math.max(0, state.activities.length - limit);
+  const moreButton = hiddenCount
+    ? `<button type="button" class="ghost activity-show-all" data-show-all-activities>Toon alle ${state.activities.length} activiteiten</button>`
+    : "";
   return state.activities
+    .slice(0, limit)
     .map((activity) => {
       const optOut = activity.responseMode === "optout";
-      const canParticipate = Boolean(state.user && !state.user.isAdmin);
+      const canParticipate = Boolean(state.user && state.user.takesPart !== false);
       const full = !optOut && activity.capacity && activity.registrationCount >= activity.capacity;
       const registrationOpen = activityRegistrationIsOpen(activity);
       const canRegister = Boolean(canParticipate && (optOut ? activity.wasCancelled : !activity.isRegistered && registrationOpen && !full));
@@ -1651,7 +2038,7 @@ function activityListHtml(adminMode = false) {
               ? `Schrijf je in als je komt, of meld je af als je niet kunt. Reageren kan tot ${formatActivityDeadline(activity)}.`
               : `De inschrijving sloot op ${formatActivityDeadline(activity)}. Afmelden blijft mogelijk.`;
       return `
-        <article ${adminMode ? "" : `id="activiteit-${activity.id}"`} class="activity-card ${state.user?.isAdmin && !adminMode ? "activity-card-readonly" : ""}" data-activity-card="${activity.id}">
+        <article ${adminMode ? "" : `id="activiteit-${activity.id}"`} class="activity-card" data-activity-card="${activity.id}">
           <div class="activity-card-content">
             <div class="activity-card-intro ${activity.hasImage ? "has-image" : ""}">
               <div>
@@ -1664,17 +2051,17 @@ function activityListHtml(adminMode = false) {
               </div>
               ${activity.hasImage ? `<img class="activity-card-image" src="/api/activities/${activity.id}/image" alt="" loading="lazy" />` : ""}
             </div>
-            <div class="activity-facts">
-              <span><strong>Locatie</strong>${escapeHtml(activity.location || "Volgt")}</span>
-              <span><strong>${optOut ? "Verwacht" : "Aanmeldingen"}</strong>${activity.registrationCount}${!optOut && activity.capacity ? ` van ${activity.capacity}` : ""}</span>
-              <span><strong>${optOut ? "Afmelddeadline" : "Inschrijfdeadline"}</strong>${formatActivityDeadline(activity)}</span>
-            </div>
+            <p class="activity-quick-facts">
+              <span>📍 ${escapeHtml(activity.location || "Locatie volgt")}</span>
+              <span>👥 ${activity.registrationCount}${!optOut && activity.capacity ? `/${activity.capacity}` : ""} ${optOut ? "verwacht" : "aangemeld"}</span>
+              <span>⏳ ${optOut ? "Afmelden" : "Reageren"} tot ${formatActivityDeadline(activity)}</span>
+            </p>
             ${activity.wasCancelled ? `<p class="late-cancelled-note">${activity.lateCancelled ? "Afmelding te laat geregistreerd." : "Je bent afgemeld."}</p>` : ""}
             ${activity.files?.length ? `<div class="activity-files"><span class="module-label">Bestanden</span>${activity.files.map((file) => `<button class="file-link" type="button" data-download-activity-file="${file.id}" data-activity-id="${activity.id}" data-file-name="${escapeHtml(file.fileName)}" data-file-type="${escapeHtml(file.mimeType)}">${escapeHtml(file.fileName)}</button>${adminMode ? `<button class="file-delete" type="button" data-delete-activity-file="${file.id}" data-activity-id="${activity.id}" aria-label="Verwijder ${escapeHtml(file.fileName)}">×</button>` : ""}`).join("")}</div>` : ""}
             ${renderActivityParticipants(activity)}
           </div>
           <div class="activity-actions ${adminMode ? "activity-actions-admin-only" : ""}">
-            <div class="activity-member-actions ${state.user?.isAdmin ? "hidden" : ""}">
+            <div class="activity-member-actions ${adminMode || !canParticipate ? "hidden" : ""}">
               <span class="module-label">Jouw deelname</span>
               <button class="primary" data-register="${activity.id}" data-registration-action="join" ${canRegister ? "" : "disabled"}>${optOut ? "Afmelding intrekken" : "Inschrijven"}</button>
               <button class="secondary" data-register="${activity.id}" data-registration-action="cancel" ${canCancel ? "" : "disabled"}>${optOut ? "Ik kan niet" : "Afmelden"}</button>
@@ -1700,11 +2087,12 @@ function activityListHtml(adminMode = false) {
         </article>
       `;
     })
-    .join("");
+    .join("") + moreButton;
 }
 
 function renderPublicActivities() {
-  if (els.publicActivityList) els.publicActivityList.innerHTML = activityListHtml(false);
+  if (els.publicActivityList) els.publicActivityList.innerHTML = activityListHtml(false, showAllHomeActivities ? Infinity : HOME_ACTIVITY_PREVIEW);
+  renderAgendaCalendar();
   if (els.adminActivityList) els.adminActivityList.innerHTML = state.user?.isAdmin && IS_ADMIN_PORTAL ? activityListHtml(true) : "";
 }
 
@@ -1912,6 +2300,7 @@ function renderActivityArchive() {
       <div class="activity-archive-actions">
         <button class="secondary" type="button" data-registrations="${activity.id}">Reacties bekijken</button>
         <button class="activity-excel-button" type="button" data-export-activity="${activity.id}">Excel downloaden</button>
+        <button class="danger" type="button" data-delete-activity="${activity.id}">Verwijder</button>
       </div>
     </article>
   `).join("");
@@ -1983,6 +2372,7 @@ function openMemberDialog(member = null) {
   fields.avatar.value = editableInitials;
   fields.bio.value = member?.bio || "";
   fields.isAdmin.checked = Boolean(member?.isAdmin);
+  fields.takesPart.checked = member?.takesPart !== false;
   fields.accountStatus.value = member?.accountStatus || "pending";
   fields.accountStatus.disabled = !member;
   els.memberDialog.showModal();
@@ -2243,19 +2633,14 @@ async function openActivation(token) {
   }
 }
 
-function loadImageFromFile(file) {
+// Via een data:-URL i.p.v. blob:, want de Content-Security-Policy (img-src) blokkeert blob:-afbeeldingen.
+async function loadImageFromFile(file) {
+  const src = await fileAsDataUrl(file);
   return new Promise((resolve, reject) => {
     const image = new Image();
-    const objectUrl = URL.createObjectURL(file);
-    image.addEventListener("load", () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve(image);
-    });
-    image.addEventListener("error", () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("De afbeelding kon niet gelezen worden."));
-    });
-    image.src = objectUrl;
+    image.addEventListener("load", () => resolve(image));
+    image.addEventListener("error", () => reject(new Error("De afbeelding kon niet gelezen worden.")));
+    image.src = src;
   });
 }
 
@@ -2512,6 +2897,14 @@ els.yearAgendaNext.addEventListener("click", () => {
   }
 });
 
+els.agendaPrevMonth?.addEventListener("click", () => shiftAgendaMonth(-1));
+els.agendaNextMonth?.addEventListener("click", () => shiftAgendaMonth(1));
+els.agendaToday?.addEventListener("click", () => {
+  state.agendaMonth = null;
+  state.agendaSelectedDay = "";
+  renderAgendaCalendar();
+});
+
 els.menuToggle.addEventListener("click", () => {
   const isOpen = els.siteHeader.classList.toggle("menu-open");
   els.menuToggle.setAttribute("aria-expanded", String(isOpen));
@@ -2749,13 +3142,16 @@ els.siteImagesForm?.addEventListener("submit", async (event) => {
     const uploads = ["logo", "hero", "herobackground"].map((key) => ({ key, file: els.siteImagesForm.elements[key].files[0] })).filter((item) => item.file);
     if (!uploads.length) return showToast("Kies minimaal één afbeelding.");
     for (const { key, file } of uploads) {
-      await api(`/api/site-assets/${key}`, { method: "PUT", body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: await fileAsBase64(file) }) });
+      await api(`/api/site-assets/${key}`, { method: "PUT", body: JSON.stringify(await siteImageUpload(key, file)) });
     }
     els.siteImagesForm.reset();
     await loadSiteAssets();
     showToast("Afbeeldingen opgeslagen.");
   } catch (error) {
-    showToast(error.message);
+    // Laat het voorbeeld niet een foto tonen die niet is opgeslagen.
+    els.siteImagesForm.reset();
+    await loadSiteAssets().catch(() => {});
+    showToast(`Niet opgeslagen: ${error.message}`);
   }
 });
 
@@ -2770,9 +3166,10 @@ els.siteImagesForm?.addEventListener("submit", async (event) => {
     if (!file) return;
     const preview = document.querySelector(`[data-admin-image-preview="${key}"]`);
     if (!preview) return;
-    const objectUrl = URL.createObjectURL(file);
-    preview.src = objectUrl;
-    preview.addEventListener("load", () => URL.revokeObjectURL(objectUrl), { once: true });
+    // Geen blob:-URL: die blokkeert de Content-Security-Policy (img-src).
+    fileAsDataUrl(file).then((src) => {
+      preview.src = src;
+    }).catch(() => {});
   });
 });
 
@@ -2823,7 +3220,37 @@ document.body.addEventListener("click", async (event) => {
   const calendarSubscriptionButton = event.target.closest("[data-open-calendar-subscription]");
   if (calendarSubscriptionButton) return openCalendarSubscriptionDialog();
 
-  const navLink = event.target.closest(".site-nav a");
+  const pushPromptAccept = event.target.closest("[data-push-prompt-accept]");
+  if (pushPromptAccept) {
+    const dialog = document.querySelector("#pushPromptDialog");
+    dialog.close();
+    if (dialog.dataset.iosNeedsInstall === "true") return snoozePushPrompt();
+    return togglePush(pushPromptAccept);
+  }
+
+  if (event.target.closest("[data-push-prompt-later]")) {
+    snoozePushPrompt();
+    document.querySelector("#pushPromptDialog").close();
+    return;
+  }
+
+  const pushToggleButton = event.target.closest("[data-push-toggle]");
+  if (pushToggleButton) return togglePush(pushToggleButton);
+
+  if (event.target.closest("[data-push-hint-dismiss]")) {
+    try { localStorage.setItem(PUSH_HINT_KEY, "1"); } catch {}
+    document.querySelector("[data-push-hint]").hidden = true;
+    return;
+  }
+
+  const showAllActivitiesButton = event.target.closest("[data-show-all-activities]");
+  if (showAllActivitiesButton) {
+    showAllHomeActivities = true;
+    renderPublicActivities();
+    return;
+  }
+
+  const navLink = event.target.closest(".site-nav a, .bottom-nav a");
   if (navLink?.getAttribute("href")?.startsWith("#")) {
     showPage(navLink.getAttribute("href").slice(1));
   }
@@ -2881,6 +3308,17 @@ document.body.addEventListener("click", async (event) => {
     await loadActivities();
     renderAdmin();
     return showToast(activity.responseMode === "optout" ? `Je afmelding voor ${activity.title} is ingetrokken.` : `Je bent ingeschreven voor ${activity.title}.`);
+  }
+
+  const activityDetailsBtn = event.target.closest("[data-activity-details]");
+  if (activityDetailsBtn) return openActivityDetails(activityDetailsBtn.dataset.activityDetails);
+
+  const agendaDayBtn = event.target.closest("[data-agenda-day]");
+  if (agendaDayBtn) {
+    state.agendaSelectedDay = agendaDayBtn.dataset.agendaDay;
+    renderAgendaCalendar();
+    if (agendaDayBtn.classList.contains("has-events") && window.matchMedia("(max-width: 620px)").matches) els.agendaDayTitle.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
   }
 
   const registrationsBtn = event.target.closest("[data-registrations]");
@@ -2975,7 +3413,7 @@ document.body.addEventListener("click", async (event) => {
   const whatsappActivityBtn = event.target.closest("[data-whatsapp-activity]");
   if (whatsappActivityBtn) {
     const activity = state.activities.find((item) => item.id === Number(whatsappActivityBtn.dataset.whatsappActivity));
-    const text = `Schrijf je in voor ${activity.title}: ${activityShareUrl(activity.id)}`;
+    const text = `Schrijf je in voor ${activity.title}: ${activityShareUrl(activity)}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
     return;
   }
@@ -3005,7 +3443,7 @@ document.body.addEventListener("click", async (event) => {
   if (editActivityBtn) return openActivityDialog(state.activities.find((activity) => activity.id === Number(editActivityBtn.dataset.editActivity)));
 
   const deleteActivityBtn = event.target.closest("[data-delete-activity]");
-  if (deleteActivityBtn && confirm("Weet je zeker dat je deze activiteit wilt verwijderen?")) {
+  if (deleteActivityBtn && confirm("Weet je zeker dat je deze activiteit wilt verwijderen? Alle aanmeldingen en afmeldingen worden ook verwijderd.")) {
     await api(`/api/activities/${deleteActivityBtn.dataset.deleteActivity}`, { method: "DELETE" });
     await refreshPortal();
     return showToast("Activiteit verwijderd.");

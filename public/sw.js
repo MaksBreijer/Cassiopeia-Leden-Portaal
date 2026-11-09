@@ -1,15 +1,17 @@
-const CACHE_NAME = "cassiopeia-pwa-v31";
+const CACHE_NAME = "cassiopeia-pwa-v51";
 const APP_SHELL = [
   "/",
   "/offline.html",
   "/offline.css?v=20260831-logo",
   "/manifest.webmanifest",
-  "/styles.css?v=20260903-admin-pluses",
-  "/app.js?v=20260903-admin-pluses",
+  "/styles.css?v=20261016-push",
+  "/refine.css?v=20261108-lila",
+  "/app.js?v=20261016-later",
   "/assets/app-icon-192.png?v=20260831-logo",
   "/assets/app-icon-512.png?v=20260831-logo",
   "/assets/cassiopeia-embleem.png?v=20260831-logo",
-  "/assets/lustrum-patroon.png"
+  "/assets/lustrum-patroon.png",
+  "/assets/cassiopeia-patroon-lila.png"
 ];
 
 self.addEventListener("install", (event) => {
@@ -28,13 +30,18 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin || requestUrl.pathname.startsWith("/api/")) return;
+  // Video's gebruiken deelverzoeken (206) die niet in de cache kunnen; laat de browser die zelf afhandelen.
+  if (requestUrl.pathname.endsWith(".mp4")) return;
 
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put("/", copy));
+          // Alleen de app zelf als offline-terugval bewaren, niet losse pagina's zoals /gala.html.
+          if (requestUrl.pathname === "/") {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put("/", copy));
+          }
           return response;
         })
         .catch(() => caches.match("/").then((cached) => cached || caches.match("/offline.html")))
@@ -67,6 +74,39 @@ self.addEventListener("fetch", (event) => {
         return response;
       });
       return cached || networkResponse;
+    })
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data?.text() };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Cassiopeia", {
+      body: data.body || "",
+      icon: "/assets/app-icon-192.png",
+      badge: "/assets/app-icon-192.png",
+      tag: data.tag,
+      data: { url: data.url || "/" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((client) => client.url.startsWith(self.location.origin));
+      if (existing) {
+        existing.navigate(url);
+        return existing.focus();
+      }
+      return self.clients.openWindow(url);
     })
   );
 });

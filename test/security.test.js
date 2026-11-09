@@ -140,7 +140,7 @@ test("members can update their own address from their profile", () => {
   assert.match(appScript, /isBirthdayToday\(member\.birthday\)/);
   assert.doesNotMatch(appScript, /Morgen wordt dit automatisch opnieuw bekeken/);
   assert.match(appScript, /activity-actions-admin-only/);
-  assert.match(server, /Beheeraccounts nemen niet deel aan activiteiten/);
+  assert.doesNotMatch(server, /Beheeraccounts nemen niet deel aan activiteiten/);
   assert.match(html, /name="responseMode"/);
   assert.match(html, /id="cancellationForm"/);
   assert.match(html, /id="activityArchiveList"/);
@@ -547,12 +547,53 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.match(activityShareHtml, /Activiteit · Dameschdispuut Cassiopeia/);
   assert.match(activityShareHtml, /cassiopeia-activity-share\.png\?v=20260902-rsvp/);
   assert.ok(activityShareHtml.includes(`property="og:url" content="https://www.dispuutcassiopeia.nl/activity/${activity.data.activity.id}"`));
+  assert.doesNotMatch(activityShareHtml, /preview\.jpg/);
+  const shareKey = activitiesWithImage.data.activities.find((item) => item.id === activity.data.activity.id).shareKey;
+  assert.match(shareKey, /^[A-Za-z0-9_-]{16}$/);
+  const signedSharePage = await fetch(`${baseUrl}/activity/${activity.data.activity.id}?s=${shareKey}`);
+  const signedShareHtml = await signedSharePage.text();
+  assert.ok(signedShareHtml.includes(`property="og:title" content="${activity.data.activity.title} · Dameschdispuut Cassiopeia"`));
+  assert.ok(signedShareHtml.includes(`/activity/${activity.data.activity.id}/preview.jpg?s=${shareKey}&v=`));
+  assert.match(signedShareHtml, /og:image:type" content="image\/jpeg"/);
+  const wrongKeyPage = await (await fetch(`${baseUrl}/activity/${activity.data.activity.id}?s=${"x".repeat(16)}`)).text();
+  assert.doesNotMatch(wrongKeyPage, /preview\.jpg/);
+  const previewImage = await fetch(`${baseUrl}/activity/${activity.data.activity.id}/preview.jpg?s=${shareKey}`);
+  assert.equal(previewImage.status, 200);
+  assert.equal(previewImage.headers.get("content-type"), "image/jpeg");
+  assert.deepEqual([...new Uint8Array(await previewImage.arrayBuffer()).slice(0, 2)], [0xff, 0xd8]);
+  const unsignedPreview = await fetch(`${baseUrl}/activity/${activity.data.activity.id}/preview.jpg`);
+  assert.equal(unsignedPreview.status, 404);
+  // The bootstrap management account is not a member and does not take part.
+  const managementRegistration = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
+    method: "POST",
+    cookie: adminLogin.cookie
+  });
+  assert.equal(managementRegistration.response.status, 403);
+  const adminSession = await jsonRequest(baseUrl, "/api/session", { cookie: adminLogin.cookie });
+  assert.equal(adminSession.data.user.takesPart, false);
+  const adminTakesPart = await jsonRequest(baseUrl, `/api/members/${adminSession.data.user.id}`, {
+    method: "PUT",
+    cookie: adminLogin.cookie,
+    body: { ...adminSession.data.user, isAdmin: true, accountStatus: "active", takesPart: true }
+  });
+  assert.equal(adminTakesPart.response.status, 200);
+  assert.equal(adminTakesPart.data.member.takesPart, true);
+
   const registration = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
     method: "POST",
     cookie: adminLogin.cookie
   });
-  assert.equal(registration.response.status, 403);
-  assert.match(registration.data.error, /Beheeraccounts/i);
+  // Board members with admin rights are members too and can take part.
+  assert.equal(registration.response.status, 200);
+  const adminView = await jsonRequest(baseUrl, "/api/activities", { cookie: adminLogin.cookie });
+  const adminRegistered = adminView.data.activities.find((item) => item.id === activity.data.activity.id);
+  assert.equal(adminRegistered.isRegistered, true);
+  assert.equal(adminRegistered.participants.length, 1);
+  const adminUnregister = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/register`, {
+    method: "DELETE",
+    cookie: adminLogin.cookie
+  });
+  assert.equal(adminUnregister.response.status, 200);
 
   const archivedStart = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
   const archivedActivity = await jsonRequest(baseUrl, "/api/activities", {
@@ -581,7 +622,7 @@ test("admins invite members who set and reset their own password", async (t) => 
     method: "POST",
     cookie: adminLogin.cookie
   });
-  assert.equal(closedRegistration.response.status, 403);
+  assert.equal(closedRegistration.response.status, 400);
   const reopenedActivity = await jsonRequest(baseUrl, `/api/activities/${closedActivity.data.activity.id}`, {
     method: "PUT",
     cookie: adminLogin.cookie,
@@ -594,7 +635,8 @@ test("admins invite members who set and reset their own password", async (t) => 
     method: "POST",
     cookie: adminLogin.cookie
   });
-  assert.equal(reopenedRegistration.response.status, 403);
+  assert.equal(reopenedRegistration.response.status, 200);
+  await jsonRequest(baseUrl, `/api/activities/${closedActivity.data.activity.id}/register`, { method: "DELETE", cookie: adminLogin.cookie });
 
   const customDeadlineStart = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
   const futureDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -767,6 +809,17 @@ test("admins invite members who set and reset their own password", async (t) => 
 
   const forbiddenArchive = await jsonRequest(baseUrl, "/api/activities/archive", { cookie: activated.cookie });
   assert.equal(forbiddenArchive.response.status, 403);
+  const memberConfessions = await jsonRequest(baseUrl, "/api/confessions", { cookie: activated.cookie });
+  assert.equal(memberConfessions.response.status, 200);
+  const memberBody = { name: "Nieuw Lid", email: "nieuw@example.nl", yearLayer: "2026", committee: "Feestcommissie" };
+  const madeAlumna = await jsonRequest(baseUrl, `/api/members/${created.data.member.id}`, { method: "PUT", cookie: adminLogin.cookie, body: { ...memberBody, memberStatus: "oud" } });
+  assert.equal(madeAlumna.response.status, 200);
+  const alumnaConfessions = await jsonRequest(baseUrl, "/api/confessions", { cookie: activated.cookie });
+  assert.equal(alumnaConfessions.response.status, 403);
+  const alumnaConfession = await jsonRequest(baseUrl, "/api/confessions", { method: "POST", cookie: activated.cookie, body: { body: "Reünistenbiecht" } });
+  assert.equal(alumnaConfession.response.status, 403);
+  const madeActive = await jsonRequest(baseUrl, `/api/members/${created.data.member.id}`, { method: "PUT", cookie: adminLogin.cookie, body: { ...memberBody, memberStatus: "actief" } });
+  assert.equal(madeActive.response.status, 200);
   const signupBeforeResponse = await jsonRequest(baseUrl, `/api/activities/${activity.data.activity.id}/registrations`, { cookie: adminLogin.cookie });
   const memberWithoutResponse = signupBeforeResponse.data.registrations.find((member) => member.id === created.data.member.id);
   assert.equal(memberWithoutResponse.hasResponded, false);
@@ -797,7 +850,8 @@ test("admins invite members who set and reset their own password", async (t) => 
   });
   assert.equal(optOutActivity.response.status, 201);
   assert.equal(optOutActivity.data.activity.responseMode, "optout");
-  assert.equal(optOutActivity.data.activity.registrationCount, 1);
+  // The member and the board member with admin rights are both expected.
+  assert.equal(optOutActivity.data.activity.registrationCount, 2);
 
   const optOutMemberView = await jsonRequest(baseUrl, "/api/activities", { cookie: activated.cookie });
   const memberOptOutActivity = optOutMemberView.data.activities.find((item) => item.id === optOutActivity.data.activity.id);
@@ -817,12 +871,23 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.equal(cancelledMember.cancellationReason, "Familieverjaardag");
   assert.ok(cancelledMember.cancelledAt);
 
-  const adminCannotOptOut = await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/register`, {
+  const memberSeesAbsentee = await jsonRequest(baseUrl, "/api/activities", { cookie: activated.cookie });
+  const absenteeActivity = memberSeesAbsentee.data.activities.find((item) => item.id === optOutActivity.data.activity.id);
+  assert.deepEqual(absenteeActivity.absentees.map((member) => member.id), [created.data.member.id]);
+  assert.equal(absenteeActivity.participants.length, 1);
+  assert.doesNotMatch(JSON.stringify(absenteeActivity.absentees), /Familieverjaardag|@/);
+
+  const adminOptOut = await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/register`, {
     method: "DELETE",
     cookie: adminLogin.cookie,
     body: { reason: "Alleen het bestuur mag dit lezen" }
   });
-  assert.equal(adminCannotOptOut.response.status, 403);
+  assert.equal(adminOptOut.response.status, 200);
+  const adminOptOutView = await jsonRequest(baseUrl, "/api/activities", { cookie: adminLogin.cookie });
+  const adminOptOutActivity = adminOptOutView.data.activities.find((item) => item.id === optOutActivity.data.activity.id);
+  assert.equal(adminOptOutActivity.isRegistered, false);
+  assert.equal(adminOptOutActivity.wasCancelled, true);
+  assert.equal(adminOptOutActivity.participants.length, 0);
 
   const undoCancellation = await jsonRequest(baseUrl, `/api/activities/${optOutActivity.data.activity.id}/register`, {
     method: "POST",

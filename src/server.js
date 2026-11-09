@@ -8,8 +8,11 @@ const { db, initializeDatabase, ensureYearAgendaItems } = require("./db");
 const { createCalendarFeed, googleCalendarLinkFromIcsUrl, parseGoogleCalendarFeed, visibleCalendarItems } = require("./calendar-feed");
 const { MAX_IMPORT_ROWS, parseMemberImport, validateRecords } = require("./member-import");
 const { createSqliteSessionStore } = require("./session-store");
+const { renderActivityShareImage } = require("./activity-share-image");
+const { setupPush, getPublicKey, saveSubscription, removeSubscription, notifyNewActivity, notifyNewConfession, notifyExistingConfessions, sendToUsers } = require("./push");
 
 initializeDatabase();
+setupPush();
 const SQLiteSessionStore = createSqliteSessionStore(session, db);
 
 const app = express();
@@ -37,6 +40,7 @@ function purgeExpiredConfessions() {
 
 purgeExpiredConfessions();
 setInterval(purgeExpiredConfessions, CONFESSION_RETENTION_MS).unref();
+notifyExistingConfessions().catch((error) => console.error("Inhaalmeldingen biechten mislukt:", error.message));
 
 if (!SESSION_SECRET) {
   throw new Error("SESSION_SECRET is verplicht in productie.");
@@ -109,31 +113,84 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
-function sendActivitySharePage(activityId, res, next) {
+function activityShareKey(activityId) {
+  return crypto.createHmac("sha256", SESSION_SECRET).update(`activity-share:${activityId}`).digest("base64url").slice(0, 16);
+}
+
+// Alleen een link met geldige sleutel (zoals de WhatsApp-knop maakt) toont de naam van de activiteit,
+// zodat je activiteiten niet kunt opvragen door id's te raden.
+function sharedActivity(activityId, key) {
+  if (!/^\d+$/.test(activityId) || typeof key !== "string" || key.length !== 16) return null;
+  const expected = Buffer.from(activityShareKey(activityId));
+  const given = Buffer.from(key);
+  if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return null;
+  return db.prepare("SELECT id, title FROM activities WHERE id = ?").get(activityId) || null;
+}
+
+function escapeHtmlAttribute(value) {
+  return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("$", "&#36;");
+}
+
+function sendIndexPage(res) {
+  res.setHeader("Cache-Control", "no-store");
+  res.type("html").send(fs.readFileSync(INDEX_HTML_PATH, "utf8"));
+}
+
+function sendActivitySharePage(activityId, key, res, next) {
   if (!/^\d+$/.test(activityId)) return next();
 
-  const shareUrl = `https://www.dispuutcassiopeia.nl/activity/${activityId}`;
-  const html = fs.readFileSync(INDEX_HTML_PATH, "utf8")
-    .replace('<meta property="og:title" content="Dameschdispuut Cassiopeia · Lustrum III" />', '<meta property="og:title" content="Activiteit · Dameschdispuut Cassiopeia" />')
+  const activity = sharedActivity(activityId, key);
+  const title = activity ? `${escapeHtmlAttribute(activity.title)} · Dameschdispuut Cassiopeia` : "Activiteit · Dameschdispuut Cassiopeia";
+  const shareUrl = activity
+    ? `https://www.dispuutcassiopeia.nl/activity/${activityId}?s=${key}`
+    : `https://www.dispuutcassiopeia.nl/activity/${activityId}`;
+  const imageUrl = activity
+    ? `https://www.dispuutcassiopeia.nl/activity/${activityId}/preview.jpg?s=${key}&v=${crypto.createHash("sha256").update(activity.title).digest("hex").slice(0, 10)}`
+    : ACTIVITY_SHARE_IMAGE_URL;
+  const imageAlt = activity
+    ? `${escapeHtmlAttribute(activity.title)} · schrijf je in bij Dameschdispuut Cassiopeia`
+    : "Schrijf je nu in voor een activiteit van Dameschdispuut Cassiopeia";
+  let html = fs.readFileSync(INDEX_HTML_PATH, "utf8")
+    .replace('<meta property="og:title" content="Dameschdispuut Cassiopeia" />', `<meta property="og:title" content="${title}" />`)
     .replace('<meta property="og:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />', '<meta property="og:description" content="Log in en schrijf je in voor deze activiteit." />')
-    .replace(/<meta property="og:image" content="[^"]+" \/>/, `<meta property="og:image" content="${ACTIVITY_SHARE_IMAGE_URL}" />`)
-    .replace('<meta property="og:image:alt" content="Logo van Dameschdispuut Cassiopeia" />', '<meta property="og:image:alt" content="Schrijf je nu in voor een activiteit van Dameschdispuut Cassiopeia" />')
+    .replace(/<meta property="og:image" content="[^"]+" \/>/, `<meta property="og:image" content="${imageUrl}" />`)
+    .replace('<meta property="og:image:alt" content="Logo van Dameschdispuut Cassiopeia" />', `<meta property="og:image:alt" content="${imageAlt}" />`)
     .replace('<meta property="og:url" content="https://www.dispuutcassiopeia.nl/" />', `<meta property="og:url" content="${shareUrl}" />`)
-    .replace('<meta name="twitter:title" content="Dameschdispuut Cassiopeia · Lustrum III" />', '<meta name="twitter:title" content="Activiteit · Dameschdispuut Cassiopeia" />')
+    .replace('<meta name="twitter:title" content="Dameschdispuut Cassiopeia" />', `<meta name="twitter:title" content="${title}" />`)
     .replace('<meta name="twitter:description" content="Het besloten ledenportaal voor activiteiten, jaarplanning en leden." />', '<meta name="twitter:description" content="Log in en schrijf je in voor deze activiteit." />')
-    .replace(/<meta name="twitter:image" content="[^"]+" \/>/, `<meta name="twitter:image" content="${ACTIVITY_SHARE_IMAGE_URL}" />`)
-    .replace('<meta name="twitter:image:alt" content="Logo van Dameschdispuut Cassiopeia" />', '<meta name="twitter:image:alt" content="Schrijf je nu in voor een activiteit van Dameschdispuut Cassiopeia" />');
+    .replace(/<meta name="twitter:image" content="[^"]+" \/>/, `<meta name="twitter:image" content="${imageUrl}" />`)
+    .replace('<meta name="twitter:image:alt" content="Logo van Dameschdispuut Cassiopeia" />', `<meta name="twitter:image:alt" content="${imageAlt}" />`);
+  if (activity) {
+    html = html
+      .replace('<meta property="og:image:type" content="image/png" />', '<meta property="og:image:type" content="image/jpeg" />')
+      .replace('<meta property="og:image:width" content="1730" />', '<meta property="og:image:width" content="1200" />')
+      .replace('<meta property="og:image:height" content="909" />', '<meta property="og:image:height" content="630" />');
+  }
 
   res.setHeader("Cache-Control", "no-store");
   res.type("html").send(html);
 }
 
-app.get("/", (req, res, next) => {
-  sendActivitySharePage(String(req.query.activity || "").trim(), res, next);
+app.get("/", (req, res) => {
+  sendActivitySharePage(String(req.query.activity || "").trim(), req.query.s, res, () => sendIndexPage(res));
 });
 
+app.get("/index.html", (req, res) => sendIndexPage(res));
+
 app.get("/activity/:activityId", (req, res, next) => {
-  sendActivitySharePage(String(req.params.activityId || "").trim(), res, next);
+  sendActivitySharePage(String(req.params.activityId || "").trim(), req.query.s, res, next);
+});
+
+app.get("/activity/:activityId/preview.jpg", (req, res, next) => {
+  const activity = sharedActivity(String(req.params.activityId || "").trim(), req.query.s);
+  if (!activity) return res.status(404).end();
+  try {
+    const image = renderActivityShareImage(activity.title, `${activity.id}:${activity.title}`);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.type("jpeg").send(image);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get(/^\/admin\/+$/, (req, res) => res.redirect(308, "/admin"));
@@ -186,6 +243,7 @@ function publicUser(user) {
     memberStatus: user.member_status || "actief",
     committee: user.committee || "",
     isAdmin: Boolean(user.is_admin),
+    takesPart: user.takes_part === undefined ? undefined : Boolean(user.takes_part),
     accountStatus: user.account_status || "active"
   };
 }
@@ -313,6 +371,7 @@ function memberFromBody(body, existing = {}) {
     member_status: ["actief", "oud"].includes(memberStatus) ? memberStatus : "actief",
     committee: valueFromBody(body, "committee", existing.committee),
     is_admin: body.isAdmin ? 1 : 0,
+    takes_part: body.takesPart === undefined ? existing.takes_part ?? 1 : body.takesPart ? 1 : 0,
     account_status: ["pending", "active", "disabled"].includes(accountStatus) ? accountStatus : "active"
   };
 }
@@ -486,6 +545,34 @@ function isLateCancellation(startsAt, customDeadline = null) {
   const deadline = registrationDeadline(startsAt, customDeadline);
   return Boolean(deadline && Date.now() >= deadline.getTime());
 }
+
+app.get("/api/push/public-key", requireAuth, (req, res) => {
+  res.json({ publicKey: getPublicKey() });
+});
+
+app.post("/api/push/subscriptions", requireAuth, (req, res) => {
+  try {
+    saveSubscription(req.session.userId, req.body?.subscription);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+  res.status(201).json({ ok: true });
+});
+
+app.delete("/api/push/subscriptions", requireAuth, (req, res) => {
+  removeSubscription(req.session.userId, req.body?.endpoint);
+  res.json({ ok: true });
+});
+
+app.post("/api/push/test", requireAuth, async (req, res) => {
+  const sent = await sendToUsers([req.session.userId], {
+    title: "Meldingen staan aan 🎉",
+    body: "Je hoort het voortaan als er iets nieuws is bij Cassiopeia.",
+    url: "/#home",
+    tag: "push-test",
+  });
+  res.json({ sent });
+});
 
 app.get("/api/session", (req, res) => {
   res.json({ user: publicUser(getCurrentUser(req)) });
@@ -779,8 +866,8 @@ app.post("/api/members", requireAuth, requireAdmin, async (req, res) => {
   try {
     const result = db
       .prepare(`
-        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, birthday, address, latitude, longitude, location_updated_at, bio, avatar, member_status, committee, is_admin, account_status)
-        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @birthday, @address, @latitude, @longitude, @location_updated_at, @bio, @avatar, @member_status, @committee, @is_admin, @account_status)
+        INSERT INTO users (name, email, password_hash, year_layer, role_title, phone, birthday, address, latitude, longitude, location_updated_at, bio, avatar, member_status, committee, is_admin, takes_part, account_status)
+        VALUES (@name, @email, @password_hash, @year_layer, @role_title, @phone, @birthday, @address, @latitude, @longitude, @location_updated_at, @bio, @avatar, @member_status, @committee, @is_admin, @takes_part, @account_status)
       `)
       .run({ ...member, ...coordinates, password_hash, account_status: "pending" });
     const created = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid);
@@ -860,7 +947,7 @@ app.put("/api/members/:id", requireAuth, requireAdmin, async (req, res) => {
           phone = @phone, birthday = @birthday, address = @address, latitude = @latitude, longitude = @longitude,
           location_updated_at = @location_updated_at, bio = @bio, avatar = @avatar,
           member_status = @member_status, committee = @committee, is_admin = @is_admin,
-          account_status = @account_status, updated_at = CURRENT_TIMESTAMP
+          takes_part = @takes_part, account_status = @account_status, updated_at = CURRENT_TIMESTAMP
       WHERE id = @id
     `).run({ ...member, ...coordinates, id: req.params.id });
 
@@ -929,8 +1016,12 @@ function activityArchiveDate(startsAt) {
   return new Date(startsAtMs + ACTIVITY_ARCHIVE_DELAY_MS);
 }
 
+function takesPartInActivities(userId) {
+  return Boolean(db.prepare("SELECT takes_part FROM users WHERE id = ?").get(userId)?.takes_part);
+}
+
 function activityRows(userId, scope = "active") {
-  const canParticipate = !Boolean(db.prepare("SELECT is_admin FROM users WHERE id = ?").get(userId)?.is_admin);
+  const canParticipate = takesPartInActivities(userId);
   const rows = db
     .prepare(`
       SELECT a.*,
@@ -951,12 +1042,12 @@ function activityRows(userId, scope = "active") {
       FROM registrations r
       JOIN users u ON u.id = r.user_id
       JOIN activities a ON a.id = r.activity_id
-      WHERE r.cancelled_at IS NULL AND u.account_status = 'active' AND u.is_admin = 0 AND a.response_mode = 'signup'
+      WHERE r.cancelled_at IS NULL AND u.account_status = 'active' AND u.takes_part = 1 AND a.response_mode = 'signup'
       UNION ALL
       SELECT a.id AS activity_id, u.id, u.name, u.avatar, u.year_layer
       FROM activities a
       CROSS JOIN users u
-      WHERE a.response_mode = 'optout' AND u.account_status = 'active' AND u.is_admin = 0
+      WHERE a.response_mode = 'optout' AND u.account_status = 'active' AND u.takes_part = 1
         AND NOT EXISTS (
           SELECT 1 FROM registrations cancelled
           WHERE cancelled.activity_id = a.id AND cancelled.user_id = u.id AND cancelled.cancelled_at IS NOT NULL
@@ -964,6 +1055,20 @@ function activityRows(userId, scope = "active") {
       ORDER BY activity_id ASC, name ASC
     `)
     .all();
+
+  // Members may see who cancelled, but never why: the reason stays in the admin overview.
+  const absenteesByActivity = new Map();
+  db.prepare(`
+    SELECT r.activity_id, u.id, u.name, u.avatar, u.year_layer
+    FROM registrations r
+    JOIN users u ON u.id = r.user_id
+    WHERE r.cancelled_at IS NOT NULL AND u.account_status = 'active' AND u.takes_part = 1
+    ORDER BY r.activity_id ASC, u.name ASC
+  `).all().forEach((row) => {
+    const absentees = absenteesByActivity.get(row.activity_id) || [];
+    absentees.push({ id: row.id, name: row.name, avatar: row.avatar || row.name.charAt(0).toUpperCase(), yearLayer: row.year_layer });
+    absenteesByActivity.set(row.activity_id, absentees);
+  });
 
   participants.forEach((participant) => {
     const activityParticipants = participantsByActivity.get(participant.activity_id) || [];
@@ -991,6 +1096,7 @@ function activityRows(userId, scope = "active") {
       capacity: row.capacity,
       responseMode,
       hasImage: Boolean(row.has_image),
+      shareKey: activityShareKey(row.id),
       registrationCount: participants.length,
       registrationDeadline: deadline?.toISOString() || null,
       customRegistrationDeadline: row.registration_deadline || null,
@@ -1002,7 +1108,8 @@ function activityRows(userId, scope = "active") {
       lateCancelled: canParticipate && Boolean(row.late_cancelled),
       cancellationReason: canParticipate ? row.cancellation_reason || "" : "",
       files: filesByActivity.get(row.id) || [],
-      participants
+      participants,
+      absentees: absenteesByActivity.get(row.id) || []
     };
   });
 
@@ -1246,13 +1353,20 @@ app.delete("/api/site-assets/:key", requireAuth, requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-app.get("/api/confessions", requireAuth, (req, res) => {
+// Reünisten staan los van het actieve dispuutsleven; de biechten zijn alleen voor actieve leden (en admins, voor moderatie).
+function requireConfessionAccess(req, res, next) {
+  const user = db.prepare("SELECT member_status, is_admin FROM users WHERE id = ?").get(req.session.userId);
+  if (!user || (user.member_status === "oud" && !user.is_admin)) return res.status(403).json({ error: "De biechten zijn alleen voor actieve leden." });
+  next();
+}
+
+app.get("/api/confessions", requireAuth, requireConfessionAccess, (req, res) => {
   purgeExpiredConfessions();
   const rows = db.prepare("SELECT id, body, created_at FROM confessions ORDER BY created_at DESC, id DESC").all();
   res.json({ confessions: rows.map((row) => ({ id: row.id, body: row.body, createdAt: row.created_at })) });
 });
 
-app.post("/api/confessions", requireAuth, (req, res) => {
+app.post("/api/confessions", requireAuth, requireConfessionAccess, (req, res) => {
   const body = String(req.body.body || "").trim();
   if (!body) return res.status(400).json({ error: "Schrijf eerst een bericht." });
   if (body.length > 2000) return res.status(400).json({ error: "Een bericht mag maximaal 2000 tekens zijn." });
@@ -1267,6 +1381,7 @@ app.post("/api/confessions", requireAuth, (req, res) => {
   confessionAttempts.set(key, current);
   const result = db.prepare("INSERT INTO confessions (body) VALUES (?)").run(body);
   const row = db.prepare("SELECT id, body, created_at FROM confessions WHERE id = ?").get(result.lastInsertRowid);
+  notifyNewConfession(row, req.session.userId);
   res.status(201).json({ confession: { id: row.id, body: row.body, createdAt: row.created_at } });
 });
 
@@ -1366,6 +1481,7 @@ app.post("/api/activities", requireAuth, requireAdmin, (req, res) => {
   const result = db
     .prepare("INSERT INTO activities (title, description, location, starts_at, capacity, response_mode, registration_override, registration_deadline, created_by) VALUES (@title, @description, @location, @starts_at, @capacity, @response_mode, @registration_override, @registration_deadline, @created_by)")
     .run({ ...activity, created_by: req.session.userId });
+  notifyNewActivity({ ...activity, id: result.lastInsertRowid }, req.session.userId);
   res.status(201).json({ activity: activityRows(req.session.userId, "all").find((item) => item.id === result.lastInsertRowid) });
 });
 
@@ -1464,8 +1580,7 @@ app.delete("/api/activities/:id/image", requireAuth, requireAdmin, (req, res) =>
 });
 
 app.post("/api/activities/:id/register", requireAuth, (req, res) => {
-  const user = db.prepare("SELECT is_admin FROM users WHERE id = ?").get(req.session.userId);
-  if (user?.is_admin) return res.status(403).json({ error: "Beheeraccounts nemen niet deel aan activiteiten." });
+  if (!takesPartInActivities(req.session.userId)) return res.status(403).json({ error: "Dit account telt niet mee bij activiteiten." });
   const activity = db.prepare("SELECT * FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
   const responseMode = activity.response_mode || "signup";
@@ -1487,8 +1602,7 @@ app.post("/api/activities/:id/register", requireAuth, (req, res) => {
 });
 
 app.delete("/api/activities/:id/register", requireAuth, (req, res) => {
-  const user = db.prepare("SELECT is_admin FROM users WHERE id = ?").get(req.session.userId);
-  if (user?.is_admin) return res.status(403).json({ error: "Beheeraccounts nemen niet deel aan activiteiten." });
+  if (!takesPartInActivities(req.session.userId)) return res.status(403).json({ error: "Dit account telt niet mee bij activiteiten." });
   const activity = db.prepare("SELECT starts_at, response_mode, registration_deadline FROM activities WHERE id = ?").get(req.params.id);
   if (!activity) return res.status(404).json({ error: "Activiteit niet gevonden." });
   const reason = String(req.body?.reason || "").trim();
@@ -1513,7 +1627,7 @@ app.get("/api/activities/:id/registrations", requireAuth, requireAdmin, (req, re
       r.cancelled_at, r.late_cancelled, r.cancellation_reason
     FROM users u
     LEFT JOIN registrations r ON r.activity_id = ? AND r.user_id = u.id
-    WHERE u.account_status = 'active' AND u.is_admin = 0
+    WHERE u.account_status = 'active' AND u.takes_part = 1
     ORDER BY
       CASE
         WHEN r.cancelled_at IS NULL AND (r.id IS NOT NULL OR ? = 'optout') THEN 0
