@@ -412,21 +412,33 @@ body.na-lustrum .login-submit:hover {
   }
 }
 
-/* Activiteit zonder eigen foto: tekening uit het patroon op lila */
-.activity-card-art {
-  position: relative;
-  display: block;
-  overflow: hidden;
-  background: linear-gradient(160deg, #c3b0da 0%, #8f74b5 100%);
+/* Activiteit zonder eigen foto: kleine lila tekening uit het patroon */
+.activity-card-intro.has-image:has(.activity-card-art) {
+  grid-template-columns: minmax(0, 1fr) 56px;
 }
 
-.activity-card-art img {
-  position: absolute;
-  inset: 14px;
-  width: calc(100% - 28px);
-  height: calc(100% - 28px);
-  object-fit: contain;
+.activity-card-art {
+  display: block;
+  width: 56px;
+  height: 56px;
+  background: #b9a4d6;
+  -webkit-mask: var(--activity-art) center / contain no-repeat;
+  mask: var(--activity-art) center / contain no-repeat;
 }
+
+.activity-art-croissant { --activity-art: url("assets/activity-art/croissant.png"); }
+.activity-art-fles { --activity-art: url("assets/activity-art/fles.png"); }
+.activity-art-kok { --activity-art: url("assets/activity-art/kok.png"); }
+.activity-art-discobal { --activity-art: url("assets/activity-art/discobal.png"); }
+.activity-art-fiets { --activity-art: url("assets/activity-art/fiets.png"); }
+.activity-art-strandstoel { --activity-art: url("assets/activity-art/strandstoel.png"); }
+.activity-art-ijsje { --activity-art: url("assets/activity-art/ijsje.png"); }
+.activity-art-broodje { --activity-art: url("assets/activity-art/broodje.png"); }
+.activity-art-meloen { --activity-art: url("assets/activity-art/meloen.png"); }
+.activity-art-capybara { --activity-art: url("assets/activity-art/capybara.png"); }
+.activity-art-smiley { --activity-art: url("assets/activity-art/smiley.png"); }
+.activity-art-sterren { --activity-art: url("assets/activity-art/sterren.png"); }
+.activity-art-zonnebril { --activity-art: url("assets/activity-art/zonnebril.png"); }
 
 /* Kaart zonder eigen acties: geen lege kolom of balk */
 .activity-card:has(.activity-actions > .activity-member-actions.hidden:only-child) {
@@ -451,10 +463,21 @@ body.na-lustrum .login-submit:hover {
     box-shadow: none;
   }
 
-  .activity-card-art img {
-    inset: 22px;
-    width: calc(100% - 44px);
-    height: calc(100% - 44px);
+  .activity-card-intro.has-image:has(.activity-card-art) {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .activity-card-art {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 44px;
+    height: 44px;
+  }
+
+  .activity-card-intro:has(.activity-card-art) .activity-card-heading {
+    padding-right: 56px;
   }
 }
 
