@@ -249,3 +249,23 @@ body.na-lustrum .login-submit {
 body.na-lustrum .login-submit:hover {
   box-shadow: 0 14px 30px rgba(29, 29, 31, 0.24);
 }
+
+/* Taakbalk op de telefoon: de tekeningen uit het achtergrondpatroon als iconen. */
+.bottom-nav a .nav-icon {
+  display: block;
+  width: 44px;
+  height: 26px;
+  background: #9d83c8;
+  -webkit-mask: var(--nav-icon) center / contain no-repeat;
+  mask: var(--nav-icon) center / contain no-repeat;
+}
+
+.bottom-nav a[aria-current="page"] .nav-icon {
+  background: #6f4fa3;
+}
+
+.nav-icon-home { --nav-icon: url("assets/nav/home.png"); }
+.nav-icon-agenda { --nav-icon: url("assets/nav/agenda.png"); }
+.nav-icon-leden { --nav-icon: url("assets/nav/leden.png"); }
+.nav-icon-biechten { --nav-icon: url("assets/nav/biechten.png"); }
+.nav-icon-cribs { --nav-icon: url("assets/nav/cribs.png"); }

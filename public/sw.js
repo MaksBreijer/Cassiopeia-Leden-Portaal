@@ -1,17 +1,22 @@
-const CACHE_NAME = "cassiopeia-pwa-v52";
+const CACHE_NAME = "cassiopeia-pwa-v53";
 const APP_SHELL = [
   "/",
   "/offline.html",
   "/offline.css?v=20260831-logo",
   "/manifest.webmanifest",
   "/styles.css?v=20261016-push",
-  "/refine.css?v=20261109-login",
+  "/refine.css?v=20261109-iconen",
   "/app.js?v=20261016-later",
   "/assets/app-icon-192.png?v=20260831-logo",
   "/assets/app-icon-512.png?v=20260831-logo",
   "/assets/cassiopeia-embleem.png?v=20260831-logo",
   "/assets/lustrum-patroon.png",
-  "/assets/cassiopeia-patroon-lila.png"
+  "/assets/cassiopeia-patroon-lila.png",
+  "/assets/nav/home.png",
+  "/assets/nav/agenda.png",
+  "/assets/nav/leden.png",
+  "/assets/nav/biechten.png",
+  "/assets/nav/cribs.png"
 ];
 
 self.addEventListener("install", (event) => {
