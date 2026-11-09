@@ -192,7 +192,7 @@ test("members can update their own address from their profile", () => {
   assert.match(appScript, /function renderAdminYearAgenda\(\)/);
   assert.match(appScript, /activityListHtml\(true\)/);
   assert.match(appScript, /adminMode \? `<button class="danger" data-delete-document/);
-  assert.match(server, /ACTIVITY_ARCHIVE_DELAY_MS = 2 \* 24 \* 60 \* 60 \* 1000/);
+  assert.match(server, /ACTIVITY_ARCHIVE_DELAY_MS = 12 \* 60 \* 60 \* 1000/);
   assert.match(server, /committee LIKE \?/);
   assert.match(styles, /\.activity-archive-list[\s\S]*max-height: 560px;[\s\S]*overflow-y: auto;/);
   assert.match(styles, /\.member-grid \{[\s\S]*max-height: 68vh;[\s\S]*overflow-y: auto;/);
@@ -604,6 +604,19 @@ test("admins invite members who set and reset their own password", async (t) => 
   assert.equal(archivedActivity.response.status, 201);
   const visibleActivities = await jsonRequest(baseUrl, "/api/activities", { cookie: adminLogin.cookie });
   assert.equal(visibleActivities.data.activities.some((item) => item.id === archivedActivity.data.activity.id), false);
+  const justStarted = await jsonRequest(baseUrl, "/api/activities", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { title: "Net begonnen", startsAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), location: "Utrecht" }
+  });
+  const longOver = await jsonRequest(baseUrl, "/api/activities", {
+    method: "POST",
+    cookie: adminLogin.cookie,
+    body: { title: "Al voorbij", startsAt: new Date(Date.now() - 13 * 60 * 60 * 1000).toISOString(), location: "Utrecht" }
+  });
+  const listedActivities = await jsonRequest(baseUrl, "/api/activities", { cookie: adminLogin.cookie });
+  assert.equal(listedActivities.data.activities.some((item) => item.id === justStarted.data.activity.id), true);
+  assert.equal(listedActivities.data.activities.some((item) => item.id === longOver.data.activity.id), false);
   const archivedActivities = await jsonRequest(baseUrl, "/api/activities/archive", { cookie: adminLogin.cookie });
   assert.equal(archivedActivities.response.status, 200);
   assert.equal(archivedActivities.data.activities.some((item) => item.id === archivedActivity.data.activity.id), true);
